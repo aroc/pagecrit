@@ -1,6 +1,6 @@
 # Testing — 0.1.1
 
-The October 24 hardening pass exercised **19 unit tests and 44 browser scenarios/groups**, using synthetic fixtures and real Chromium extension execution. The automated suite runs in GitHub Actions. A separate live smoke also exercised the public React website.
+The October 24 hardening pass exercised **19 unit tests and 44 browser scenarios/groups**, using synthetic fixtures and real Chromium extension execution. The automated suite runs in GitHub Actions. Separate live smoke tests also exercised react.dev and example.com: production closed-shadow controls, real text editing and pins, complete local JSON exports, and Discard restoring the original text.
 
 ## What was tested
 
