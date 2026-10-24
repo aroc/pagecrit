@@ -35,10 +35,12 @@ Give the file to your agent along with the source project:
 - Page pins are fixed document CSS-pixel positions. Element pins also store selectors, text context and relative offsets. Neither guarantees correct placement on a different viewport, a redesigned page, or an element the site replaces.
 - Main document only: iframe content, Shadow DOM content, PDFs, browser internal pages and the Chrome Web Store are not supported. Pin around unsupported content instead.
 - Plain-text nodes only. Forms, password fields, existing rich-text editors, canvases and SVG text aren't editable. Drawing, layout reordering, screenshots, source maps and automatic PRs are future work.
-- Snapshots are sanitized DOM evidence, not a complete, offline visual archive. Script state, embedded frames, form values, hidden inputs, metadata and data attributes are excluded. HTML element URL credentials, queries and fragments are removed. CSS/fonts/images are not bundled.
+- Snapshots are sanitized DOM evidence, not a complete, offline visual archive. Script state, embedded frames, form values, hidden inputs, metadata, data attributes, CSS and URL-list attributes are excluded. Snapshotting uses an inert document so it does not run the site’s custom-element constructors. HTML element URL credentials, queries and fragments are removed. CSS/fonts/images are not bundled.
 - The controls use a closed Shadow DOM and require real user events. This is not a security boundary against the host website: its scripts can observe live text previews, and existing event handlers or DOM observers may react. Use on pages you trust; do not type private secrets into feedback.
 - Exports may still contain visible private content and the page URL. Review the file before sharing it. The extension sends nothing over the network; the site itself continues operating normally.
-- Export is capped at 20 MB. Failed/canceled downloads keep the draft available for retry. Saving a file does not change your website.
+- Export is capped at 20 MB. If page HTML makes the export too large, **Download feedback only** preserves all current notes and text edits without snapshots or action history. Failed/canceled downloads keep the draft available for retry. Saving a file does not change your website.
+- Long sessions retain at most 1,000 recent history entries / 512 KB of history. The export reports omitted history; current notes and original→final text changes remain complete.
+- Native modal dialogs make the review controls inaccessible. Close the dialog before starting or continuing a review. Rotated/skewed elements and complex visual occlusion are not guaranteed; anchors use bounding rectangles.
 
 ## Development
 
@@ -49,8 +51,12 @@ npm test
 npm run check
 npm run test:browser
 npm run package
+# Linux only: actual Chrome action / activeTab permission test
+npm run test:activation
 ```
 
 `extension/` is the installable source. Development uses Node 24; packaging also uses Python 3’s standard ZIP library. `npm run package` produces `dist/page-notes.zip`. Tests use only synthetic local pages; never commit a real review export.
 
 See [architecture](docs/architecture.md) and [handoff format](docs/format.md). Delivery is separated from capture and editing so future integrations can implement a destination without rewriting the review UI.
+
+See [testing report](docs/testing.md) for coverage, fixes and the boundaries of automated verification.

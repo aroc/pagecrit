@@ -22,6 +22,6 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     respond({ok: false, error: 'Export must come from the page you are reviewing.'});
     return;
   }
-  destinations.file(message.bundle).then(respond).catch(error => respond({ok: false, error: error.message || 'Download failed. Your draft is still open.'}));
+  destinations.file(message.bundle).then(respond).catch(error => respond({ok: false, code: error.code, error: error.message || 'Download failed. Your draft is still open.'}));
   return true;
 });

@@ -132,3 +132,25 @@ test('an existing edit can be emptied and filled again', () => {
   assert.equal(change.originalText, '');
   assert.equal(node.nodeValue, 'Restored');
 });
+
+test('text limit is enforced without mutating the original node on rejection', () => {
+  const { el, doc } = fixture();
+  const node = { nodeType: 3, nodeValue: 'Original', parentElement: el, ownerDocument: doc, isConnected: true };
+  el.childNodes = [node];
+  for (const invalid of [null, 42, {}, 'x'.repeat(20001)]) {
+    assert.throws(() => core.applyTextEdit(node, invalid), /20,000/);
+    assert.equal(node.nodeValue, 'Original');
+  }
+  const maximum = 'x'.repeat(20000);
+  assert.equal(core.applyTextEdit(node, maximum).newText, maximum);
+});
+
+test('detached original anchor never silently attaches to a same-selector replacement', () => {
+  const { el, doc } = fixture();
+  const anchor = core.createAnchor(el, 70, 55, 'element');
+  const replacement = { ...el };
+  doc.querySelectorAll = () => [replacement];
+  el.isConnected = false;
+  assert.equal(core.resolveAnchor(anchor, el).resolved, false);
+  assert.equal(core.findElement(anchor.element, doc), replacement);
+});

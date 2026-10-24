@@ -72,14 +72,37 @@
     } catch (_) { return null; }
   }
 
+  function positionedContainingBlock(el, style, win) {
+    if (!['absolute', 'fixed'].includes(style.position)) return undefined;
+    for (let parent = el.parentElement; parent; parent = parent.parentElement) {
+      const value = win.getComputedStyle(parent);
+      const transformed = ['transform', 'perspective', 'filter', 'backdropFilter'].some(key => value[key] && value[key] !== 'none');
+      const contains = /(?:layout|paint|strict|content)/.test(value.contain || '');
+      const willContain = /(?:transform|perspective|filter)/.test(value.willChange || '');
+      if (transformed || contains || willContain || value.contentVisibility === 'auto' ||
+          style.position === 'absolute' && value.position && value.position !== 'static') return parent;
+    }
+    return null; // The viewport/initial containing block, outside overflow ancestors.
+  }
+
   function pointVisible(x, y, win, el) {
     if (x < 0 || y < 0 || x > finite(win.innerWidth, Infinity) || y > finite(win.innerHeight, Infinity)) return false;
     if (!el || !win.getComputedStyle) return true;
     const ownStyle = win.getComputedStyle(el);
-    if (ownStyle.display === 'none' || ownStyle.visibility === 'hidden' || ownStyle.visibility === 'collapse') return false;
+    let clipBoundary = positionedContainingBlock(el, ownStyle, win);
+    if (ownStyle.display === 'none' || ownStyle.visibility === 'hidden' || ownStyle.visibility === 'collapse' || Number(ownStyle.opacity) === 0 && ownStyle.opacity !== '') return false;
     for (let parent = el.parentElement; parent; parent = parent.parentElement) {
       const style = win.getComputedStyle(parent);
-      if (style.display === 'none' || style.visibility === 'hidden' || style.visibility === 'collapse') return false;
+      // Visibility is inherited, but a descendant can explicitly restore it. Its
+      // computed value above is authoritative; ancestor opacity still hides the subtree.
+      if (style.display === 'none' || style.contentVisibility === 'hidden' || Number(style.opacity) === 0 && style.opacity !== '') return false;
+      if (parent === clipBoundary) clipBoundary = undefined;
+      const escapedClipping = clipBoundary !== undefined;
+      // A fixed/absolute descendant can escape overflow ancestors until its
+      // containing block. Still account for invisibility of every ancestor.
+      const nextBoundary = positionedContainingBlock(parent, style, win);
+      if (nextBoundary !== undefined && clipBoundary === undefined) clipBoundary = nextBoundary;
+      if (escapedClipping) continue;
       const clipsX = /^(auto|scroll|hidden|clip|overlay)$/.test(style.overflowX);
       const clipsY = /^(auto|scroll|hidden|clip|overlay)$/.test(style.overflowY);
       if (!clipsX && !clipsY) continue;
@@ -156,24 +179,30 @@
   function snapshotDocument() {
     const document = root.document;
     if (!document?.documentElement) throw new Error('No page document available');
-    const clone = document.documentElement.cloneNode(true);
-    clone.querySelectorAll(ROOT + ',script,noscript,iframe,object,embed,template,input[type="hidden"],meta,base').forEach(el => el.remove());
-    const comments = document.createTreeWalker(clone, 128 /* SHOW_COMMENT */);
+    // Import into an inert document: cloning in the live document upgrades custom
+    // elements and can run site constructors/attribute callbacks during export.
+    const inertDocument = document.implementation.createHTMLDocument('');
+    const clone = inertDocument.importNode(document.documentElement, true);
+    clone.querySelectorAll(ROOT + ',script,style,noscript,iframe,object,embed,template,input[type="hidden"],meta,base').forEach(el => el.remove());
+    const comments = inertDocument.createTreeWalker(clone, 128 /* SHOW_COMMENT */);
     const remove = [];
     while (comments.nextNode()) remove.push(comments.currentNode);
     remove.forEach(node => node.remove());
     for (const el of [clone, ...clone.querySelectorAll('*')]) {
       for (const attribute of Array.from(el.attributes)) {
         const name = attribute.name.toLowerCase();
-        if (name.startsWith('on') || name.startsWith('data-') || /(?:token|secret|password|nonce|authorization|credential|csrf)/i.test(name) || ['value', 'checked', 'selected', 'srcdoc', 'integrity', 'autofocus', 'contenteditable'].includes(name)) {
+        if (name.startsWith('on') || name.startsWith('data-') || /(?:token|secret|password|nonce|authorization|credential|csrf)/i.test(name) || ['value', 'checked', 'selected', 'srcdoc', 'integrity', 'autofocus', 'contenteditable', 'style', 'srcset', 'imagesrcset', 'ping', 'archive', 'attributionsrc', 'manifest'].includes(name)) {
           el.removeAttribute(attribute.name);
-        } else if (['href', 'src', 'action', 'formaction', 'poster', 'xlink:href'].includes(name)) {
+        } else if (['href', 'src', 'action', 'formaction', 'poster', 'xlink:href', 'cite', 'background', 'longdesc', 'usemap', 'profile', 'codebase', 'data'].includes(name)) {
           const value = attribute.value.trim();
           if (/^(?:javascript|vbscript|data):/i.test(value.replace(/[\u0000-\u0020]/g, ''))) el.removeAttribute(attribute.name);
           else {
             try {
               const url = new URL(value, document.baseURI);
               // Strip query strings/fragments and embedded basic-auth credentials.
+              // Restrict references to inert HTTP(S) evidence; mailto/tel/blob and
+              // custom schemes may carry private payloads outside query strings.
+              if (!['http:', 'https:'].includes(url.protocol)) { el.removeAttribute(attribute.name); continue; }
               url.username = ''; url.password = ''; url.search = ''; url.hash = '';
               el.setAttribute(attribute.name, url.href);
             } catch (_) { el.removeAttribute(attribute.name); }
@@ -184,9 +213,10 @@
       if (el.localName === 'option') el.textContent = '[option omitted]';
     }
     // This is evidence, not a standalone archived site. The CSP prevents accidental active use.
-    const head = clone.querySelector('head');
-    if (head) {
-      const csp = document.createElement('meta');
+    let head = Array.from(clone.children).find(el => el.localName === 'head');
+    if (!head) { head = inertDocument.createElement('head'); clone.prepend(head); }
+    {
+      const csp = inertDocument.createElement('meta');
       csp.setAttribute('http-equiv', 'Content-Security-Policy');
       csp.setAttribute('content', "default-src 'none'; style-src 'unsafe-inline'; img-src data:; form-action 'none'; base-uri 'none'");
       head.prepend(csp);

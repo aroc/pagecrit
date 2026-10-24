@@ -1,13 +1,21 @@
 {
   "manifest_version": 3,
   "name": "Page Notes",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Pin feedback and edit text on a page, then export a local review bundle for your agent.",
-  "permissions": ["activeTab", "scripting", "downloads"],
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "downloads"
+  ],
   "action": {
-    "default_title": "Page Notes — review this page",
+    "default_title": "Page Notes \u2014 review this page",
     "default_popup": "popup.html"
   },
-  "background": {"service_worker": "background.js"},
-  "content_security_policy": {"extension_pages": "script-src 'self'; object-src 'none'"}
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'"
+  }
 }

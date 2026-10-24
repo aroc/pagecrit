@@ -3,7 +3,7 @@
 Manifest V3, vanilla JavaScript, no runtime dependencies. Capture runs in Chrome's isolated content-script world after an explicit user action. `activeTab` + `scripting` grant temporary access to the selected page; no persistent host permissions, remote code, analytics, content-script auto-injection, or account credentials.
 
 - `popup.js`: starts a review on the active HTTP(S) tab.
-- `core.js`: element/text-node locators, page/element coordinate anchors, sanitized document snapshots.
+- `core.js`: element/text-node locators, page/element coordinate anchors, sanitized document snapshots imported into an inert document to avoid invoking live custom-element code.
 - `content.js`: closed Shadow DOM panel, pins, live text previews, review ledger and session lifecycle. Captures a baseline before mounting its own UI. Page mutations are not treated as user changes.
 - `export.js`: schema/version validation, readable summary, payload bounds, serialization.
 - `background.js`: destination adapter. Current `file` destination asks Chrome downloads to save JSON. No arbitrary URL destination, no external message listener.
@@ -30,3 +30,5 @@ Closed Shadow DOM and trusted-event checks keep ordinary page scripts from readi
 ## Browser test scope
 
 Tests use a temporary manifest granting access only to the synthetic localhost fixture, to automate activation without browser-toolbar input. Most detailed assertions open the shadow root in that temporary test copy; a separate smoke test uses the untouched production content script with a closed root and real mouse/keyboard events. Local download tests choose a temporary folder instead of opening the OS Save As dialog. The shipped manifest and source are not modified.
+
+The activeTab test uses an X11-generated native Chrome action shortcut and the shipped popup handler, without host permissions. It proves access is denied before activation and revoked on cross-origin navigation. This is separate from the localhost-enabled test harness.

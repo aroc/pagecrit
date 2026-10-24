@@ -33,7 +33,9 @@
     validateBundle(input);
     const bundle = {...input, reviewMarkdown: toMarkdown(input)};
     const json = JSON.stringify(bundle, null, 2);
-    assert(new TextEncoder().encode(json).length <= MAX_BYTES, 'This page exceeds the 20 MB export limit. Try a smaller page or review. Your draft is still open.');
+    if (new TextEncoder().encode(json).length > MAX_BYTES) {
+      throw Object.assign(new Error('This review exceeds the 20 MB export limit. Download feedback only to omit the HTML snapshots and action history. Your draft is still open.'), {code: 'EXPORT_TOO_LARGE'});
+    }
     return json;
   }
   function filename(bundle) {
