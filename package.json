@@ -1,0 +1,13 @@
+{
+  "name": "page-notes",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local-first Chrome feedback pins and page text edits for agent handoff",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "test:browser": "node tests/browser.mjs",
+    "check": "node --check extension/core.js && node --check extension/content.js && node --check extension/export.js && node --check extension/background.js && node --check extension/popup.js",
+    "package": "node scripts/package.mjs"
+  },
+  "devDependencies": {"playwright": "1.56.1"}
+}
