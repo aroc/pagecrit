@@ -17,7 +17,7 @@ After updating the repo, click **Reload** on the extension card in `chrome://ext
 ## Review a page
 
 - **Browse:** navigate within the page and scroll normally.
-- **Pin:** click a spot and write feedback. Choose a fixed position on the page or an element anchor. Element anchors follow the element as you scroll or resize.
+- **Pin:** choose **Pin to element** (hover outlines the element you'll pin; the note follows it as you scroll or resize) or **Pin to page** (the note stays at that spot in the page content), then click and write feedback.
 - **Edit text:** click visible text, type your replacement in the editor, and see it update on the page. Inline formatting and neighboring elements stay intact. Save the change or cancel it.
 - Review and remove feedback or revert a text edit in the panel.
 - **Done:** choose where to save a single `.page-notes.json` file. Chrome's Save As dialog lets you choose Desktop or another folder.

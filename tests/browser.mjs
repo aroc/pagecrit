@@ -62,7 +62,7 @@ try {
  // Page pin after scrolling: document coordinate stays constant.
  await page.locator('#lower').scrollIntoViewIfNeeded();
  await ui.getByRole('button',{name:'⊕ Pin',exact:true}).click();
- await ui.getByLabel('Pin position').focus();await page.keyboard.press('ArrowDown');await page.keyboard.press('Enter');
+ await ui.getByRole('button',{name:'Pin to page',exact:true}).click();
  const point=await textPoint('#lower');const offset=await page.evaluate(()=>scrollY);
  await page.mouse.click(point.x,point.y);await ui.locator('textarea').fill('Clarify this lower section.');await ui.getByRole('button',{name:'Save',exact:true}).click();
  const pagePin=ui.getByRole('button',{name:/^Note 1:/});
@@ -71,7 +71,7 @@ try {
  assert.ok(Math.abs(await pagePin.evaluate(el=>parseFloat(el.style.top))-(initialTop-100))<2);
  // Element pin follows nested scrolling, then hides when clipped by its scroller.
  await page.locator('#scroller').scrollIntoViewIfNeeded();
- await ui.getByLabel('Pin position').focus();await page.keyboard.press('ArrowUp');await page.keyboard.press('Enter');
+ await ui.getByRole('button',{name:'Pin to element',exact:true}).click();
  const nestedPoint=await textPoint('#nested');await page.mouse.click(nestedPoint.x,nestedPoint.y);
  await ui.locator('textarea').fill('Make this section more useful.');await ui.getByRole('button',{name:'Save',exact:true}).click();
  const nestedPin=ui.getByRole('button',{name:/^Note 2:/,includeHidden:true});
@@ -96,7 +96,7 @@ try {
  }
  assert.equal(downloaded?.state,'complete', JSON.stringify(downloaded));
  const bundle=JSON.parse(await readFile(downloaded.filename,'utf8'));
- assert.equal(bundle.comments.length,2);assert.equal(bundle.edits.length,2);
+ assert.equal(bundle.comments.length,2);assert.deepEqual(bundle.comments.map(c=>c.anchor.kind),['page','element']);assert.equal(bundle.edits.length,2);
  assert.equal(bundle.edits[0].before,'Make space for ');assert.equal(bundle.edits[0].after,'Find space for ');
  assert.ok(Math.abs(bundle.comments[0].anchor.document.y-(point.y+offset))<2);
  assert.match(bundle.snapshots.originalHtml,/Make space for /);assert.match(bundle.snapshots.editedHtml,/Find space for /);

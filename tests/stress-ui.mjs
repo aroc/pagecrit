@@ -61,6 +61,20 @@ try {
   assert.equal(await ui.getByRole('button',{name:'Note 1: Second revised 🦆'}).count(),1);assert.equal(await ui.getByRole('button',{name:'Note 2: Comment 3'}).count(),1);
   const bundle=await exportBundle();assert.deepEqual(bundle.comments.map(c=>c.id),[secondId,thirdId]);assert.equal(bundle.comments[0].text,'Second revised 🦆');assert.equal(bundle.history.filter(h=>h.type==='comment_removed').length,1);
  });
+ await test('pin to element outlines the hovered element in the overlay without shifting layout',async({page,ui,button})=>{
+  await button('⊕ Pin').click();assert.equal(await button('Pin to element').getAttribute('aria-pressed'),'true');
+  assert.deepEqual(await ui.getByRole('group',{name:'Pin position'}).getByRole('button').allTextContents(),['Pin to element','Pin to page']);
+  const before=await page.locator('#pin1').boundingBox();const html=await page.locator('main').innerHTML();
+  await page.mouse.move(before.x+10,before.y+before.height/2);await page.waitForTimeout(50);
+  const hover=()=>ui.locator('.hover').evaluate(el=>({display:getComputedStyle(el).display,x:parseFloat(el.style.left),y:parseFloat(el.style.top),w:parseFloat(el.style.width),h:parseFloat(el.style.height),tag:el.textContent}));
+  const box=await hover();assert.equal(box.display,'block');assert.equal(box.tag,'p#pin1');
+  assert.ok(Math.abs(box.x-before.x)<1&&Math.abs(box.y-before.y)<1&&Math.abs(box.w-before.width)<1&&Math.abs(box.h-before.height)<1,JSON.stringify({box,before}));
+  assert.deepEqual(await page.locator('#pin1').boundingBox(),before);assert.equal(await page.locator('main').innerHTML(),html);
+  const next=await page.locator('#pin2').boundingBox();await page.mouse.move(next.x+10,next.y+next.height/2);await page.waitForTimeout(50);assert.equal((await hover()).tag,'p#pin2');
+  await page.mouse.wheel(0,40);await page.waitForTimeout(80);const scrolled=await page.locator('#pin2').boundingBox();const after=await hover();assert.ok(after.tag!=='p#pin2'||Math.abs(after.y-scrolled.y)<1,'outline tracks scroll');
+  await button('Pin to page').click();assert.equal(await button('Pin to page').getAttribute('aria-pressed'),'true');await page.mouse.move(next.x+12,next.y+next.height/2);await page.waitForTimeout(50);assert.equal((await hover()).display,'none','page pins do not outline elements');
+  await button('Browse').click();await page.mouse.move(before.x+10,before.y+before.height/2);await page.waitForTimeout(50);assert.equal((await hover()).display,'none');
+ });
  await test('blank comment rejected, cancel does not create a phantom note',async({ui,button,clickText,exportBundle})=>{
   await button('⊕ Pin').click();await clickText('#pin1');await ui.locator('textarea').fill(' \n\t ');await button('Save').click();assert.match(await ui.getByRole('status').textContent(),/Add a note/);await button('Cancel').click();assert.equal((await exportBundle()).comments.length,0);
  });

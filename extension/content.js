@@ -26,7 +26,7 @@
     mode: 'browse', anchorKind: 'element', comments: [], edits: [], history: [],
     pending: null, notice: '', noticeType: '', busy: false, confirmingClose: false,
     collapsed: false, left: false, closed: false, frame: 0, routeChanged: false,
-    historyBytes: 0, historyOmitted: 0, offerLightExport: false,
+    historyBytes: 0, historyOmitted: 0, offerLightExport: false, hoverPoint: null,
   };
   // References never enter the exported bundle. Keeping them avoids matching a different
   // repeated element when a framework replaces DOM nodes during a review.
@@ -47,19 +47,25 @@
     .header{padding:17px 18px 12px;display:flex;gap:9px;align-items:center}.brand{font-size:16px;font-weight:750;letter-spacing:-.4px;flex:1}.logo{background:#6250b8;color:white;border-radius:7px;padding:2px 7px;font-weight:800}.smallbutton{border:0;background:transparent;border-radius:6px;color:#736d7f;padding:4px 7px;font-size:17px}
     .body{overflow:auto;padding:0 16px 14px}.muted{color:#77717d;font-size:12px}.intro{margin:0 0 13px;color:#736b7b;font-size:12px}
     .modes{display:flex;border:1px solid #e3dfeb;background:#f0edf4;border-radius:10px;padding:3px;gap:3px;margin-bottom:10px}.mode{flex:1;border:0;color:#6e657d;background:transparent;font-size:12px;padding:8px 4px;border-radius:7px;white-space:nowrap}.mode.active{background:white;color:#4d3396;box-shadow:0 1px 4px #24193c15;font-weight:700}
-    .instructions{font-size:12px;line-height:1.5;color:#686271;margin:8px 0 13px}.anchor{display:flex;align-items:center;justify-content:space-between;gap:9px;font-size:12px;margin:8px 0}.anchor select{font-size:12px;border:1px solid #ddd7e5;border-radius:6px;background:white;padding:5px}
+    .instructions{font-size:12px;line-height:1.5;color:#686271;margin:8px 0 13px}.anchor{display:flex;gap:6px;margin:8px 0}.anchoropt{flex:1;font-size:12px;border:1px solid #ddd7e5;border-radius:7px;background:white;color:#6e657d;padding:6px 4px}.anchoropt.active{border-color:#8e77d6;background:#f4f0fd;color:#4d3396;font-weight:700}
     .notice{padding:9px 10px;background:#eef3ed;color:#40583c;border:1px solid #d6e2d2;border-radius:8px;font-size:12px;margin:10px 0;overflow-wrap:anywhere}.notice.error{background:#fff1eb;color:#994027;border-color:#f0d1c5}
     .editor{padding:12px;border:1px solid #cbbfe8;border-radius:10px;background:#f8f5fe;margin:12px 0}.editor h3{font-size:13px;margin:0 0 7px}.editor textarea{resize:vertical;width:100%;min-height:105px;max-height:300px;background:white;border:1px solid #cfc6de;border-radius:7px;padding:9px;color:#26222d;font-size:13px;line-height:1.5}.editor label{display:block;font-size:12px;margin-bottom:7px}.actions{display:flex;gap:7px;justify-content:flex-end;margin-top:9px}
     .button{border:1px solid #dad4e3;border-radius:8px;padding:7px 11px;background:white;color:#534762;font-size:12px;font-weight:600}.primary{background:#6250b8;color:white;border-color:#6250b8}.danger{color:#a03f33;border-color:#e4b6af}
     .sectionhead{display:flex;align-items:center;justify-content:space-between;margin:17px 0 8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#82798c}.empty{padding:20px 14px;text-align:center;border:1px dashed #ddd6e5;border-radius:10px;color:#8b8293;font-size:12px}.item{padding:11px 0;border-bottom:1px solid #ece7ef}.itemtop{display:flex;gap:8px;align-items:center;margin-bottom:5px}.badge{background:#ede7f9;color:#6249a5;font-size:11px;font-weight:750;min-width:23px;height:23px;border-radius:8px;display:grid;place-items:center}.itemlabel{flex:1;font-size:11px;color:#81758b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.link{font-size:11px;background:none;border:0;color:#786295;padding:3px}.itemtext{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;color:#4c4258;max-height:108px;overflow:auto}.diff{font-size:12px;margin:4px 0;padding:6px 8px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:90px;overflow:auto;border-radius:5px}.before{background:#f8ecea;color:#8f514b;text-decoration:line-through}.after{background:#edf4eb;color:#486640}.warning{color:#aa533b;font-size:11px;margin:6px 0 0}.itemactions{display:flex;justify-content:flex-end;gap:5px;margin-top:5px}
     .footer{border-top:1px solid #e9e3ed;padding:13px 16px;background:#faf8fd}.done{width:100%;padding:11px;font-size:13px}.privacy{font-size:10px;color:#8a8292;text-align:center;margin:8px 0 0}.pill{pointer-events:auto;position:fixed;right:18px;top:18px;border:1px solid #dcd4e8;border-radius:999px;padding:10px 15px;background:#fffefb;color:#4e3d73;box-shadow:0 6px 25px #231b3925;font:600 13px ui-sans-serif,system-ui}
     .pin{pointer-events:auto;position:fixed;width:27px;height:27px;display:grid;place-items:center;border:2px solid white;border-radius:50% 50% 50% 4px;transform:translate(-50%,-100%) rotate(-5deg);box-shadow:0 2px 8px #231b3945;background:#6650bb;color:white;font-size:11px;font-weight:750}.pin.lost{background:#9b7c46}.pin.pending{background:#a68cd6}
-    .highlight{pointer-events:none;position:fixed;border:2px solid #8e77d6;border-radius:3px;background:#a995e912;display:none}.closebox{padding:11px;border:1px solid #e4c9bd;background:#fff7ed;border-radius:9px;margin-bottom:12px;font-size:12px}.closebox p{margin:0 0 10px}
+    .highlight,.hover{pointer-events:none;position:fixed;border:2px solid #8e77d6;border-radius:3px;background:#a995e912;display:none}.hover{background:#a995e90d;border-width:1.5px}.hovertag{position:absolute;left:-1.5px;bottom:100%;margin-bottom:2px;background:#6250b8;color:white;font:600 10px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;padding:1px 5px;border-radius:4px;white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis}.hover.inside .hovertag{bottom:auto;top:0;margin:2px}.closebox{padding:11px;border:1px solid #e4c9bd;background:#fff7ed;border-radius:9px;margin-bottom:12px;font-size:12px}.closebox p{margin:0 0 10px}
     @media(max-width:500px){.panel{right:8px;top:8px;max-height:calc(100vh - 16px);width:310px}.pill{right:8px;top:8px}}
   `;
   const pinsLayer = document.createElement('div');
   const highlight = document.createElement('div');
   highlight.className = 'highlight';
+  // Outline drawn in the overlay so hovering never changes page layout or styles.
+  const hoverBox = document.createElement('div');
+  hoverBox.className = 'hover';
+  const hoverTag = document.createElement('span');
+  hoverTag.className = 'hovertag';
+  hoverBox.append(hoverTag);
   const panel = document.createElement('section');
   panel.className = 'panel';
   panel.setAttribute('aria-label', 'Page Notes review');
@@ -67,7 +73,7 @@
   pill.className = 'pill';
   pill.hidden = true;
   pill.addEventListener('click', event => { if (!event.isTrusted) return; state.collapsed = false; render(); });
-  shadow.append(style, pinsLayer, highlight, panel, pill);
+  shadow.append(style, pinsLayer, hoverBox, highlight, panel, pill);
   document.documentElement.appendChild(host);
 
   function element(tag, cls, text) {
@@ -97,7 +103,8 @@
   function ownEvent(event) { return event.composedPath().includes(host); }
   function dirty() { return state.comments.length || state.edits.length || state.pending; }
   function modeLabel() {
-    if (state.mode === 'pin') return 'Click anywhere to leave a note. Scroll normally to reach the rest of the page.';
+    if (state.mode === 'pin' && state.anchorKind === 'element') return 'Hover to choose an element, then click to pin a note to it. The note follows the element.';
+    if (state.mode === 'pin') return 'Click anywhere to pin a note to that spot. It scrolls with the page.';
     if (state.mode === 'edit') return 'Click the words you want to change. Edit them here and preview the change on the page.';
     return 'Browse and scroll normally. Switch to Pin or Edit text to start reviewing.';
   }
@@ -141,14 +148,13 @@
     }
     body.append(modes);
     if (state.mode === 'pin') {
-      const row = element('label', 'anchor', 'Pin position');
-      const select = document.createElement('select');
-      select.setAttribute('aria-label', 'Pin position');
-      for (const [value, text] of [['element', 'Follow element'], ['page', 'Fixed page position']]) {
-        const opt = element('option', '', text); opt.value = value; opt.selected = state.anchorKind === value; select.append(opt);
+      const row = element('div', 'anchor');
+      row.setAttribute('role', 'group'); row.setAttribute('aria-label', 'Pin position');
+      for (const [value, text] of [['element', 'Pin to element'], ['page', 'Pin to page']]) {
+        const b = button(text, () => { state.anchorKind = value; render(); }, `anchoropt${state.anchorKind === value ? ' active' : ''}`);
+        b.setAttribute('aria-pressed', String(state.anchorKind === value)); row.append(b);
       }
-      select.addEventListener('change', event => { if (event.isTrusted) state.anchorKind = select.value; });
-      row.append(select); body.append(row);
+      body.append(row);
     }
     body.append(element('p', 'instructions', modeLabel()));
     if (state.notice) { const notice = element('div', `notice ${state.noticeType}`, state.notice); notice.setAttribute('role', 'status'); body.append(notice); }
@@ -168,7 +174,6 @@
       light.disabled = state.busy || Boolean(state.pending);
       footer.append(light, element('p', 'privacy', 'Keeps all current notes and edits. Omits HTML and action history.'));
     }
-    footer.append(element('p', 'privacy', 'Local file only · No account · No uploads'));
     panel.append(header, body, footer);
     renderPins();
   }
@@ -343,6 +348,40 @@
       pin.style.left = `${p.x}px`; pin.style.top = `${p.y}px`;
       pin.classList.toggle('lost', comment.anchor.kind === 'element' && !p.resolved);
     }
+    positionHover();
+  }
+  function hoverTarget() {
+    const p = state.pending;
+    if (p?.type === 'comment') return p.anchor.kind === 'element' ? p.element : null;
+    if (p?.type === 'text') return p.node.parentElement;
+    if (!state.hoverPoint || state.collapsed || state.busy) return null;
+    const { x, y } = state.hoverPoint;
+    if (state.mode === 'pin' && state.anchorKind === 'element') {
+      const el = document.elementFromPoint(x, y);
+      return el && !host.contains(el) && el !== host ? el : null;
+    }
+    if (state.mode === 'edit') return core.locateTextNodeAtPoint(x, y)?.parentElement || null;
+    return null;
+  }
+  function tagLabel(el) {
+    let label = el.localName;
+    if (el.id) label += '#' + el.id;
+    else if (typeof el.className === 'string' && el.className.trim()) label += '.' + el.className.trim().split(/\s+/)[0];
+    return label.slice(0, 80);
+  }
+  function positionHover() {
+    const target = hoverTarget();
+    const rect = target?.isConnected ? target.getBoundingClientRect() : null;
+    if (!rect || (!rect.width && !rect.height)) { hoverBox.style.display = 'none'; return; }
+    hoverTag.textContent = state.pending?.type === 'text' ? 'Editing text' : tagLabel(target);
+    hoverBox.classList.toggle('inside', rect.top < 20);
+    Object.assign(hoverBox.style, { display: 'block', left: `${rect.left}px`, top: `${rect.top}px`, width: `${rect.width}px`, height: `${rect.height}px` });
+  }
+  function onHover(event) {
+    if (!event.isTrusted) return;
+    if (event.type === 'pointerout' && event.relatedTarget) return;
+    state.hoverPoint = event.type === 'pointerout' || ownEvent(event) ? null : { x: event.clientX, y: event.clientY };
+    if (state.mode !== 'browse' || state.pending) queuePosition();
   }
   function queuePosition() {
     if (state.frame) return;
@@ -404,6 +443,8 @@
     window.removeEventListener('beforeunload', beforeUnload);
     window.removeEventListener('scroll', queuePosition, true);
     window.removeEventListener('resize', queuePosition);
+    window.removeEventListener('pointermove', onHover, true);
+    window.removeEventListener('pointerout', onHover, true);
     chrome.runtime.onMessage.removeListener(runtimeMessage);
     host.remove(); delete globalThis.__pageNotesSession;
   }
@@ -458,6 +499,8 @@
   window.addEventListener('beforeunload', beforeUnload);
   window.addEventListener('scroll', queuePosition, true);
   window.addEventListener('resize', queuePosition);
+  window.addEventListener('pointermove', onHover, { capture: true, passive: true });
+  window.addEventListener('pointerout', onHover, { capture: true, passive: true });
   chrome.runtime.onMessage.addListener(runtimeMessage);
   const observer = new MutationObserver(mutations => {
     if (mutations.some(m => !host.contains(m.target))) queuePosition();
