@@ -5,6 +5,8 @@ import {mkdtemp,readFile,writeFile,cp,mkdir,rm} from 'node:fs/promises';
 import path from 'node:path';
 import {tmpdir} from 'node:os';
 import http from 'node:http';
+// Tools are toggles: turn one on only if it isn't already.
+const ensure=async tool=>{if(await tool.getAttribute('aria-pressed')!=='true')await tool.click();};
 const root=path.resolve(import.meta.dirname,'..'), temp=await mkdtemp(path.join(tmpdir(),'page-notes-limits-'));
 const huge='<div hidden>'+'x'.repeat(11*1024*1024)+'</div><p id="wall">'+'word '.repeat(300000)+'</p>'+'<div class="css-1x9f3k">'.repeat(300)+'<span id="deep" aria-label="'+'L'.repeat(100000)+'">Deep target</span>'+'</div>'.repeat(300);
 const server=http.createServer((_req,res)=>res.end('<!doctype html><title>'+'T'.repeat(5000)+'</title><h1>Review this page</h1><p id="keep">Keep this feedback</p>'+huge));
@@ -24,9 +26,9 @@ try {
  const ui=page.locator('[data-page-notes-root]');const button=name=>ui.getByRole('button',{name,exact:true});
  await mkdir(path.join(temp,'downloads'));const cdp=await context.newCDPSession(page);await cdp.send('Browser.setDownloadBehavior',{behavior:'allow',downloadPath:path.join(temp,'downloads')});
  const started=Date.now();
- for(const selector of ['#keep','#wall','#deep']){await button('⊕ Pin').click();await page.locator(selector).scrollIntoViewIfNeeded();const b=await page.locator(selector).boundingBox();await page.mouse.click(b.x+5,b.y+5);await ui.locator('textarea').fill(`Note on ${selector}`);await button('Save').click();}
+ for(const selector of ['#keep','#wall','#deep']){await ensure(button('Pin'));await page.locator(selector).scrollIntoViewIfNeeded();const b=await page.locator(selector).boundingBox();await page.mouse.click(b.x+5,b.y+5);await ui.locator('textarea').fill(`Note on ${selector}`);await button('Save').click();}
  // The 1.5 MB paragraph is over the edit limit; edit a normal paragraph on the same hostile page.
- await button('Aa Edit text').click();await page.locator('#keep').scrollIntoViewIfNeeded();const w=await page.locator('#keep').boundingBox();await page.mouse.click(w.x+5,w.y+w.height/2);await page.keyboard.press('ControlOrMeta+A');await page.keyboard.insertText('Short replacement');await page.keyboard.press('Enter');
+ await ensure(button('Edit text'));await page.locator('#keep').scrollIntoViewIfNeeded();const w=await page.locator('#keep').boundingBox();await page.mouse.click(w.x+5,w.y+w.height/2);await page.keyboard.press('ControlOrMeta+A');await page.keyboard.insertText('Short replacement');await page.keyboard.press('Enter');
  await button('Download review').click();await ui.getByRole('status').filter({hasText:'Download started'}).waitFor();
  let d;for(let i=0;i<50;i++){d=await worker.evaluate(async()=>(await chrome.downloads.search({}))[0]);if(d?.state==='complete')break;await page.waitForTimeout(100);}
  assert.equal(d?.state,'complete');const markdown=await readFile(d.filename,'utf8');

@@ -4,6 +4,8 @@ import {mkdtemp,readFile,writeFile,cp,mkdir,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
+// Tools are toggles: turn one on only if it isn't already.
+const ensure=async tool=>{if(await tool.getAttribute('aria-pressed')!=='true')await tool.click();};
 const root=path.resolve(import.meta.dirname,'..');
 const temp=await mkdtemp(path.join(tmpdir(),'page-notes-test-'));
 const fixture=await readFile(path.join(root,'tests/fixture.html'));
@@ -32,8 +34,8 @@ try {
  const ui=page.locator('[data-page-notes-root]');
  await ui.getByRole('region',{name:'Page Notes review'}).waitFor();
  await inject(); assert.equal(await page.locator('[data-page-notes-root]').count(),1);
- await ui.getByRole('button',{name:'Aa Edit text',exact:true}).evaluate(el=>el.click());
- assert.equal(await ui.getByRole('button',{name:'Browse',exact:true}).getAttribute('aria-pressed'),'true');
+ await ui.getByRole('button',{name:'Edit text',exact:true}).evaluate(el=>el.click());
+ assert.equal(await ui.getByRole('button',{name:'Edit text',exact:true}).getAttribute('aria-pressed'),'false');
  console.log('PASS actual MV3 worker and isolated scripts; activation idempotent; synthetic clicks rejected');
  const textPoint=async(selector,index=0)=>page.locator(selector).evaluate((el,index)=>{
    const node=[...el.childNodes].filter(n=>n.nodeType===3)[index];const r=document.createRange();r.selectNodeContents(node);const rect=r.getClientRects()[0];return{x:rect.x+Math.min(25,rect.width/2),y:rect.y+rect.height/2};
@@ -41,7 +43,7 @@ try {
  const clickText=async selector=>{const p=await textPoint(selector);await page.mouse.click(p.x,p.y);};
  // Text is edited in place on the page; select-all is scoped to the clicked text node.
  const typeInline=async value=>{await page.keyboard.press('ControlOrMeta+A');if(value)await page.keyboard.insertText(value);else await page.keyboard.press('Backspace');};
- await ui.getByRole('button',{name:'Aa Edit text',exact:true}).click();
+ await ensure(ui.getByRole('button',{name:'Edit text',exact:true}));
  await clickText('#headline');
  await typeInline('Make room for ');
  assert.equal(await page.locator('#headline em').textContent(),'better work.');
@@ -63,7 +65,7 @@ try {
  console.log('PASS normal site button action blocked; empty text edit/revert works');
  // Page pin after scrolling: document coordinate stays constant.
  await page.locator('#lower').scrollIntoViewIfNeeded();
- await ui.getByRole('button',{name:'⊕ Pin',exact:true}).click();
+ await ensure(ui.getByRole('button',{name:'Pin',exact:true}));
  await ui.getByRole('button',{name:'Pin to page',exact:true}).click();
  const point=await textPoint('#lower');const offset=await page.evaluate(()=>scrollY);
  await page.mouse.click(point.x,point.y);await ui.locator('textarea').fill('Clarify this lower section.');await ui.getByRole('button',{name:'Save',exact:true}).click();
@@ -104,10 +106,10 @@ try {
  assert.equal(bundle.edits[0].before,'Make space for ');assert.equal(bundle.edits[0].after,'Find space for ');
  assert.ok(Math.abs(bundle.comments[0].anchor.document.y-(point.y+offset))<2);
  assert.match(markdown,/^# Review: Fieldwork — synthetic test page\n/);
- assert.match(markdown,/### 1\. Text edit · should fix\n- Original: `Make space for`\n- Replace: `Find space for`\n- Element after the change \(keep its inline markup\): `Find space for <em>better work\.<\/em>`\n- Section: main\n/);
+ assert.match(markdown,/### 1\. Text edit · suggested\n- Original: `Make space for`\n- Replace: `Find space for`\n- Element after the change \(keep its inline markup\): `Find space for <em>better work\.<\/em>`\n- Section: main\n/);
  assert.match(markdown,/- Locator: `#headline` · role: heading · name: `Make space for better work\.`/);
- assert.match(markdown,/### \d\. Comment · pin 1 · should fix\n- Note: Clarify this lower section\.\n[\s\S]*- Text: `Lower-page content for coordinate tests\.`/);
- assert.match(markdown,/### \d\. Comment · pin 2 · should fix\n- Note: Make this section more useful\.\n[\s\S]*- Locator: `#nested`/);
+ assert.match(markdown,/### \d\. Comment · pin 1 · suggested\n- Note: Clarify this lower section\.\n[\s\S]*- Text: `Lower-page content for coordinate tests\.`/);
+ assert.match(markdown,/### \d\. Comment · pin 2 · suggested\n- Note: Make this section more useful\.\n[\s\S]*- Locator: `#nested`/);
  assert.ok(markdown.length<8000,`digest stays small: ${markdown.length}`);
  for(const forbidden of ['SYNTHETIC_SECRET','SYNTHETIC_PASSWORD','SYNTHETIC_HIDDEN','SYNTHETIC_FORM','SYNTHETIC_TOKEN','data-page-notes-root','<script','onclick=','accidentalClicks'])assert.ok(!markdown.includes(forbidden),forbidden);
  console.log('PASS complete local Markdown digest: exact edits with inline markup, anchored context, no page secrets or scripts');
@@ -146,12 +148,12 @@ try {
    const {model}=await prodCDP.send('DOM.getBoxModel',{backendNodeId:node.backendDOMNodeId});
    const q=model.border;await prodPage.mouse.click((q[0]+q[4])/2,(q[1]+q[5])/2);
  }
- await clickAccessible('Aa Edit text');
+ await clickAccessible('Edit text');
  const hp=await prodPage.locator('#headline').evaluate(el=>{const range=document.createRange();range.selectNodeContents(el.firstChild);const r=range.getClientRects()[0];return{x:r.x+20,y:r.y+r.height/2};});
  await prodPage.mouse.click(hp.x,hp.y);await prodPage.waitForTimeout(100);
  await prodPage.keyboard.press('ControlOrMeta+A');await prodPage.keyboard.insertText('Make time for ');await clickAccessible('Save');
  assert.equal(await prodPage.locator('#headline').textContent(),'Make time for better work.');
- await clickAccessible('⊕ Pin');await prodPage.mouse.click(260,390);await prodPage.waitForTimeout(100);
+ await clickAccessible('Pin');await prodPage.mouse.click(260,390);await prodPage.waitForTimeout(100);
  await prodPage.keyboard.insertText('Can we make the benefit more specific?');await clickAccessible('Save');
  await prodPage.screenshot({path:path.join(root,'test-results/production-review.png')});
  console.log('PASS untouched production closed-shadow UI with real mouse/keyboard: edit, pin, save');

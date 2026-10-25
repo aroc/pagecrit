@@ -39,7 +39,7 @@
   const style = document.createElement('style');
   // Pen-on-printout: cobalt ink pins, a highlighter for what's active, red pen for removals.
   style.textContent = `
-    :host{--ink:#1f2430;--pencil:#676b79;--faint:#9a9daa;--line:#ebecf1;--paper:#fff;--wash:#f6f7fa;--cobalt:#2f4be0;--cobalt-deep:#2238b8;--cobalt-soft:#eef1fe;--marker:#ffe36e;--marker-soft:#fff5c4;--red:#d9443a;--red-soft:#fdeeec;--green:#1d7f4c;--green-mark:#c9efd6;--hand:"Page Notes Hand",ui-rounded,system-ui,sans-serif;--sans:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font:14px/1.5 var(--sans);color:var(--ink);color-scheme:light}
+    :host{--ink:#1f2430;--pencil:#676b79;--faint:#9a9daa;--line:#ebecf1;--paper:#fff;--wash:#f6f7fa;--cobalt:#2f4be0;--cobalt-deep:#2238b8;--cobalt-soft:#eef1fe;--marker:#ffe36e;--marker-soft:#fff5c4;--red:#d9443a;--must:#dc3b30;--suggested:#ef7d1a;--nit:#f5c518;--red-soft:#fdeeec;--green:#1d7f4c;--green-mark:#c9efd6;--hand:"Page Notes Hand",ui-rounded,system-ui,sans-serif;--sans:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font:14px/1.5 var(--sans);color:var(--ink);color-scheme:light}
     *,*::before,*::after{box-sizing:border-box} [hidden]{display:none!important}.sr{position:fixed;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
     button,input,textarea,select{font:inherit;color:inherit} button{cursor:pointer} button:disabled{cursor:wait;opacity:.5}
     button:focus-visible,textarea:focus-visible,select:focus-visible,.item:focus-visible{outline:2px solid var(--cobalt);outline-offset:2px}
@@ -48,20 +48,22 @@
     .logo{font-size:19px;line-height:1}.brand{font:700 29px/1 var(--hand);letter-spacing:.2px;flex:1;transform:translateY(1px)}
     .smallbutton{border:0;background:transparent;border-radius:999px;color:var(--pencil);width:30px;height:30px;display:grid;place-items:center;font-size:18px;line-height:1}.smallbutton:hover{background:var(--wash);color:var(--ink)}
     .body{overflow:auto;padding:4px 18px 16px}.muted{color:var(--pencil);font-size:13px}
-    .modes{display:flex;gap:2px;margin:6px -6px 4px}.mode{flex:1 1 auto;border:0;background:transparent;color:var(--pencil);font-size:13px;font-weight:600;padding:8px 6px;border-radius:5px 12px 6px 13px/12px 6px 13px 5px;white-space:nowrap}.mode:hover{color:var(--ink)}
+    .modes{display:flex;gap:4px;margin:6px -6px 4px}.mode{flex:1 1 0;display:flex;align-items:center;justify-content:center;gap:7px;border:0;background:transparent;color:var(--pencil);font-size:13px;font-weight:600;padding:8px 6px;border-radius:5px 12px 6px 13px/12px 6px 13px 5px;white-space:nowrap}.mode:not(.active){background:var(--wash)}.mode:hover{color:var(--ink)}
     .mode.active{color:var(--ink);background:var(--marker);transform:rotate(-1.2deg)}
+    .kbd{font:600 10px/1 var(--sans);color:var(--faint);border:1px solid #dfe1e8;border-bottom-width:2px;border-radius:5px;padding:2px 5px;background:var(--paper)}.mode.active .kbd{color:var(--ink);border-color:#d9b92c}.primary .kbd{color:white;background:transparent;border-color:#ffffff66}
     .anchor{display:flex;gap:16px;margin:6px 0 2px}.anchoropt{border:0;background:none;padding:2px 0;font-size:13px;color:var(--pencil);border-bottom:2px solid transparent}.anchoropt.active{color:var(--ink);font-weight:600;border-bottom-color:var(--cobalt)}
     .instructions{font-size:13px;color:var(--pencil);margin:8px 0 12px}
     .notice{padding:9px 12px;background:var(--cobalt-soft);color:var(--cobalt-deep);border-radius:12px;font-size:13px;margin:10px 0;overflow-wrap:anywhere}.notice.error{background:var(--red-soft);color:#a8322a}
     .editor{padding:14px;border-radius:16px;background:var(--wash);margin:12px 0}.editor h3{font:700 23px/1.1 var(--hand);margin:0 0 8px}.editor textarea{resize:vertical;width:100%;min-height:105px;max-height:300px;background:var(--paper);border:1px solid #dfe1e8;border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.5}.editor textarea:focus-visible{outline:none;border-color:var(--cobalt);box-shadow:0 0 0 3px #2f4be026}.editor label{display:block;font-size:13px;color:var(--pencil);margin-bottom:8px}.editor .muted{margin:0}
     .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
     .button{border:1px solid #dcdee6;border-radius:12px;padding:8px 14px;background:var(--paper);font-size:13px;font-weight:600}.button:hover{border-color:#c4c7d2}.primary{background:var(--cobalt);color:white;border-color:var(--cobalt)}.primary:hover{background:var(--cobalt-deep);border-color:var(--cobalt-deep)}.danger{color:#a8322a;border-color:#f0c3be}
-    .sectionhead{display:flex;align-items:baseline;justify-content:space-between;margin:18px 0 4px}.sectionhead .title{font:700 25px/1 var(--hand)}.sectionhead .count{font-size:12px;color:var(--faint)}
+    .sectionhead{display:flex;align-items:baseline;justify-content:space-between;margin:18px 0 4px}.sectionhead .title{font:700 15px/1.2 var(--sans)}.sectionhead .count{font-size:12px;color:var(--faint)}
     .empty{padding:18px 4px 6px;text-align:center;color:var(--faint);font:500 21px/1.2 var(--hand)}
     .item{padding:12px 0;border-bottom:1px solid var(--line)}.item:last-child{border-bottom:0}.itemtop{display:flex;gap:9px;align-items:center;margin-bottom:6px}
-    .badge{flex:none;min-width:24px;height:24px;border-radius:999px;display:grid;place-items:center;background:var(--cobalt);color:white;font:700 17px/1 var(--hand)}.badge.text{background:var(--green-mark);color:var(--green);font:700 11px/1 var(--sans)}.badge.removed{background:var(--red-soft);color:var(--red);font:700 14px/1 var(--sans)}
-    .severity{display:flex;gap:2px;flex:none}.sev{border:0;background:none;font-size:11px;font-weight:600;color:var(--faint);padding:2px 6px;border-radius:999px}.sev:hover{color:var(--ink);background:var(--wash)}.sev.active{color:white}.sev1.active{background:var(--red)}.sev2.active{background:var(--cobalt)}.sev3.active{background:#8d8f9a}
-    .badge.sevbadge1{background:var(--red)}.badge.sevbadge3{background:#8d8f9a}.pin.sev1{background:var(--red)}.pin.sev3{background:#8d8f9a}
+    .badge{flex:none;min-width:24px;height:24px;border-radius:999px;display:grid;place-items:center;background:var(--cobalt);color:white;font:700 12px/1 var(--sans);font-variant-numeric:tabular-nums;padding:0}.badge.text{background:var(--green-mark);color:var(--green);font:700 11px/1 var(--sans)}.badge.removed{background:var(--red-soft);color:var(--red);font:700 14px/1 var(--sans)}
+    .severity{display:flex;gap:1px;flex:none}.sev{border:0;background:none;font-size:11px;font-weight:600;color:var(--faint);padding:2px 6px;border-radius:999px;white-space:nowrap}.sev:hover{color:var(--ink);background:var(--wash)}
+    .sev.active{color:white}.sev-must.active{background:var(--must)}.sev-suggested.active{background:var(--suggested)}.sev-nit.active{background:var(--nit);color:var(--ink)}.sev-note.active{background:var(--cobalt)}
+    .badge.sev-must,.pin.sev-must{background:var(--must)}.badge.sev-suggested,.pin.sev-suggested{background:var(--suggested)}.badge.sev-nit,.pin.sev-nit{background:var(--nit);color:var(--ink)}.badge.sev-note,.pin.sev-note{background:var(--cobalt)}
     .itemlabel{flex:1;font-size:12px;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .itemtext{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;max-height:120px;overflow:auto}.struck{text-decoration:line-through;text-decoration-color:var(--red);text-decoration-thickness:1.5px;color:var(--pencil)}
     .diff{font-size:14px;margin:2px 0;white-space:pre-wrap;overflow-wrap:anywhere;max-height:96px;overflow:auto}.before{color:var(--faint);text-decoration:line-through;text-decoration-color:var(--red);text-decoration-thickness:1.5px}.after{color:var(--ink)}.after .mark{background:linear-gradient(transparent 58%,var(--green-mark) 58%,var(--green-mark) 92%,transparent 92%);-webkit-box-decoration-break:clone;box-decoration-break:clone}
@@ -69,10 +71,10 @@
     .pagehead{margin:14px 0 2px;font-size:12px;font-weight:600;color:var(--pencil);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.item.archived .itemtext{color:var(--pencil)}
     .item.reveal{cursor:pointer;margin:0 -18px;padding:12px 18px}.item.reveal:hover{background:#fafbfc}.item.reveal:focus-visible{outline-offset:-2px}
     .item.selected{background:var(--marker-soft)}.item.selected:hover{background:var(--marker-soft)}.item.pulse{animation:pulse 1s ease-out}@keyframes pulse{from{background:var(--marker)}to{background:var(--marker-soft)}}
-    .footer{border-top:1px solid var(--line);padding:14px 18px 16px}.footrow{display:flex;gap:8px}.done{flex:1;padding:12px;font-size:14px;border-radius:14px}.copy{border-radius:14px;padding:12px 16px;font-size:14px}.privacy{font-size:12px;color:var(--faint);text-align:center;margin:8px 0 0}
+    .footer{border-top:1px solid var(--line);padding:14px 18px 16px}.footrow{display:flex;gap:8px}.done{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;font-size:14px;border-radius:14px}.download{border-radius:14px;padding:12px 16px;font-size:14px}.privacy{font-size:12px;color:var(--faint);text-align:center;margin:8px 0 0}
     .closebox{padding:14px;background:var(--red-soft);border-radius:16px;margin:8px 0 12px;font-size:13px}.closebox p{margin:0}
     .pill{pointer-events:auto;position:fixed;right:18px;top:18px;display:flex;align-items:center;gap:8px;border:1px solid #e3e4eb;border-radius:999px;padding:7px 9px 7px 13px;background:var(--paper);box-shadow:0 1px 0 #1f24300a,0 14px 34px -14px #1f243066;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}.pill .brand{font-size:23px;flex:none}.pill .count{min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:var(--cobalt);color:white;font:700 12px/22px var(--sans);text-align:center}
-    .pin{pointer-events:auto;position:fixed;width:28px;height:28px;display:grid;place-items:center;border:2px solid white;border-radius:50% 50% 50% 5px;transform:translate(-50%,-100%) rotate(-4deg);box-shadow:0 3px 10px #1f243055;background:var(--cobalt);color:white;font:700 18px/1 var(--hand);padding:0 0 1px}.pin:hover{background:var(--cobalt-deep)}.pin.lost{background:#8d8f9a}.pin.pending{background:var(--marker);color:var(--ink)}.pin.selected{z-index:1;box-shadow:0 0 0 4px var(--marker),0 3px 12px #1f243066}
+    .pin{pointer-events:auto;position:fixed;width:28px;height:28px;display:grid;place-items:center;border:2px solid white;border-radius:50% 50% 50% 5px;transform:translate(-50%,-100%) rotate(-4deg);box-shadow:0 3px 10px #1f243055;background:var(--cobalt);color:white;font:700 12px/1 var(--sans);font-variant-numeric:tabular-nums;padding:0}.pin:hover{filter:brightness(.92)}.pin.lost{background:#8d8f9a}.pin.pending{background:var(--marker);color:var(--ink)}.pin.selected{z-index:1;box-shadow:0 0 0 4px var(--marker),0 3px 12px #1f243066}
     .highlight,.hover{pointer-events:none;position:fixed;border:2px dashed var(--cobalt);border-radius:6px;background:#2f4be00a;display:none}.highlight{border-style:solid;background:#ffe36e33;border-color:#e8c534}
     .hovertag{position:absolute;left:-2px;bottom:100%;margin-bottom:4px;background:var(--cobalt);color:white;font:600 11px/1.6 var(--sans);padding:1px 7px;border-radius:999px;white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis}.hover.inside .hovertag{bottom:auto;top:0;margin:4px}
     .hover.danger{border-color:var(--red);background:#d9443a12}.hover.danger .hovertag{background:var(--red)}
@@ -201,12 +203,12 @@
   function ownEvent(event) { return event.composedPath().includes(host); }
   function dirty() { return state.comments.length || state.edits.length || state.removals.length || state.pending; }
   function itemCount() { return state.comments.length + state.edits.length + state.removals.length; }
+  const TOOLS = [['pin', 'Pin', 'P', 'Pin'], ['edit', 'Edit text', 'E', 'Edit text'], ['remove', 'Remove', 'R', 'Remove section']];
   function modeLabel() {
     if (state.mode === 'pin' && state.anchorKind === 'element') return 'Hover to choose an element, then click to pin a note to it. The note follows the element.';
     if (state.mode === 'pin') return 'Click anywhere to pin a note to that spot. It scrolls with the page.';
     if (state.mode === 'edit') return 'Click any text to edit it right on the page. Enter saves, Esc cancels.';
-    if (state.mode === 'remove') return 'Hover to choose a section, then click to remove it from the page. Restore it from the list below.';
-    return 'Browse and scroll normally. Pick a tool to start reviewing: P pin, E edit, R remove, C copy Markdown, Esc stop.';
+    return 'Hover to choose a section, then click to remove it from the page. Restore it from the list below.';
   }
   function setMode(mode) {
     if (state.busy) return;
@@ -241,11 +243,17 @@
       actions.append(button('Keep reviewing', () => { state.confirmingClose = false; render(); }), button('Discard & close', close, 'button danger'));
       box.append(actions); body.append(box);
     }
+    // Browsing is the default. Tools toggle on; the active one shows Esc, which turns it off.
     const modes = element('div', 'modes');
-    for (const [key, label, shortcut] of [['browse', 'Browse', 'B'], ['pin', '⊕ Pin', 'P'], ['edit', 'Aa Edit text', 'E'], ['remove', '⊖ Remove', 'R']]) {
-      const b = button(label, () => setMode(key), `mode${state.mode === key ? ' active' : ''}`);
-      b.title = `${label.replace(/^\W+ /, '')} (${shortcut})`; b.setAttribute('aria-keyshortcuts', shortcut.toLowerCase());
-      b.setAttribute('aria-pressed', String(state.mode === key)); modes.append(b);
+    modes.setAttribute('role', 'group'); modes.setAttribute('aria-label', 'Tools');
+    for (const [key, label, shortcut, name] of TOOLS) {
+      const active = state.mode === key;
+      const b = button('', () => setMode(active ? 'browse' : key), `mode${active ? ' active' : ''}`);
+      b.append(element('span', '', label), element('kbd', 'kbd', active ? 'Esc' : shortcut));
+      b.setAttribute('aria-label', name); b.setAttribute('aria-pressed', String(active));
+      b.setAttribute('aria-keyshortcuts', active ? 'Escape' : shortcut.toLowerCase());
+      b.title = active ? `Turn off ${label} (Esc)` : `${label} (${shortcut})`;
+      modes.append(b);
     }
     body.append(modes);
     if (state.mode === 'pin') {
@@ -257,11 +265,11 @@
       }
       body.append(row);
     }
-    body.append(element('p', 'instructions', modeLabel()));
+    if (state.mode !== 'browse') body.append(element('p', 'instructions', modeLabel()));
     if (state.notice) { const notice = element('div', `notice ${state.noticeType}`, state.notice); notice.setAttribute('role', 'status'); body.append(notice); }
     if (state.pending) body.append(renderEditor());
     const heading = element('div', 'sectionhead');
-    const counts = [[state.comments.length, 'note', 'notes'], [state.edits.length, 'edit', 'edits'], [state.removals.length, 'removal', 'removals']].filter(([n], i) => n || i < 2).map(([n, one, many]) => `${n} ${n === 1 ? one : many}`);
+    const counts = [[state.comments.length, 'comment', 'comments'], [state.edits.length, 'edit', 'edits'], [state.removals.length, 'removal', 'removals']].filter(([n], i) => n || i < 2).map(([n, one, many]) => `${n} ${n === 1 ? one : many}`);
     heading.append(element('span', 'title', 'This review'), element('span', 'count', counts.join(', ')));
     body.append(heading);
     if (!itemCount()) body.append(element('div', 'empty', 'Nothing marked up yet. Pick a tool and click the page.'));
@@ -282,13 +290,16 @@
       }
     }
     const footer = element('footer', 'footer');
-    const done = button(state.busy ? 'Preparing download…' : state.sent === 'full' ? '✓ Download started' : 'Download review', () => exportReview(), 'button primary done');
-    done.setAttribute('aria-label', 'Download review');
-    done.disabled = state.busy || Boolean(state.pending);
-    const copy = button(state.sent === 'copied' ? '✓ Copied' : 'Copy', copyMarkdown, 'button copy', 'Copy Markdown (C)');
+    // Copy is the quick path (paste into your agent, an issue or a PR); the file is the alternative.
+    const copy = button(state.sent === 'copied' ? '✓ Copied' : 'Copy Markdown', copyMarkdown, 'button primary done');
+    if (state.sent !== 'copied') copy.append(element('kbd', 'kbd', 'C'));
+    copy.setAttribute('aria-label', 'Copy Markdown'); copy.setAttribute('aria-keyshortcuts', 'c');
     copy.disabled = state.busy || Boolean(state.pending);
+    const done = button(state.busy ? 'Preparing…' : state.sent === 'full' ? '✓ Started' : 'Download', () => exportReview(), 'button download');
+    done.setAttribute('aria-label', 'Download review'); done.title = 'Download review as a .md file';
+    done.disabled = state.busy || Boolean(state.pending);
     const row = element('div', 'footrow');
-    row.append(done, copy);
+    row.append(copy, done);
     footer.append(row);
     panel.append(header, body, footer);
     persistSoon();
@@ -346,15 +357,16 @@
       if (event.isTrusted && event.target === item && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); show(); }
     });
   }
-  // 1 = must fix, 2 = should fix (default), 3 = nit. One click on the row sets it.
-  const SEVERITIES = [[1, 'Must'], [2, 'Should'], [3, 'Nit']];
+  // Red → orange → yellow by urgency, plus "Note" for praise or observations that need no change.
+  const SEVERITIES = [['must', 'Must fix'], ['suggested', 'Suggested'], ['nit', 'Nit'], ['note', 'Note']];
+  const LEGACY_SEVERITY = { 1: 'must', 2: 'suggested', 3: 'nit' };
+  function severityOf(item) { return LEGACY_SEVERITY[item.severity] || (SEVERITIES.some(([value]) => value === item.severity) ? item.severity : 'suggested'); }
   function severityPicker(item) {
     const group = element('span', 'severity');
     group.setAttribute('role', 'group'); group.setAttribute('aria-label', 'Severity');
     for (const [value, label] of SEVERITIES) {
-      const b = button(label, () => { item.severity = value; render(); }, `sev sev${value}${(item.severity || 2) === value ? ' active' : ''}`);
-      b.setAttribute('aria-pressed', String((item.severity || 2) === value));
-      b.title = ['', 'Must fix', 'Should fix', 'Nit'][value];
+      const b = button(label, () => { item.severity = value; render(); }, `sev sev-${value}${severityOf(item) === value ? ' active' : ''}`);
+      b.setAttribute('aria-pressed', String(severityOf(item) === value));
       group.append(b);
     }
     return group;
@@ -363,11 +375,11 @@
     const item = element('article', `item${state.selectedId === comment.id ? ` selected${state.revealSelected ? ' pulse' : ''}` : ''}`);
     if (state.selectedId === comment.id) item.setAttribute('aria-current', 'true');
     const top = element('div', 'itemtop');
-    top.append(element('span', `badge sevbadge${comment.severity || 2}`, String(index + 1)), element('span', 'itemlabel', comment.anchor.kind === 'element' ? 'Element note' : 'Page note'), severityPicker(comment));
+    top.append(element('span', `badge sev-${severityOf(comment)}`, String(index + 1)), element('span', 'itemlabel', comment.anchor.kind === 'element' ? 'On element' : 'On page'), severityPicker(comment));
     revealOnClick(item, () => showComment(comment), `Show note ${index + 1} on the page`);
     item.append(top, element('p', 'itemtext', comment.text));
     const actions = element('div', 'itemactions');
-    actions.append(button('Edit', () => editComment(comment), 'link'), button('Remove', () => removeComment(comment), 'link'));
+    actions.append(button('Edit', () => editComment(comment), 'link'), button('Delete', () => removeComment(comment), 'link'));
     item.append(actions);
     return item;
   }
@@ -403,7 +415,7 @@
     if (!removableTarget(el)) { tell('Pick a section inside the page body.', true); return; }
     if (state.removals.length >= MAX_ITEMS) { tell('This review has reached 500 removals. Download it and start a new review.', true); return; }
     // Rendered text (with line breaks between blocks) reads better than raw textContent.
-    const removal = { id: id(), pageId: state.pageId, createdAt: now(), severity: 2, label: tagLabel(el), text: String(el.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 500), element: core.describeElement(el), context: core.captureContext(el) };
+    const removal = { id: id(), pageId: state.pageId, createdAt: now(), severity: 'suggested', label: tagLabel(el), text: String(el.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 500), element: core.describeElement(el), context: core.captureContext(el) };
     const style = el.getAttribute('style');
     el.style.setProperty('display', 'none', 'important');
     removedElements.set(removal.id, { el, style, applied: el.getAttribute('style') });
@@ -483,7 +495,7 @@
         const comment = state.comments.find(c => c.id === p.commentId);
         if (comment && text !== comment.text) { comment.text = text; comment.updatedAt = now(); }
       } else {
-        const comment = { id: id(), pageId: state.pageId, createdAt: now(), severity: 2, text, anchor: p.anchor, context: p.context };
+        const comment = { id: id(), pageId: state.pageId, createdAt: now(), severity: 'suggested', text, anchor: p.anchor, context: p.context };
         state.comments.push(comment); pinElements.set(comment.id, p.element); pinContainers.set(comment.id, p.container);
       }
     } else {
@@ -499,7 +511,7 @@
         if (original) { state.edits = state.edits.filter(e => e.id !== edit.id); editSegments.delete(edit.id); }
         else { setEditResult(edit, p.model, p.seg); edit.updatedAt = now(); }
       } else if (!original) {
-        edit = { id: p.newId, pageId: state.pageId, createdAt: now(), updatedAt: now(), severity: 2, locator: p.locator, context: p.context, before: p.before, after: '' };
+        edit = { id: p.newId, pageId: state.pageId, createdAt: now(), updatedAt: now(), severity: 'suggested', locator: p.locator, context: p.context, before: p.before, after: '' };
         setEditResult(edit, p.model, p.seg);
         state.edits.push(edit); editSegments.set(edit.id, p.seg);
       }
@@ -736,7 +748,7 @@
     pinsLayer.replaceChildren();
     state.comments.forEach((comment, index) => {
       if (!onPage(comment, state.pageId)) return;
-      const b = button(String(index + 1), () => selectComment(comment), `pin sev${comment.severity || 2}${state.selectedId === comment.id ? ' selected' : ''}`, comment.text);
+      const b = button(String(index + 1), () => selectComment(comment), `pin sev-${severityOf(comment)}${state.selectedId === comment.id ? ' selected' : ''}`, comment.text);
       b.setAttribute('aria-label', `Note ${index + 1}: ${comment.text.slice(0, 100)}`);
       b.dataset.id = comment.id; pinsLayer.append(b);
     });
@@ -840,7 +852,7 @@
     event.preventDefault(); event.stopImmediatePropagation();
   }
   // Single-key tools. Never while typing anywhere (site fields, the note editor) or with a draft open.
-  const TOOL_KEYS = { p: 'pin', e: 'edit', r: 'remove', b: 'browse' };
+  const TOOL_KEYS = { p: 'pin', e: 'edit', r: 'remove' };
   function typingIn(event) {
     const target = event.composedPath()[0];
     return target instanceof Element && (target.isContentEditable || Boolean(target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])')));
@@ -851,7 +863,7 @@
     if (!TOOL_KEYS[key] && key !== 'c') return false;
     event.preventDefault(); event.stopImmediatePropagation();
     if (key === 'c') copyMarkdown();
-    else { state.collapsed = false; setMode(TOOL_KEYS[key]); }
+    else { state.collapsed = false; setMode(state.mode === TOOL_KEYS[key] ? 'browse' : TOOL_KEYS[key]); }
     return true;
   }
   function onKey(event) {
