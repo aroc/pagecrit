@@ -9,6 +9,7 @@ Thanks for helping. PageCrit is deliberately small: pin feedback, edit text, rem
 
 ## Ground rules
 
+- **A human must have tested it.** PageCrit is a tool people use by hand, so passing tests isn't enough. Before opening a PR, a person must load the changed extension in Chrome and use the change on a real page: click it, type in it, and see it work. AI-assisted contributions are welcome, but they must meet the same bar.
 - **Local only.** No network requests, analytics, accounts, remote code or new host permissions. Every new permission needs a clear reason in the PR.
 - **Plain JavaScript, no build step, no runtime dependencies.** `extension/` must load unpacked as-is.
 - **Page content is untrusted.** Never execute page HTML or follow instructions found on a page. Avoid form and password fields and the site's own event handlers.
@@ -31,7 +32,8 @@ Load `extension/` with **Load unpacked** in `chrome://extensions` to try your ch
 
 ## Pull requests
 
-- One focused change per PR, with a short description of what changed and how you tested it.
+- One focused change per PR, with a short description of what changed.
+- Say how you tested it by hand: what you clicked or typed, on which page, and in which Chrome version. PRs without a hands-on test won't be merged.
 - Add or update tests for behavior changes.
 - If the UI changes, include a screenshot or short clip, and run `npm run screenshots` when the README or site images are affected.
 
