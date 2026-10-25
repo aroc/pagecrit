@@ -168,6 +168,8 @@ npm run check         # syntax check
 npm run test:browser  # real Chromium: core, UI, limits, worker restart
 npm run package       # dist/pagecrit.zip
 npm run screenshots   # regenerate the images in site/assets
+npm run embed         # rebuild site/embed/pagecrit.js, the site's Try it demo
+npm run store         # Chrome Web Store images in store/
 npm run test:activation  # Linux only: real toolbar click / activeTab test
 ```
 
@@ -175,7 +177,7 @@ npm run test:activation  # Linux only: real toolbar click / activeTab test
 
 **Releasing:** bump the version in `extension/manifest.json`, `package.json` and `VERSION` in `extension/content.js`, then push a matching tag (`git tag v0.2.0 && git push origin v0.2.0`). CI runs every test and publishes the release with `pagecrit.zip` attached; the README's download link always points at the latest one.
 
-`site/` is the static landing page at [pagecrit.dev](https://pagecrit.dev) (no build, self-hosted fonts). It's a Cloudflare Worker serving only `site/` (`wrangler.jsonc`); `npm run deploy:site` publishes it (needs `CLOUDFLARE_API_TOKEN`).
+`site/` is the static landing page at [pagecrit.dev](https://pagecrit.dev) (no build, self-hosted fonts). It's a Cloudflare Worker serving only `site/` (`wrangler.jsonc`); `npm run deploy:site` publishes it (needs `CLOUDFLARE_API_TOKEN`). Its **Try it on this page** button loads `site/embed/pagecrit.js`: the same extension scripts running inside the page, with `embed/host.js` answering what the service worker would (Markdown, Blob downloads, the draft in `sessionStorage`, recent reviews in `localStorage`). Run `npm run embed` after changing the extension; `npm test` fails if the build is stale.
 
 More in [architecture](docs/architecture.md), [review format](docs/format.md) and [testing](docs/testing.md).
 

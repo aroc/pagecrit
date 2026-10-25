@@ -7,6 +7,9 @@
   }
   const core = globalThis.PageCritCore;
   if (!core) throw new Error('PageCrit core did not load. Reload the extension and try again.');
+  // In the extension, messages go to the service worker. The pagecrit.dev demo build
+  // (embed/host.js) answers the same messages inside the page instead.
+  const runtime = globalThis.chrome?.runtime?.id ? chrome.runtime : globalThis.PageCritHost;
 
   const MAX_TEXT = 20000;
   const MAX_COMMENT = 10000;
@@ -206,7 +209,7 @@
   async function loadHandFont() {
     try {
       if ([...document.fonts].some(face => face.family.replace(/"/g, '') === 'PageCrit Hand')) return;
-      const result = await chrome.runtime.sendMessage({ type: 'PAGECRIT_FONT' });
+      const result = await runtime.sendMessage({ type: 'PAGECRIT_FONT' });
       if (!result?.ok || state.closed) return;
       const bytes = Uint8Array.from(atob(result.data), ch => ch.charCodeAt(0));
       const face = new FontFace('PageCrit Hand', bytes.buffer, { weight: '400 700' });
@@ -491,7 +494,7 @@
     render();
     if (!review) { loadRecent(); return; }
     try {
-      const result = await chrome.runtime.sendMessage({ type: 'PAGECRIT_RECENT', action: 'markdown', id: review.id });
+      const result = await runtime.sendMessage({ type: 'PAGECRIT_RECENT', action: 'markdown', id: review.id });
       if (state.recentOpen?.id === review.id) { state.recentOpen.markdown = result?.ok ? result.markdown : (result?.error || 'That review could not be loaded.'); render(); }
     } catch (_) { /* Stays on Loading. */ }
   }
@@ -577,7 +580,7 @@
     }
     state.confirmDelete = null;
     try {
-      const result = await chrome.runtime.sendMessage({ type: 'PAGECRIT_RECENT', action: 'delete', id: review.id });
+      const result = await runtime.sendMessage({ type: 'PAGECRIT_RECENT', action: 'delete', id: review.id });
       if (!result?.ok) throw new Error('That review could not be deleted.');
       state.recent = state.recent.filter(other => other.id !== review.id);
       announce('Review deleted.');
@@ -596,13 +599,13 @@
   }
   async function loadRecent() {
     try {
-      const result = await chrome.runtime.sendMessage({ type: 'PAGECRIT_RECENT', action: 'list' });
+      const result = await runtime.sendMessage({ type: 'PAGECRIT_RECENT', action: 'list' });
       if (result?.ok && !state.closed) { state.recent = result.reviews; render(); }
     } catch (_) { /* Nothing to show. */ }
   }
   async function copyRecent(review) {
     try {
-      const result = await chrome.runtime.sendMessage({ type: 'PAGECRIT_RECENT', action: 'markdown', id: review.id });
+      const result = await runtime.sendMessage({ type: 'PAGECRIT_RECENT', action: 'markdown', id: review.id });
       if (!result?.ok) throw new Error(result?.error || 'That review could not be loaded.');
       // Only the async clipboard: an earlier review never passes through this page's DOM.
       await navigator.clipboard.writeText(result.markdown);
@@ -616,7 +619,7 @@
   }
   async function downloadRecent(review) {
     try {
-      const result = await chrome.runtime.sendMessage({ type: 'PAGECRIT_RECENT', action: 'download', id: review.id });
+      const result = await runtime.sendMessage({ type: 'PAGECRIT_RECENT', action: 'download', id: review.id });
       if (!result?.ok) throw new Error(result?.error || 'The download could not be started.');
       announce('Download started.');
     } catch (error) { tell(error.message || 'Download failed.', true); }
@@ -630,7 +633,7 @@
       return;
     }
     state.clearingRecent = false;
-    try { await chrome.runtime.sendMessage({ type: 'PAGECRIT_RECENT', action: 'clear' }); state.recent = []; state.recentOpen = null; } catch (_) { /* Keep showing them. */ }
+    try { await runtime.sendMessage({ type: 'PAGECRIT_RECENT', action: 'clear' }); state.recent = []; state.recentOpen = null; } catch (_) { /* Keep showing them. */ }
     render();
   }
   function renderComment(comment, index) {
@@ -1164,7 +1167,7 @@
     for (const removal of state.removals) unhide(removal);
     state.closed = true;
     clearTimeout(persistTimer);
-    chrome.runtime.sendMessage({ type: 'PAGECRIT_DRAFT', action: 'clear' }).catch(() => {});
+    runtime.sendMessage({ type: 'PAGECRIT_DRAFT', action: 'clear' }).catch(() => {});
     observer.disconnect(); resizeObserver.disconnect(); clearInterval(routeTimer);
     if (state.frame) cancelAnimationFrame(state.frame);
     window.removeEventListener('click', onClick, true);
@@ -1176,7 +1179,7 @@
     window.removeEventListener('resize', onResize);
     window.removeEventListener('pointermove', onHover, true);
     window.removeEventListener('pointerout', onHover, true);
-    chrome.runtime.onMessage.removeListener(runtimeMessage);
+    runtime.onMessage.removeListener(runtimeMessage);
     host.remove(); delete globalThis.__pageCritSession;
   }
   let sentTimer = 0, announceTimer = 0;
@@ -1233,7 +1236,7 @@
     if (state.busy || state.pending || !itemCount()) return;
     state.busy = true; state.notice = ''; render();
     try {
-      const result = await chrome.runtime.sendMessage({ type: 'PAGECRIT_RENDER', review: reviewModel() });
+      const result = await runtime.sendMessage({ type: 'PAGECRIT_RENDER', review: reviewModel() });
       if (!result?.ok) throw new Error(result?.error || 'The review could not be rendered.');
       await writeClipboard(result.markdown);
       announce('Markdown copied.');
@@ -1256,7 +1259,7 @@
     if (state.busy || state.pending || !itemCount()) return;
     state.busy = true; state.notice = ''; render();
     try {
-      const result = await chrome.runtime.sendMessage({ type: 'PAGECRIT_EXPORT', review: reviewModel() });
+      const result = await runtime.sendMessage({ type: 'PAGECRIT_EXPORT', review: reviewModel() });
       if (!result?.ok) throw new Error(result?.error || 'The download could not be started.');
       // Confirm briefly on the button itself; the draft simply stays open.
       announce('Download started.');
@@ -1283,7 +1286,7 @@
   window.addEventListener('resize', onResize);
   window.addEventListener('pointermove', onHover, { capture: true, passive: true });
   window.addEventListener('pointerout', onHover, { capture: true, passive: true });
-  chrome.runtime.onMessage.addListener(runtimeMessage);
+  runtime.onMessage.addListener(runtimeMessage);
   const observer = new MutationObserver(mutations => {
     if (mutations.some(m => !host.contains(m.target))) queuePosition();
   });
@@ -1297,7 +1300,8 @@
     else if (page && !page.title && document.title) page.title = document.title.slice(0, 300);
   }, 1000);
   // ---- Pages and the draft. One review spans every page visited in this tab. The draft lives in
-  // the worker's chrome.storage.session (cleared when the browser closes, unreadable by pages).
+  // the worker's chrome.storage.session (cleared when the browser closes, unreadable by pages);
+  // the demo build keeps it in the page's sessionStorage.
   function onPage(item, pageId) { return (item.pageId || state.pages[0]?.id) === pageId; }
   function currentPage() { return state.pages.find(page => page.id === state.pageId); }
   function pagePath(url) { try { return new URL(url).pathname; } catch (_) { return url; } }
@@ -1317,7 +1321,7 @@
     clearTimeout(persistTimer);
     persistTimer = setTimeout(() => {
       const draft = { version: 1, sessionId: state.sessionId, startedAt: state.startedAt, pages: state.pages, comments: state.comments, edits: state.edits, removals: state.removals };
-      chrome.runtime.sendMessage({ type: 'PAGECRIT_DRAFT', action: 'save', draft }).catch(() => {});
+      runtime.sendMessage({ type: 'PAGECRIT_DRAFT', action: 'save', draft }).catch(() => {});
     }, 120);
   }
   // Best effort: re-find each item on this page by its locator. Edits re-apply only where the
@@ -1350,7 +1354,7 @@
   }
   async function restoreDraft() {
     let draft = null;
-    try { draft = (await chrome.runtime.sendMessage({ type: 'PAGECRIT_DRAFT', action: 'load' }))?.draft; } catch (_) { /* Start fresh. */ }
+    try { draft = (await runtime.sendMessage({ type: 'PAGECRIT_DRAFT', action: 'load' }))?.draft; } catch (_) { /* Start fresh. */ }
     if (state.closed) return;
     if (draft?.version === 1 && Array.isArray(draft.pages) && draft.pages.length) {
       const fresh = { comments: state.comments, edits: state.edits, removals: state.removals };

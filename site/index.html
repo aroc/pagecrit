@@ -59,6 +59,10 @@
   h1 span{display:block}
   .lede{font-size:20px;color:var(--pencil);max-width:30em;margin:0 0 32px}
   .cta{display:flex;flex-wrap:wrap;gap:12px}
+  button.button{cursor:pointer}
+  /* The demo needs a mouse, like the extension: touch screens get the sample review instead. */
+  .try{display:none}
+  @media (hover:hover) and (pointer:fine){.try{display:inline-flex}.sample-link{display:none}}
   .small{font-size:14px;color:var(--faint);margin:18px 0 0}
   figure{margin:0}
   .shot{position:relative}
@@ -166,7 +170,8 @@
         <p class="lede">Review your own site the way you'd mark up a printout: pin notes, rewrite copy in place, strike what doesn't belong. Then copy one short Markdown review your agent can actually act on.</p>
         <div class="cta">
           <a class="button primary" href="#install">Add it to Chrome</a>
-          <a class="button quiet" href="#sample">See a sample review</a>
+          <a class="button quiet sample-link" href="#sample">See a sample review</a>
+          <button class="button quiet try" type="button">Try it on this page</button>
         </div>
         <p class="small">Free Chrome extension. No account, nothing uploaded.</p>
       </div>
@@ -292,6 +297,24 @@
   </footer>
 </div>
 <script>
+  // Try it on this page: the first click loads the in-page build of PageCrit (embed/pagecrit.js,
+  // built from the extension by npm run embed). A review in progress reopens after a reload.
+  (() => {
+    const button = document.querySelector('.try');
+    let loading = null;
+    const load = () => loading ||= new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'embed/pagecrit.js';
+      script.onload = resolve;
+      script.onerror = () => { loading = null; reject(); };
+      document.head.append(script);
+    });
+    const open = () => load().then(() => {
+      if (!PageCrit.open()) button.textContent = 'PageCrit is already open';
+    }).catch(() => { button.textContent = 'Couldn’t load. Try again'; });
+    button.addEventListener('click', open);
+    try { if (sessionStorage.getItem('pagecrit:draft')) open(); } catch (_) { /* No storage: start fresh. */ }
+  })();
   // Mobile menu: the button toggles it; picking a link, Escape, or tapping outside closes it.
   (() => {
     const bar = document.querySelector('.bar'), menu = bar.querySelector('.menu');

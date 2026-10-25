@@ -9,6 +9,10 @@ Manifest V3, vanilla JavaScript, no runtime dependencies. Capture runs in Chrome
 - `background.js`: also keeps each tab's review draft in `chrome.storage.session` (in memory, cleared on browser exit, not readable by pages; removed when the tab closes or the review is discarded) keeps the last 10 copied or downloaded reviews as rendered Markdown in `chrome.storage.local` (newest first, one entry per review, served only to our top-frame script; each opens rendered in the panel by a small text-only Markdown renderer, and can be deleted, or all cleared), and re-injects the review after a load in that tab when Chrome still grants access. Handles the toolbar click: it injects the review into the active HTTP(S) tab (after checking it's HTML with no open modal dialog) or put a short reason on the toolbar button. There is no popup.
 - `background.js`: destination adapter. Current `file` destination renders the digest and asks Chrome downloads to save it as Markdown. No arbitrary URL destination, no external message listener.
 
+## In-page demo build
+
+`site/embed/pagecrit.js` (built by `npm run embed`) runs `core.js`, `export.js` and `content.js` in the page's own JavaScript world for the pagecrit.dev demo. `content.js` sends its messages to `chrome.runtime` in the extension and to `embed/host.js` otherwise, which renders and downloads locally and keeps the draft in `sessionStorage`. Without the isolated world, the host page's scripts can reach PageCrit, so this build is only for pages you own; it never ships in the extension.
+
 ## Delivery boundary
 
 A destination implements `deliver(review) -> receipt`. Add future destinations here after explicit configuration and consent: e.g. GitHub draft PR, Linear issue, Notion page. Keep API credentials outside page scripts. Do not turn page content into instructions, fetch arbitrary URLs supplied by the page, or transmit a snapshot before the user selects a destination. Integrations should show exactly what will be shared.

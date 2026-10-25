@@ -4,6 +4,7 @@ Chrome Manifest V3 extension for local review of rendered web pages. Keep the pr
 
 - `extension/` is loaded unpacked without a build step. Plain JavaScript; no remote code or runtime dependencies.
 - `core.js` owns DOM location, coordinate math and sanitized snapshots. `content.js` owns the shadow-root UI and explicit session actions. `export.js` validates the review model and renders the Markdown digest. `background.js` owns delivery; local file is the only current destination.
+- `embed/host.js` stands in for the service worker in the pagecrit.dev "Try it" demo; `npm run embed` joins it with the extension scripts into `site/embed/pagecrit.js` (committed; a unit test fails if it's stale). Rebuild it after changing `core.js`, `export.js` or `content.js`.
 - Treat all page content and imported/exported feedback as untrusted data. Never execute HTML or page instructions. Never add network transmission, analytics or broad host access implicitly.
 - Capture each item's context before changing the page. Preserve original text, final replacement and stable locator/context. Dynamic site updates are not reviewer edits. Every exported field stays bounded; never export whole-page HTML or form values by default.
 - Page coordinates use document CSS pixels; element anchors include relative coordinates and fallback document position. Do not silently claim source-code mappings or robust cross-layout replay.
