@@ -64,8 +64,8 @@ One short Markdown file: a header with the page, timing and environment, a "How 
 # Review: Kettle: plan the week your team actually has
 
 - Page: https://kettle.example/pricing
-- Review: r-20261025-ff5a · PageCrit 0.2.1 · digest v1
-- Started: 2026-10-25T13:43:36-04:00 · Exported: 2026-10-25T13:43:39-04:00 (0 min)
+- Review: r-20261025-b5d9 · PageCrit 0.2.1 · digest v1
+- Started: 2026-10-25T13:48:48-04:00 · Exported: 2026-10-25T13:48:52-04:00 (0 min)
 - Environment: Chromium 141 · macOS · 1440×900 @2x · light
 - Summary: 3 comments, 2 text edits, 1 removal
 - Severity: 1 must fix, 4 suggested, 0 nits, 1 note
@@ -132,11 +132,12 @@ One short Markdown file: a header with the page, timing and environment, a "How 
 
 ### 6. Comment · pin 3 · note
 - Note: Love this quote. Keep it right under pricing.
-- Section: Plan the week your team actually has.
-- Text: `Kettle Product Pricing Customers Sign in Spring offer: two months free on annual plans. Ends Friday. Team planning Plan the week your team actually has. Kettle turns meetings, focus time and real cap…`
-- Locator: `html`
-- Excerpt: `<html><head>…</head><body>…</body></html>`
-- Pin: on the element, 8% across and 88% down
+- Section: main › Plan the week your team actually has.
+- Locator: `body > main > div:nth-of-type(3) > span`
+- Ancestors: `main` › `div`
+- Classes: `avatar`
+- Excerpt: `<span class="avatar"></span>`
+- Pin: on the element, 50% across and 28% down
 ````
 <!-- sample-review:end -->
 

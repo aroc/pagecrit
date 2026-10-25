@@ -466,7 +466,22 @@
     return null;
   }
   function headingLevel(heading) { return /^h[1-6]$/.test(heading.localName) ? Number(heading.localName[1]) : Number(heading.getAttribute('aria-level')) || 2; }
-  // The outline above an element: nearest preceding heading, then each shallower one before it.
+  // A heading names what follows it inside its own container. It reaches past that container
+  // only when the container just wraps the heading (header, hgroup, or a heading plus a subtitle),
+  // so a card's heading never names the content after the card.
+  const HEADING_COMPANIONS = new Set(['p', 'span', 'small', 'time', 'img', 'svg', 'a', 'br']);
+  function headingWrapper(container, heading) {
+    if (container.localName === 'header' || container.localName === 'hgroup') return true;
+    return Array.from(container.children).every(child => child.contains(heading) || HEADING_COMPANIONS.has(child.localName));
+  }
+  function headingCovers(heading, el) {
+    for (let scope = heading.parentElement; scope; scope = scope.parentElement) {
+      if (scope.contains(el)) return true;
+      if (!headingWrapper(scope, heading)) return false;
+    }
+    return false;
+  }
+  // The outline above an element: nearest preceding heading that covers it, then each shallower one.
   function sectionPath(el, landmark) {
     const scope = landmark || docFor(el).body || docFor(el).documentElement;
     const headings = Array.from(scope.querySelectorAll('h1,h2,h3,h4,h5,h6,[role="heading"]'));
@@ -485,7 +500,7 @@
       if (heading === el || heading.contains(el) || el.contains(heading)) continue;
       if (!(heading.compareDocumentPosition(el) & 4 /* FOLLOWING */)) continue;
       const level = headingLevel(heading);
-      if (level >= limit) continue;
+      if (level >= limit || !headingCovers(heading, el)) continue;
       const text = clip(heading.textContent, 60);
       if (text) chain.unshift(text);
       limit = level;

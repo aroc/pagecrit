@@ -37,7 +37,8 @@ try {
  const ensure=async name=>{if(await button(name).getAttribute('aria-pressed')!=='true')await button(name).click();};
  const textPoint=(selector,at=0.3)=>page.locator(selector).evaluate((el,at)=>{const node=[...el.childNodes].find(n=>n.nodeType===3&&n.data.trim());const r=document.createRange();r.selectNodeContents(node);const rect=r.getClientRects()[0];return{x:rect.x+rect.width*at,y:rect.y+rect.height/2};},at);
  const clickAt=async p=>page.mouse.click(p.x,p.y);
- const note=async(selector,text,severity,at=[0.55,0.45])=>{await ensure('Pin');const b=await page.locator(selector).boundingBox();await page.mouse.click(b.x+b.width*at[0],b.y+b.height*at[1]);await ui.locator('textarea').fill(text);await button('Save').click();if(severity)await ui.locator('article').filter({hasText:text}).getByRole('button',{name:severity,exact:true}).click();};
+ // Scroll the target into view first: a click outside the viewport lands on <html>.
+ const note=async(selector,text,severity,at=[0.55,0.45])=>{await ensure('Pin');await page.locator(selector).scrollIntoViewIfNeeded();const b=await page.locator(selector).boundingBox();await page.mouse.click(b.x+b.width*at[0],b.y+b.height*at[1]);await ui.locator('textarea').fill(text);await button('Save').click();if(severity)await ui.locator('article').filter({hasText:text}).getByRole('button',{name:severity,exact:true}).click();};
  const shot=async(name,clip)=>{await page.mouse.move(1,899);await page.waitForTimeout(150);await page.screenshot({path:path.join(out,name),...(clip?{clip}:{})});};
  const box=async locator=>locator.boundingBox();
  const pad=(b,x,y=x)=>({x:Math.max(0,b.x-x),y:Math.max(0,b.y-y),width:b.width+2*x,height:b.height+2*y});
@@ -50,6 +51,7 @@ try {
  await note('[data-testid="plan-pro"] .price','Annual price reads like monthly. Lead with the per-month price.','Must fix',[0.92,0.15]);
  await note('[data-testid="plan-team"] .button','Sales-led plan: say "Talk to us", not "Buy now".');
  await note('.quote .avatar','Love this quote. Keep it right under pricing.','Note',[0.5,0.3]);
+ await page.evaluate(()=>window.scrollTo(0,0));
  await ensure('Remove section');await page.locator('#promo').click();
  await page.keyboard.press('Escape');
  await ui.getByRole('button',{name:/^Note 1:/}).click();await page.waitForTimeout(1100);

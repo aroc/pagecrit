@@ -99,7 +99,7 @@ try {
    const v=await page.evaluate(()=>{const c=PageCritCore;const card=document.querySelector('[data-testid=plan-pro]');const billed=card.querySelectorAll('p')[1];
      return{billed:c.captureContext(billed),card:c.captureContext(card),node:c.captureContext(billed,billed.firstChild),link:c.captureContext(card.querySelector('a')),close:c.captureContext(document.querySelector('button')),dup:c.captureContext(document.querySelector('#dup')),hashed:['css-1x9f3k','Card_card__ab12c','sc-bdVaJa','kDmHYo','p-4','md:grid-cols-3','w-[320px]','text-slate-700','btn-primary','h1'].map(c.isHashedToken)};});
    assert.deepEqual(v.billed.locator,{selector:'div[data-testid="plan-pro"] > p:nth-of-type(2)',strategy:'path'});
-   assert.equal(v.billed.role,'paragraph');assert.equal(v.billed.landmark,'main');assert.deepEqual(v.billed.section,['Pricing','Compare plans','Pro']);assert.deepEqual(v.card.section,['Pricing','Compare plans','Pro'],'a card is named by its own heading');
+   assert.equal(v.billed.role,'paragraph');assert.equal(v.billed.landmark,'main');assert.deepEqual(v.billed.section,['Pricing','Compare plans','Pro']);assert.deepEqual(v.card.section,['Pricing','Compare plans','Pro'],'a card is named by its own heading');assert.deepEqual(v.dup.section,['Pricing'],'a finished card\'s heading does not name what follows the card');
    assert.deepEqual(v.billed.ancestors,['main','section[aria-label="Plans"]','div[data-testid="plan-pro"]']);
    assert.equal(v.billed.quote.exact,'Billed annually, cancel anytime');assert.match(v.billed.quote.prefix,/Pro \$29\/mo $/);assert.match(v.billed.quote.suffix,/^ Learn more/);
    assert.equal(v.billed.occurrences,2,'also in footer');assert.equal(v.billed.classes,'p-4 gap-6');
