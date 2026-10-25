@@ -26,7 +26,7 @@
     mode: 'browse', anchorKind: 'element', comments: [], edits: [], history: [],
     pending: null, notice: '', noticeType: '', busy: false, confirmingClose: false,
     collapsed: false, dock: 'tr', pos: null, closed: false, frame: 0, routeChanged: false,
-    historyBytes: 0, historyOmitted: 0, offerLightExport: false, hoverPoint: null, selectedId: null, revealSelected: false,
+    historyBytes: 0, historyOmitted: 0, offerLightExport: false, sent: '', hoverPoint: null, selectedId: null, revealSelected: false,
   };
   // References never enter the exported bundle. Keeping them avoids matching a different
   // repeated element when a framework replaces DOM nodes during a review.
@@ -41,18 +41,18 @@
   const style = document.createElement('style');
   style.textContent = `
     :host{font:14px/1.45 ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#25242b;color-scheme:light}
-    *,*::before,*::after{box-sizing:border-box} [hidden]{display:none!important}
+    *,*::before,*::after{box-sizing:border-box} [hidden]{display:none!important}.sr{position:fixed;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
     button,input,textarea,select{font:inherit} button{cursor:pointer} button:disabled{cursor:wait;opacity:.5}
     button:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid #9e91ee;outline-offset:2px}
     .panel{font:14px/1.45 ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#25242b;pointer-events:auto;position:fixed;right:18px;top:18px;width:336px;max-width:calc(100vw - 32px);max-height:calc(100vh - 36px);display:flex;flex-direction:column;background:#fffefb;border:1px solid #e4e0da;border-radius:18px;box-shadow:0 12px 50px #231b3930;overflow:hidden}
-    .header{padding:17px 18px 12px;display:flex;gap:9px;align-items:center;cursor:grab;user-select:none;-webkit-user-select:none;touch-action:none}.dragging,.dragging .header{cursor:grabbing}.snap{display:grid;place-items:center;padding:5px 7px}.brand{font-size:16px;font-weight:750;letter-spacing:-.4px;flex:1}.logo{background:#6250b8;color:white;border-radius:7px;padding:2px 7px;font-weight:800}.smallbutton{border:0;background:transparent;border-radius:6px;color:#736d7f;padding:4px 7px;font-size:17px}
+    .header{padding:17px 18px 12px;display:flex;gap:9px;align-items:center;cursor:grab;user-select:none;-webkit-user-select:none;touch-action:none}.dragging,.dragging .header{cursor:grabbing}.snap{display:grid;place-items:center;padding:5px 7px}.brand{font-size:16px;font-weight:750;letter-spacing:-.4px;flex:1}.logo{font-size:18px;line-height:1}.smallbutton{border:0;background:transparent;border-radius:6px;color:#736d7f;padding:4px 7px;font-size:17px}
     .body{overflow:auto;padding:0 16px 14px}.muted{color:#77717d;font-size:12px}.intro{margin:0 0 13px;color:#736b7b;font-size:12px}
     .modes{display:flex;border:1px solid #e3dfeb;background:#f0edf4;border-radius:10px;padding:3px;gap:3px;margin-bottom:10px}.mode{flex:1;border:0;color:#6e657d;background:transparent;font-size:12px;padding:8px 4px;border-radius:7px;white-space:nowrap}.mode.active{background:white;color:#4d3396;box-shadow:0 1px 4px #24193c15;font-weight:700}
     .instructions{font-size:12px;line-height:1.5;color:#686271;margin:8px 0 13px}.anchor{display:flex;gap:6px;margin:8px 0}.anchoropt{flex:1;font-size:12px;border:1px solid #ddd7e5;border-radius:7px;background:white;color:#6e657d;padding:6px 4px}.anchoropt.active{border-color:#8e77d6;background:#f4f0fd;color:#4d3396;font-weight:700}
     .notice{padding:9px 10px;background:#eef3ed;color:#40583c;border:1px solid #d6e2d2;border-radius:8px;font-size:12px;margin:10px 0;overflow-wrap:anywhere}.notice.error{background:#fff1eb;color:#994027;border-color:#f0d1c5}
     .editor{padding:12px;border:1px solid #cbbfe8;border-radius:10px;background:#f8f5fe;margin:12px 0}.editor h3{font-size:13px;margin:0 0 7px}.editor textarea{resize:vertical;width:100%;min-height:105px;max-height:300px;background:white;border:1px solid #cfc6de;border-radius:7px;padding:9px;color:#26222d;font-size:13px;line-height:1.5}.editor label{display:block;font-size:12px;margin-bottom:7px}.actions{display:flex;gap:7px;justify-content:flex-end;margin-top:9px}
     .button{border:1px solid #dad4e3;border-radius:8px;padding:7px 11px;background:white;color:#534762;font-size:12px;font-weight:600}.primary{background:#6250b8;color:white;border-color:#6250b8}.danger{color:#a03f33;border-color:#e4b6af}
-    .sectionhead{display:flex;align-items:center;justify-content:space-between;margin:17px 0 8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#82798c}.empty{padding:20px 14px;text-align:center;border:1px dashed #ddd6e5;border-radius:10px;color:#8b8293;font-size:12px}.item{padding:11px 0;border-bottom:1px solid #ece7ef}.itemtop{display:flex;gap:8px;align-items:center;margin-bottom:5px}.badge{background:#ede7f9;color:#6249a5;font-size:11px;font-weight:750;min-width:23px;height:23px;border-radius:8px;display:grid;place-items:center}.itemlabel{flex:1;font-size:11px;color:#81758b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.link{font-size:11px;background:none;border:0;color:#786295;padding:3px}.itemtext{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;color:#4c4258;max-height:108px;overflow:auto}.diff{font-size:12px;margin:4px 0;padding:6px 8px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:90px;overflow:auto;border-radius:5px}.before{background:#f8ecea;color:#8f514b;text-decoration:line-through}.after{background:#edf4eb;color:#486640}.warning{color:#aa533b;font-size:11px;margin:6px 0 0}.itemactions{display:flex;justify-content:flex-end;gap:5px;margin-top:5px}.item.selected{margin:0 -16px;padding:11px 16px 11px 13px;border-left:3px solid #6250b8;background:#f5f1fe}.item.pulse{animation:pulse .9s ease-out}.item.selected .badge{background:#6250b8;color:white}@keyframes pulse{from{background:#e2d9fb}to{background:#f5f1fe}}
+    .sectionhead{display:flex;align-items:center;justify-content:space-between;margin:17px 0 8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#82798c}.empty{padding:20px 14px;text-align:center;border:1px dashed #ddd6e5;border-radius:10px;color:#8b8293;font-size:12px}.item{padding:11px 0;border-bottom:1px solid #ece7ef}.itemtop{display:flex;gap:8px;align-items:center;margin-bottom:5px}.badge{background:#ede7f9;color:#6249a5;font-size:11px;font-weight:750;min-width:23px;height:23px;border-radius:8px;display:grid;place-items:center}.itemlabel{flex:1;font-size:11px;color:#81758b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.link{font-size:11px;background:none;border:0;color:#786295;padding:3px}.itemtext{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;color:#4c4258;max-height:108px;overflow:auto}.diff{font-size:12px;margin:4px 0;padding:6px 8px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:90px;overflow:auto;border-radius:5px}.before{background:#f8ecea;color:#8f514b;text-decoration:line-through}.after{background:#edf4eb;color:#486640}.warning{color:#aa533b;font-size:11px;margin:6px 0 0}.itemactions{display:flex;justify-content:flex-end;gap:5px;margin-top:5px}.item.reveal{cursor:pointer;margin:0 -16px;padding:11px 16px;border-radius:0}.item.reveal:hover{background:#faf8fd}.item.reveal:focus-visible{outline:2px solid #9e91ee;outline-offset:-2px}.item.selected{margin:0 -16px;padding:11px 16px 11px 13px;border-left:3px solid #6250b8;background:#f5f1fe}.item.pulse{animation:pulse .9s ease-out}.item.selected .badge{background:#6250b8;color:white}@keyframes pulse{from{background:#e2d9fb}to{background:#f5f1fe}}
     .footer{border-top:1px solid #e9e3ed;padding:13px 16px;background:#faf8fd}.done{width:100%;padding:11px;font-size:13px}.privacy{font-size:10px;color:#8a8292;text-align:center;margin:8px 0 0}.pill{pointer-events:auto;position:fixed;right:18px;top:18px;border:1px solid #dcd4e8;border-radius:999px;padding:10px 15px;background:#fffefb;color:#4e3d73;box-shadow:0 6px 25px #231b3925;font:600 13px ui-sans-serif,system-ui;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
     .pin{pointer-events:auto;position:fixed;width:27px;height:27px;display:grid;place-items:center;border:2px solid white;border-radius:50% 50% 50% 4px;transform:translate(-50%,-100%) rotate(-5deg);box-shadow:0 2px 8px #231b3945;background:#6650bb;color:white;font-size:11px;font-weight:750}.pin.lost{background:#9b7c46}.pin.selected{background:#43298f;z-index:1;box-shadow:0 0 0 3px #c9bcf3,0 2px 10px #231b3960}.pin.pending{background:#a68cd6}
     .highlight,.hover{pointer-events:none;position:fixed;border:2px solid #8e77d6;border-radius:3px;background:#a995e912;display:none}.hover{background:#a995e90d;border-width:1.5px}.hovertag{position:absolute;left:-1.5px;bottom:100%;margin-bottom:2px;background:#6250b8;color:white;font:600 10px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;padding:1px 5px;border-radius:4px;white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis}.hover.inside .hovertag{bottom:auto;top:0;margin:2px}.closebox{padding:11px;border:1px solid #e4c9bd;background:#fff7ed;border-radius:9px;margin-bottom:12px;font-size:12px}.closebox p{margin:0 0 10px}
@@ -70,6 +70,9 @@
   const panel = document.createElement('section');
   panel.className = 'panel';
   panel.setAttribute('aria-label', 'Page Notes review');
+  // Screen-reader-only confirmation for actions that need no visible callout.
+  const liveRegion = document.createElement('div');
+  liveRegion.className = 'sr'; liveRegion.setAttribute('role', 'status');
   const pill = document.createElement('button');
   pill.className = 'pill';
   pill.hidden = true;
@@ -145,7 +148,7 @@
     }
     return svg;
   }
-  shadow.append(style, pinsLayer, hoverBox, highlight, panel, pill);
+  shadow.append(style, pinsLayer, hoverBox, highlight, panel, pill, liveRegion);
   document.documentElement.appendChild(host);
 
   function element(tag, cls, text) {
@@ -196,10 +199,10 @@
     panel.hidden = state.collapsed;
     pill.hidden = !state.collapsed;
     shownCollapsed = state.collapsed;
-    pill.textContent = `✦ Page Notes · ${state.comments.length + state.edits.length}`;
+    pill.textContent = `📝 Page Notes · ${state.comments.length + state.edits.length}`;
     panel.replaceChildren();
     const header = element('header', 'header');
-    header.append(element('span', 'logo', '✦'), element('span', 'brand', 'Page Notes'));
+    header.append(element('span', 'logo', '📝'), element('span', 'brand', 'Page Notes'));
     const snap = button('', snapToCorner, 'smallbutton snap', 'Snap to nearest corner');
     snap.append(snapIcon()); header.append(snap);
     header.append(button('−', () => { cancelPending(false); state.collapsed = true; state.mode = 'browse'; highlight.style.display = 'none'; render(); }, 'smallbutton', 'Minimize'));
@@ -238,11 +241,13 @@
     state.comments.forEach((comment, index) => body.append(renderComment(comment, index)));
     state.edits.forEach(edit => body.append(renderEdit(edit)));
     const footer = element('footer', 'footer');
-    const done = button(state.busy ? 'Preparing download…' : 'Done · Download review', exportReview, 'button primary done');
+    const done = button(state.busy ? 'Preparing download…' : state.sent === 'full' ? '✓ Download started' : 'Done · Download review', exportReview, 'button primary done');
+    done.setAttribute('aria-label', 'Done · Download review');
     done.disabled = state.busy || Boolean(state.pending);
     footer.append(done);
     if (state.offerLightExport) {
-      const light = button('Download feedback only', () => exportReview(true), 'button done');
+      const light = button(state.sent === 'light' ? '✓ Download started' : 'Download feedback only', () => exportReview(true), 'button done');
+      light.setAttribute('aria-label', 'Download feedback only');
       light.disabled = state.busy || Boolean(state.pending);
       footer.append(light, element('p', 'privacy', 'Keeps all current notes and edits. Omits HTML and action history.'));
     }
@@ -293,11 +298,20 @@
     box.append(actions);
     return box;
   }
+  // The whole review row scrolls to its place on the page; its buttons keep their own actions.
+  function revealOnClick(item, show, label) {
+    item.classList.add('reveal'); item.tabIndex = 0; item.title = label;
+    item.addEventListener('click', event => { if (event.isTrusted && !state.busy && !event.target.closest('button')) show(); });
+    item.addEventListener('keydown', event => {
+      if (event.isTrusted && event.target === item && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); show(); }
+    });
+  }
   function renderComment(comment, index) {
     const item = element('article', `item${state.selectedId === comment.id ? ` selected${state.revealSelected ? ' pulse' : ''}` : ''}`);
     if (state.selectedId === comment.id) item.setAttribute('aria-current', 'true');
     const top = element('div', 'itemtop');
-    top.append(element('span', 'badge', String(index + 1)), element('span', 'itemlabel', comment.anchor.kind === 'element' ? 'Element note' : 'Page note'), button('Show', () => showComment(comment), 'link'));
+    top.append(element('span', 'badge', String(index + 1)), element('span', 'itemlabel', comment.anchor.kind === 'element' ? 'Element note' : 'Page note'));
+    revealOnClick(item, () => showComment(comment), `Show note ${index + 1} on the page`);
     item.append(top, element('p', 'itemtext', comment.text));
     const actions = element('div', 'itemactions');
     actions.append(button('Edit', () => editComment(comment), 'link'), button('Remove', () => removeComment(comment), 'link'));
@@ -307,7 +321,8 @@
   function renderEdit(edit) {
     const item = element('article', 'item');
     const top = element('div', 'itemtop');
-    top.append(element('span', 'badge', 'Aa'), element('span', 'itemlabel', 'Text change'), button('Show', () => showEdit(edit), 'link'));
+    top.append(element('span', 'badge', 'Aa'), element('span', 'itemlabel', 'Text change'));
+    revealOnClick(item, () => showEdit(edit), 'Show text change on the page');
     item.append(top, element('div', 'diff before', edit.before || '(empty)'), element('div', 'diff after', edit.after || '(empty)'));
     const node = editNodes.get(edit.id);
     if (!node?.isConnected || node.data !== edit.after) item.append(element('p', 'warning', 'The page changed this text. Your requested edit is still saved.'));
@@ -694,6 +709,11 @@
     chrome.runtime.onMessage.removeListener(runtimeMessage);
     host.remove(); delete globalThis.__pageNotesSession;
   }
+  let sentTimer = 0, announceTimer = 0;
+  function announce(message) {
+    liveRegion.textContent = message;
+    clearTimeout(announceTimer); announceTimer = setTimeout(() => { liveRegion.textContent = ''; }, 4000);
+  }
   async function exportReview(feedbackOnly = false) {
     feedbackOnly = feedbackOnly === true;
     if (state.busy || state.pending) return;
@@ -726,8 +746,10 @@
       if (size > MAX_BUNDLE_BYTES) throw Object.assign(new Error('This export exceeds the 20 MB limit. Download feedback only to keep your notes and edits without the HTML snapshots.'), { code: 'EXPORT_TOO_LARGE' });
       const result = await chrome.runtime.sendMessage({ type: 'PAGE_NOTES_EXPORT', bundle });
       if (!result?.ok) throw Object.assign(new Error(result?.error || 'The download could not be started.'), { code: result?.code });
-      state.notice = feedbackOnly ? 'Feedback-only download started (no HTML or action history). All current notes and edits are included; your full draft stays here.' : 'Download started. Your review stays here so you can keep editing or retry if you cancel the save dialog.';
-      state.noticeType = '';
+      // Confirm briefly on the button itself; the draft simply stays open.
+      announce(feedbackOnly ? 'Feedback-only download started.' : 'Download started.');
+      state.sent = feedbackOnly ? 'light' : 'full';
+      clearTimeout(sentTimer); sentTimer = setTimeout(() => { state.sent = ''; render(); }, 2500);
     } catch (error) {
       state.notice = error.message || 'Download failed. Your notes are still here; try again.'; state.noticeType = 'error';
       if (error.code === 'EXPORT_TOO_LARGE' && !feedbackOnly) state.offerLightExport = true;

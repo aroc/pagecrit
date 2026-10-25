@@ -154,8 +154,22 @@ try {
   assert.equal(await page.locator('#button').textContent(),'Go now please');assert.equal(await page.locator('#link').textContent(),'Read more');
   assert.equal(page.url(),url);assert.equal(await page.evaluate(()=>window.siteActions),0);assert.equal(await editing(),0);
  });
+ await test('download confirms on the button only, and clicking a review row scrolls to it',async({page,ui,button,clickText,edit,exportBundle})=>{
+  await edit('#plain','Changed copy');await button('⊕ Pin').click();await clickText('#pin3');await ui.locator('textarea').fill('Far note');await button('Save').click();
+  await exportBundle();assert.equal(await ui.locator('.notice').count(),0,'no lingering callout');assert.match(await ui.locator('.done').first().textContent(),/✓ Download started/);
+  await page.waitForTimeout(2700);assert.equal(await ui.locator('.done').first().textContent(),'Done · Download review');
+  assert.equal(await ui.getByRole('button',{name:'Show',exact:true}).count(),0,'no Show buttons');
+  assert.equal(await ui.locator('.logo').textContent(),'📝');
+  await page.evaluate(()=>window.scrollTo(0,document.body.scrollHeight));await page.waitForTimeout(100);
+  await ui.locator('article').filter({hasText:'Far note'}).locator('.itemtext').click();await page.waitForTimeout(700);
+  const r=await page.locator('#pin3').boundingBox();assert.ok(r.y>0&&r.y<1000,`scrolled to note ${JSON.stringify(r)}`);
+  assert.equal(await ui.locator('article[aria-current="true"]').count(),1);assert.equal(await ui.locator('textarea').count(),0);
+  await page.evaluate(()=>window.scrollTo(0,document.body.scrollHeight));await page.waitForTimeout(100);
+  await ui.locator('article').filter({hasText:'Changed copy'}).focus();await page.keyboard.press('Enter');await page.waitForTimeout(700);
+  const t=await page.locator('#plain').boundingBox();assert.ok(t.y>0&&t.y<1000,`scrolled to edit ${JSON.stringify(t)}`);assert.equal(await page.locator('[contenteditable]').count(),1,'only the site editor; no edit started');
+ });
  await test('blank comment rejected, cancel does not create a phantom note',async({ui,button,clickText,exportBundle})=>{
-  await button('⊕ Pin').click();await clickText('#pin1');await ui.locator('textarea').fill(' \n\t ');await button('Save').click();assert.match(await ui.getByRole('status').textContent(),/Add a note/);await button('Cancel').click();assert.equal((await exportBundle()).comments.length,0);
+  await button('⊕ Pin').click();await clickText('#pin1');await ui.locator('textarea').fill(' \n\t ');await button('Save').click();assert.match(await ui.locator('.notice').textContent(),/Add a note/);await button('Cancel').click();assert.equal((await exportBundle()).comments.length,0);
  });
  await test('Escape, switching mode, minimize all restore pending preview and keep saved edit',async({page,ui,button,clickText,edit,typeInline,editing,exportBundle})=>{
   await edit('#plain','Saved value');
@@ -165,7 +179,7 @@ try {
   }assert.equal((await exportBundle()).edits[0].after,'Saved value');
  });
  await test('framework replacement while typing prevents save and cancel does not overwrite replacement',async({page,ui,button,clickText,typeInline,exportBundle})=>{
-  await button('Aa Edit text').click();await clickText('#framework');await typeInline('User preview');await page.locator('#framework').evaluate(el=>el.textContent='New server content');await page.keyboard.insertText('Final proposed text');assert.equal(await page.locator('#framework').textContent(),'New server content');await button('Save').click();assert.match(await ui.getByRole('status').textContent(),/replaced or changed/);assert.equal(await page.locator('#framework').textContent(),'New server content');await button('Cancel').click();assert.equal((await exportBundle()).edits.length,0);
+  await button('Aa Edit text').click();await clickText('#framework');await typeInline('User preview');await page.locator('#framework').evaluate(el=>el.textContent='New server content');await page.keyboard.insertText('Final proposed text');assert.equal(await page.locator('#framework').textContent(),'New server content');await button('Save').click();assert.match(await ui.locator('.notice').textContent(),/replaced or changed/);assert.equal(await page.locator('#framework').textContent(),'New server content');await button('Cancel').click();assert.equal((await exportBundle()).edits.length,0);
  });
  await test('framework replacement after save retains requested edit; revert leaves new live content',async({page,ui,edit,exportBundle})=>{
   await edit('#framework','Desired change');await page.locator('#framework').evaluate(el=>el.outerHTML='<p id="framework">Replacement element</p>');const bundle=await exportBundle();assert.equal(bundle.edits[0].previewState,'page-changed');assert.equal(bundle.edits[0].before,'Framework initial value');assert.equal(bundle.edits[0].after,'Desired change');await ui.locator('article').getByRole('button',{name:'Revert',exact:true}).click();assert.equal(await page.locator('#framework').textContent(),'Replacement element');assert.equal((await exportBundle()).edits.length,0);
