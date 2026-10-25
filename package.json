@@ -11,6 +11,7 @@
     "package": "node scripts/package.mjs",
     "test:activation": "xvfb-run -a node tests/activation.mjs",
     "screenshots": "node scripts/screenshots.mjs",
+    "icons": "node scripts/icons.mjs",
     "deploy:site": "npx wrangler@4.152.0 deploy"
   },
   "devDependencies": {
