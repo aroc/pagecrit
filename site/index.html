@@ -140,7 +140,7 @@
         <!-- Each arrow runs from its label to a point in the screenshot (fractions of the image,
              written by npm run screenshots) and is redrawn whenever the layout changes. -->
         <span class="note pin" data-anchor="pin" data-at="0.413,0.631">pin anywhere</span>
-        <span class="note copy" data-from="left" data-anchor="copy" data-at="0.748,0.935">one click, ready to paste</span>
+        <span class="note copy" data-from="left" data-bow="1.4" data-anchor="copy" data-at="0.748,0.935">one click, ready to paste</span>
         <svg class="arrows" aria-hidden="true"></svg>
       </figure>
     </section>
@@ -271,7 +271,7 @@
         if (length < 20) continue;
         const ux = dx / length, uy = dy / length;
         const ex = tx - ux * 7, ey = ty - uy * 7;
-        const bow = Math.min(40, length * 0.18) * (dx > 0 ? 1 : -1);
+        const bow = Math.min(40, length * 0.18) * (Number(note.dataset.bow) || 1) * (dx > 0 ? 1 : -1);
         const cx = (sx + ex) / 2 + uy * bow, cy = (sy + ey) / 2 - ux * bow;
         const angle = Math.atan2(ey - cy, ex - cx), head = 13;
         const wing = side => [ex - head * Math.cos(angle + side * 0.5), ey - head * Math.sin(angle + side * 0.5)].map(n => n.toFixed(1)).join(' ');
