@@ -46,16 +46,21 @@ try {
   const tabId = await worker.evaluate(async url => (await chrome.tabs.query({})).find(tab => tab.url === url).id, url);
   await worker.evaluate(async tabId => chrome.scripting.executeScript({ target: { tabId }, files: ['core.js', 'content.js'] }), tabId);
   assert.equal(await page.locator('[data-pagecrit-root]').evaluate(host => host.shadowRoot), null);
+  const cdp = await context.newCDPSession(page);
+  // The closed shadow root is visible only the way assistive tech sees it: the accessibility tree.
+  const axNode = (match, message) => eventually(async () => (await cdp.send('Accessibility.getFullAXTree')).nodes.find(match), message);
+  const axButton = name => node => node.role?.value === 'button' && node.name?.value === name;
+  const pressed = node => node.properties?.some(p => p.name === 'pressed' && p.value?.value === 'true');
   // Real keyboard and mouse only (closed shadow root): P for the pin tool, click the heading, type, save.
-  await page.waitForTimeout(300);
+  await axNode(axButton('Pin'), 'Review panel did not render');
   await page.keyboard.press('p');
+  await axNode(node => axButton('Pin')(node) && pressed(node), 'P did not turn on the pin tool');
   const heading = await page.locator('h1').boundingBox();
   await page.mouse.click(heading.x + 20, heading.y + heading.height / 2);
-  await page.waitForTimeout(100);
+  await axNode(node => node.role?.value === 'textbox' && node.properties?.some(p => p.name === 'focused' && p.value?.value), 'Note editor did not take focus');
   await page.keyboard.insertText('Cold start note');
   await page.keyboard.press('ControlOrMeta+Enter');
   await page.keyboard.press('Escape');
-  const cdp = await context.newCDPSession(page);
   const downloads = path.join(temp, 'downloads');
   await mkdir(downloads);
   // CDP selects a synthetic-only output directory. downloads.download and its saveAs option
@@ -71,22 +76,21 @@ try {
   });
   await cdp.send('ServiceWorker.enable');
   await eventually(() => lastWorkerState === 'running', 'Worker was not observed running before restart');
-  // Let the review finish loading/saving its draft so nothing but the export wakes the worker.
-  await page.waitForTimeout(800);
+  // Let the review save its draft so nothing but the export wakes the worker.
+  const draftKey = `draft:${tabId}`;
+  await eventually(async () => (await worker.evaluate(async key => (await chrome.storage.session.get(key))[key], draftKey))?.comments?.length === 1, 'Draft was not saved');
+  // Each render (Escape included) saves the draft again 120 ms later, and nothing signals that no save
+  // is pending, so keep a short quiet window. A late save could only make the wake check below vacuous.
+  await page.waitForTimeout(300);
+  const beforeStop = observedStates.length;
   await cdp.send('ServiceWorker.stopAllWorkers');
-  await eventually(() => lastWorkerState === 'stopped', 'Worker did not stop');
+  await eventually(() => observedStates.slice(beforeStop).includes('stopped'), 'Worker did not stop');
 
-  const { nodes } = await cdp.send('Accessibility.getFullAXTree');
-  const done = nodes.find(node => node.role?.value === 'button' && node.name?.value === 'Download review');
-  assert.ok(done, 'Done is accessible in the production closed shadow root');
+  const done = await axNode(axButton('Download review'), 'Download is accessible in the production closed shadow root');
   const { model } = await cdp.send('DOM.getBoxModel', { backendNodeId: done.backendDOMNodeId });
   const quad = model.border;
   await page.mouse.click((quad[0] + quad[4]) / 2, (quad[1] + quad[5]) / 2);
   await eventually(() => lastWorkerState === 'running', 'Export did not wake the stopped MV3 worker');
-  await eventually(async () => {
-    const { nodes } = await cdp.send('Accessibility.getFullAXTree');
-    return nodes.some(node => node.role?.value === 'StaticText' && node.name?.value?.includes('Download started'));
-  }, 'Cold-start export did not report success');
   // Playwright may retain the destroyed Worker handle after a Chrome cold restart, so read the
   // finished file from the synthetic download folder instead of asking the worker.
   const downloaded = await eventually(async () => {

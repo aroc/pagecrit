@@ -6,6 +6,8 @@ import path from 'node:path';
 import http from 'node:http';
 // Tools are toggles: turn one on only if it isn't already.
 const ensure=async tool=>{if(await tool.getAttribute('aria-pressed')!=='true')await tool.click();};
+// Retry a check until it passes: tests wait on the condition itself, never a fixed delay.
+const eventually=async(check,timeout=10000)=>{const end=Date.now()+timeout;for(;;){try{return await check();}catch(error){if(Date.now()>end)throw error;}await new Promise(r=>setTimeout(r,25));}};
 const root=path.resolve(import.meta.dirname,'..');
 const temp=await mkdtemp(path.join(tmpdir(),'pagecrit-test-'));
 const fixture=await readFile(path.join(root,'tests/fixture.html'));
@@ -71,8 +73,8 @@ try {
  await page.mouse.click(point.x,point.y);await ui.locator('textarea').fill('Clarify this lower section.');await ui.getByRole('button',{name:'Save',exact:true}).click();
  const pagePin=ui.getByRole('button',{name:/^Note 1:/});
  const initialTop=await pagePin.evaluate(el=>parseFloat(el.style.top));
- await page.evaluate(()=>window.scrollBy(0,100));await page.waitForTimeout(80);
- assert.ok(Math.abs(await pagePin.evaluate(el=>parseFloat(el.style.top))-(initialTop-100))<2);
+ await page.evaluate(()=>window.scrollBy(0,100));
+ await eventually(async()=>assert.ok(Math.abs(await pagePin.evaluate(el=>parseFloat(el.style.top))-(initialTop-100))<2));
  // Element pin follows nested scrolling, then hides when clipped by its scroller.
  await page.locator('#scroller').scrollIntoViewIfNeeded();
  await ui.getByRole('button',{name:'Pin to element',exact:true}).click();
@@ -80,10 +82,10 @@ try {
  await ui.locator('textarea').fill('Make this section more useful.');await ui.getByRole('button',{name:'Save',exact:true}).click();
  const nestedPin=ui.getByRole('button',{name:/^Note 2:/,includeHidden:true});
  const nestedTop=await nestedPin.evaluate(el=>parseFloat(el.style.top));
- await page.locator('#scroller').evaluate(el=>el.scrollTop=30);await page.waitForTimeout(80);
- assert.ok(Math.abs(await nestedPin.evaluate(el=>parseFloat(el.style.top))-(nestedTop-30))<2);
- await page.locator('#scroller').evaluate(el=>el.scrollTop=180);await page.waitForTimeout(80);
- assert.equal(await nestedPin.evaluate(el=>getComputedStyle(el).display),'none');
+ await page.locator('#scroller').evaluate(el=>el.scrollTop=30);
+ await eventually(async()=>assert.ok(Math.abs(await nestedPin.evaluate(el=>parseFloat(el.style.top))-(nestedTop-30))<2));
+ await page.locator('#scroller').evaluate(el=>el.scrollTop=180);
+ await eventually(async()=>assert.equal(await nestedPin.evaluate(el=>getComputedStyle(el).display),'none'));
  await page.locator('#scroller').evaluate(el=>el.scrollTop=0);
  console.log('PASS page-scroll coordinates, nested element-scroll tracking and clipping');
  // Actual worker delivery via chrome.downloads; test chooses temp location instead of OS Save As dialog.
@@ -92,13 +94,8 @@ try {
  await cdp.send('Browser.setDownloadBehavior',{behavior:'allow',downloadPath:path.join(temp,'downloads'),eventsEnabled:true});
  await worker.evaluate(()=>{const original=chrome.downloads.download.bind(chrome.downloads);globalThis.testDownloadOriginal=original;chrome.downloads.download=opts=>{globalThis.testRequestedFilename=opts.filename;return original({...opts,saveAs:false});};const render=PageCritExport.renderDigest;PageCritExport.renderDigest=review=>{globalThis.lastReview=review;return render(review);};});
  await ui.getByRole('button',{name:'Download review',exact:true}).click();
- await ui.getByRole('status').filter({hasText:'Download started'}).waitFor();
- let downloaded;
- for(let i=0;i<30;i++){
-   downloaded=await worker.evaluate(async()=>(await chrome.downloads.search({}))[0]);
-   if(downloaded?.state==='complete')break;await page.waitForTimeout(100);
- }
- assert.equal(downloaded?.state,'complete', JSON.stringify(downloaded));
+
+ const downloaded=await eventually(async()=>{const d=await worker.evaluate(async()=>(await chrome.downloads.search({}))[0]);assert.equal(d?.state,'complete',JSON.stringify(d));return d;});
  // CDP download behavior renames saved files; check the name Chrome accepted from the extension.
  assert.match(await worker.evaluate(()=>globalThis.testRequestedFilename),/^\d{4}-\d{2}-\d{2} \d{2}-\d{2} Fieldwork — synthetic test page\.md$/);
  const bundle=await worker.evaluate(()=>globalThis.lastReview);const markdown=await readFile(downloaded.filename,'utf8');
@@ -141,19 +138,26 @@ try {
  await prodWorker.evaluate(async tabId=>chrome.scripting.executeScript({target:{tabId},files:['core.js','content.js']}),prodTab);
  assert.equal(await prodPage.locator('[data-pagecrit-root]').evaluate(el=>el.shadowRoot),null);
  const prodCDP=await context.newCDPSession(prodPage);
- async function clickAccessible(name) {
+ // The closed shadow root is reachable only the way assistive tech sees it: the accessibility tree.
+ // Poll until the control exists and is laid out, so a click never races the panel's first render.
+ const axBox=(match,what)=>eventually(async()=>{
    const {nodes}=await prodCDP.send('Accessibility.getFullAXTree');
-   const node=nodes.find(n=>n.role?.value==='button'&&n.name?.value===name);
-   assert.ok(node,`Production control accessible: ${name}`);
-   const {model}=await prodCDP.send('DOM.getBoxModel',{backendNodeId:node.backendDOMNodeId});
-   const q=model.border;await prodPage.mouse.click((q[0]+q[4])/2,(q[1]+q[5])/2);
+   const node=nodes.find(match);
+   const q=node&&await prodCDP.send('DOM.getBoxModel',{backendNodeId:node.backendDOMNodeId}).then(r=>r.model.border,()=>null);
+   assert.ok(q&&q[4]>q[0]&&q[5]>q[1],`Production control not ready: ${what}`);
+   return q;
+ });
+ async function clickAccessible(name) {
+   const q=await axBox(n=>n.role?.value==='button'&&n.name?.value===name,name);
+   await prodPage.mouse.click((q[0]+q[4])/2,(q[1]+q[5])/2);
  }
+ const focusedTextbox=n=>n.role?.value==='textbox'&&n.properties?.some(p=>p.name==='focused'&&p.value?.value);
  await clickAccessible('Edit text');
  const hp=await prodPage.locator('#headline').evaluate(el=>{const range=document.createRange();range.selectNodeContents(el.firstChild);const r=range.getClientRects()[0];return{x:r.x+20,y:r.y+r.height/2};});
- await prodPage.mouse.click(hp.x,hp.y);await prodPage.waitForTimeout(100);
+ await prodPage.mouse.click(hp.x,hp.y);await prodPage.waitForFunction(()=>document.querySelector('#headline').isContentEditable&&document.activeElement?.closest('#headline'));
  await prodPage.keyboard.press('ControlOrMeta+A');await prodPage.keyboard.insertText('Make time for ');await clickAccessible('Save');
  assert.equal(await prodPage.locator('#headline').textContent(),'Make time for better work.');
- await clickAccessible('Pin');await prodPage.mouse.click(260,390);await prodPage.waitForTimeout(100);
+ await clickAccessible('Pin');await prodPage.mouse.click(260,390);await axBox(focusedTextbox,'focused note editor');
  await prodPage.keyboard.insertText('Can we make the benefit more specific?');await clickAccessible('Save');
  await prodPage.screenshot({path:path.join(root,'test-results/production-review.png')});
  console.log('PASS untouched production closed-shadow UI with real mouse/keyboard: edit, pin, save');

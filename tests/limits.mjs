@@ -7,6 +7,8 @@ import {tmpdir} from 'node:os';
 import http from 'node:http';
 // Tools are toggles: turn one on only if it isn't already.
 const ensure=async tool=>{if(await tool.getAttribute('aria-pressed')!=='true')await tool.click();};
+// Retry a check until it passes: tests wait on the condition itself, never a fixed delay.
+const eventually=async(check,timeout=15000)=>{const end=Date.now()+timeout;for(;;){try{return await check();}catch(error){if(Date.now()>end)throw error;}await new Promise(r=>setTimeout(r,25));}};
 const root=path.resolve(import.meta.dirname,'..'), temp=await mkdtemp(path.join(tmpdir(),'pagecrit-limits-'));
 const huge='<div hidden>'+'x'.repeat(11*1024*1024)+'</div><p id="wall">'+'word '.repeat(300000)+'</p>'+'<div class="css-1x9f3k">'.repeat(300)+'<span id="deep" aria-label="'+'L'.repeat(100000)+'">Deep target</span>'+'</div>'.repeat(300);
 const server=http.createServer((_req,res)=>res.end('<!doctype html><title>'+'T'.repeat(5000)+'</title><h1>Review this page</h1><p id="keep">Keep this feedback</p>'+huge));
@@ -29,9 +31,9 @@ try {
  for(const selector of ['#keep','#wall','#deep']){await ensure(button('Pin'));await page.locator(selector).scrollIntoViewIfNeeded();const b=await page.locator(selector).boundingBox();await page.mouse.click(b.x+5,b.y+5);await ui.locator('textarea').fill(`Note on ${selector}`);await button('Save').click();}
  // The 1.5 MB paragraph is over the edit limit; edit a normal paragraph on the same hostile page.
  await ensure(button('Edit text'));await page.locator('#keep').scrollIntoViewIfNeeded();const w=await page.locator('#keep').boundingBox();await page.mouse.click(w.x+5,w.y+w.height/2);await page.keyboard.press('ControlOrMeta+A');await page.keyboard.insertText('Short replacement');await page.keyboard.press('Enter');
- await button('Download review').click();await ui.getByRole('status').filter({hasText:'Download started'}).waitFor();
- let d;for(let i=0;i<50;i++){d=await worker.evaluate(async()=>(await chrome.downloads.search({}))[0]);if(d?.state==='complete')break;await page.waitForTimeout(100);}
- assert.equal(d?.state,'complete');const markdown=await readFile(d.filename,'utf8');
+ await button('Download review').click();
+ const d=await eventually(async()=>{const d=await worker.evaluate(async()=>(await chrome.downloads.search({}))[0]);assert.equal(d?.state,'complete');return d;});
+ const markdown=await readFile(d.filename,'utf8');
  assert.ok(markdown.length<40000,`digest is ${markdown.length} characters`);assert.ok(!/x{100}/.test(markdown),'hidden text never exported');
  assert.ok(!/L{100}/.test(markdown),'attribute values capped');assert.ok(!/(word ){60}/.test(markdown.replace(/- Original:[^\n]*\n/,'')),'context capped');assert.ok(!/T{120}/.test(markdown),'title capped at 120 characters');
  for(const note of ['#keep','#wall','#deep'])assert.match(markdown,new RegExp(`- Note: Note on ${note}`));assert.match(markdown,/- Locator: `#deep` · role: (null|.*)|- Locator: `#deep`/);

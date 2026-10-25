@@ -25,8 +25,8 @@ try {
  const tabId=await worker.evaluate(async()=>(await chrome.tabs.query({active:true,currentWindow:true}))[0].id);
  const denied=await worker.evaluate(async tabId=>{try {await chrome.scripting.executeScript({target:{tabId},files:['core.js']});return false;}catch{return true;}},tabId);
  assert.equal(denied,true,'Page inaccessible before user invokes action');
- await page.waitForTimeout(500);
- execFileSync('python3',['-c',`
+ // A native Alt+Shift+Y keystroke through the X server, like a person pressing the shortcut.
+ const pressShortcut=()=>execFileSync('python3',['-c',`
 import ctypes, ctypes.util, time
 x=ctypes.CDLL(ctypes.util.find_library('X11')); t=ctypes.CDLL(ctypes.util.find_library('Xtst'))
 x.XOpenDisplay.restype=ctypes.c_void_p; x.XOpenDisplay.argtypes=[ctypes.c_char_p]
@@ -41,9 +41,12 @@ x.XFlush(d);time.sleep(.15)
 for key in reversed(keys):t.XTestFakeKeyEvent(d,key,0,0)
 x.XFlush(d);x.XCloseDisplay(d)
 `]);
- await page.waitForTimeout(500);
+ // The keystroke reaches Chrome only once its window has X input focus, which the page cannot observe
+ // (Playwright emulates document focus). Press again until the panel opens instead of sleeping first.
  // No popup: the action opens the review panel directly through the shipped background handler.
- await page.locator('[data-pagecrit-root]').waitFor({timeout:5000});
+ let opened=false;
+ for(let attempt=0;attempt<5&&!opened;attempt++){pressShortcut();opened=await page.locator('[data-pagecrit-root]').waitFor({timeout:2000}).then(()=>true,()=>false);}
+ assert.ok(opened,'native action shortcut opens the review panel');
  assert.equal(await page.locator('[data-pagecrit-root]').evaluate(el=>el.shadowRoot),null);
  console.log('PASS no host permissions: denied before action, native action opens the closed production panel directly');
  // Same-origin reload: report whether Chrome kept activeTab so the saved review comes back by itself.
