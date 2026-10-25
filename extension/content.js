@@ -45,7 +45,7 @@
     button:focus-visible,textarea:focus-visible,select:focus-visible,.item:focus-visible{outline:2px solid var(--cobalt);outline-offset:2px}
     .panel{font:14px/1.5 var(--sans);color:var(--ink);pointer-events:auto;position:fixed;right:18px;top:18px;width:364px;max-width:calc(100vw - 32px);max-height:calc(100vh - 36px);display:flex;flex-direction:column;background:var(--paper);border:1px solid #e3e4eb;border-radius:22px;box-shadow:0 1px 0 #1f24300a,0 28px 64px -24px #1f243066;overflow:hidden}
     .header{padding:14px 12px 4px 18px;display:flex;gap:8px;align-items:center;cursor:grab;user-select:none;-webkit-user-select:none;touch-action:none}.dragging,.dragging .header{cursor:grabbing}
-    .logo{font-size:19px;line-height:1}.brand{font:700 29px/1 var(--hand);letter-spacing:.2px;flex:1;transform:translateY(1px)}
+    .logo{flex:none;display:block;width:24px;height:24px}.pill .logo{width:22px;height:22px}.brand{font:700 29px/1 var(--hand);letter-spacing:.2px;flex:1;transform:translateY(1px)}
     .smallbutton{border:0;background:transparent;border-radius:999px;color:var(--pencil);width:30px;height:30px;display:grid;place-items:center;font-size:18px;line-height:1}.smallbutton:hover{background:var(--wash);color:var(--ink)}
     .body{overflow:auto;padding:4px 18px 16px}.muted{color:var(--pencil);font-size:13px}
     .modes{display:flex;gap:4px;margin:6px -6px 4px}.mode{flex:1 1 0;display:flex;align-items:center;justify-content:center;gap:7px;border:0;background:transparent;color:var(--pencil);font-size:13px;font-weight:600;padding:8px 6px;border-radius:5px 12px 6px 13px/12px 6px 13px 5px;white-space:nowrap}.mode:not(.active){background:var(--wash)}.mode:hover{color:var(--ink)}
@@ -161,6 +161,22 @@
     state.dock = (rect.top + rect.height / 2 > innerHeight / 2 ? 'b' : 't') + (rect.left + rect.width / 2 > innerWidth / 2 ? 'r' : 'l');
     state.pos = null; render();
   }
+  // The extension icon redrawn as inline SVG: page CSP can block injected images, never inline SVG.
+  function logoMark() {
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', '0 0 100 100'); svg.setAttribute('class', 'logo'); svg.setAttribute('aria-hidden', 'true');
+    for (const [tag, attrs] of [
+      ['rect', { x: 0, y: 2, width: 100, height: 96, rx: 24, fill: '#2f4be0' }],
+      ['path', { d: 'M29 21.5C44 19 61 19 72.5 21.5C79.5 23 81 28 81 37V50C81 58.5 78 62 70 62H59.5L50.5 79L41.5 62H30.5C22.5 62 19.5 58.5 19.5 50V36C19.5 27.5 22 23 29 21.5Z', fill: 'none', stroke: 'white', 'stroke-width': 7, 'stroke-linejoin': 'round' }],
+      ['path', { d: 'M35 54.5C45 51 57 49.5 67 49.5', fill: 'none', stroke: '#ffe36e', 'stroke-width': 7, 'stroke-linecap': 'round' }],
+    ]) {
+      const child = document.createElementNS(ns, tag);
+      for (const [key, value] of Object.entries(attrs)) child.setAttribute(key, String(value));
+      svg.append(child);
+    }
+    return svg;
+  }
   function snapIcon() {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('viewBox', '0 0 16 16'); svg.setAttribute('width', '15'); svg.setAttribute('height', '15'); svg.setAttribute('aria-hidden', 'true');
@@ -226,11 +242,11 @@
     panel.hidden = state.collapsed;
     pill.hidden = !state.collapsed;
     shownCollapsed = state.collapsed;
-    pill.replaceChildren(element('span', 'logo', '📝'), element('span', 'brand', 'Page Notes'), element('span', 'count', String(itemCount())));
+    pill.replaceChildren(logoMark(), element('span', 'brand', 'Page Notes'), element('span', 'count', String(itemCount())));
     pill.setAttribute('aria-label', `Open Page Notes, ${itemCount()} ${itemCount() === 1 ? 'item' : 'items'}`);
     panel.replaceChildren();
     const header = element('header', 'header');
-    header.append(element('span', 'logo', '📝'), element('span', 'brand', 'Page Notes'));
+    header.append(logoMark(), element('span', 'brand', 'Page Notes'));
     const snap = button('', snapToCorner, 'smallbutton snap', 'Snap to nearest corner');
     snap.append(snapIcon()); header.append(snap);
     header.append(button('−', () => { cancelPending(false); state.collapsed = true; state.mode = 'browse'; highlight.style.display = 'none'; render(); }, 'smallbutton', 'Minimize'));

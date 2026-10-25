@@ -204,7 +204,7 @@ try {
   await exportBundle();assert.equal(await ui.locator('.notice').count(),0,'no lingering callout');assert.equal(await ui.locator('.download').textContent(),'✓ Started');assert.match(await ui.locator('.done').textContent(),/^Copy Markdown/,'Copy is the primary action');
   await page.waitForTimeout(2700);assert.equal(await ui.locator('.download').textContent(),'Download');
   assert.equal(await ui.getByRole('button',{name:'Show',exact:true}).count(),0,'no Show buttons');
-  assert.equal(await ui.locator('.header .logo').textContent(),'📝');
+  assert.equal(await ui.locator('.header svg.logo').count(),1);
   await page.evaluate(()=>window.scrollTo(0,document.body.scrollHeight));await page.waitForTimeout(100);
   await ui.locator('article').filter({hasText:'Far note'}).locator('.itemtext').click();await page.waitForTimeout(700);
   const r=await page.locator('#pin3').boundingBox();assert.ok(r.y>0&&r.y<1000,`scrolled to note ${JSON.stringify(r)}`);
