@@ -1,0 +1,12 @@
+// Serves only site/ (the landing page) at pagecrit.dev. Deploy with `npm run deploy:site`.
+{
+  "name": "pagecrit-site",
+  "account_id": "6d8b2018c04692778212668adcd59426",
+  "compatibility_date": "2026-09-01",
+  "assets": { "directory": "./site" },
+  "workers_dev": true,
+  "routes": [
+    { "pattern": "pagecrit.dev", "custom_domain": true },
+    { "pattern": "www.pagecrit.dev", "custom_domain": true }
+  ]
+}

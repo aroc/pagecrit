@@ -103,7 +103,7 @@ npm run test:activation  # Linux only: real toolbar click / activeTab test
 
 **Releasing:** bump the version in `extension/manifest.json`, `package.json` and `VERSION` in `extension/content.js`, then push a matching tag (`git tag v0.2.0 && git push origin v0.2.0`). CI runs every test and publishes the release with `pagecrit.zip` attached; the README's download link always points at the latest one.
 
-`site/` is a static landing page (no build, self-hosted fonts) you can serve from anywhere, e.g. GitHub Pages pointed at `site/`.
+`site/` is the static landing page at [pagecrit.dev](https://pagecrit.dev) (no build, self-hosted fonts). It's a Cloudflare Worker serving only `site/` (`wrangler.jsonc`); `npm run deploy:site` publishes it (needs `CLOUDFLARE_API_TOKEN`).
 
 More in [architecture](docs/architecture.md), [review format](docs/format.md) and [testing](docs/testing.md).
 

@@ -10,7 +10,8 @@
     "check": "node --check extension/core.js && node --check extension/content.js && node --check extension/export.js && node --check extension/background.js",
     "package": "node scripts/package.mjs",
     "test:activation": "xvfb-run -a node tests/activation.mjs",
-    "screenshots": "node scripts/screenshots.mjs"
+    "screenshots": "node scripts/screenshots.mjs",
+    "deploy:site": "npx wrangler@4.152.0 deploy"
   },
   "devDependencies": {
     "playwright": "1.56.1"
