@@ -95,5 +95,28 @@ try {
  await run('snapshot remains inert even when the live page removed its head',`<p>Body remains</p>`,async()=>{
    const value=await page.evaluate(()=>{document.head.remove();return PageNotesCore.snapshotDocument();});assert.match(value,/Content-Security-Policy/);assert.match(value,/Body remains/);
  });
+ await run('review context: ranked locators, landmark + heading path, text quote, occurrences, bounded excerpt, non-hashed classes',`<header><h1>Site</h1></header><main><h1>Pricing</h1><section aria-label="Plans"><h2>Compare plans</h2><div data-testid="plan-pro" class="card css-1x9f3k p-4 Card_card__ab12c"><h3>Pro</h3><p class="price">$29/mo</p><p class="p-4 gap-6">Billed annually, cancel anytime</p><a href="/signup?token=SYNTHETIC#x" class="btn">Learn more</a></div><div><a href="/a">Learn more</a></div></section><p id="dup">Learn more about plans</p><button aria-label="Close dialog">×</button></main><footer><p>Billed annually, cancel anytime</p></footer><script>window.SECRET_SCRIPT_TEXT=1</script>`,async()=>{
+   const v=await page.evaluate(()=>{const c=PageNotesCore;const card=document.querySelector('[data-testid=plan-pro]');const billed=card.querySelectorAll('p')[1];
+     return{billed:c.captureContext(billed),card:c.captureContext(card),node:c.captureContext(billed,billed.firstChild),link:c.captureContext(card.querySelector('a')),close:c.captureContext(document.querySelector('button')),dup:c.captureContext(document.querySelector('#dup')),hashed:['css-1x9f3k','Card_card__ab12c','sc-bdVaJa','kDmHYo','p-4','md:grid-cols-3','w-[320px]','text-slate-700','btn-primary','h1'].map(c.isHashedToken)};});
+   assert.deepEqual(v.billed.locator,{selector:'div[data-testid="plan-pro"] > p:nth-of-type(2)',strategy:'path'});
+   assert.equal(v.billed.role,'paragraph');assert.equal(v.billed.landmark,'main');assert.deepEqual(v.billed.section,['Pricing','Compare plans','Pro']);
+   assert.deepEqual(v.billed.ancestors,['main','section[aria-label="Plans"]','div[data-testid="plan-pro"]']);
+   assert.equal(v.billed.quote.exact,'Billed annually, cancel anytime');assert.match(v.billed.quote.prefix,/Pro \$29\/mo $/);assert.match(v.billed.quote.suffix,/^ Learn more/);
+   assert.equal(v.billed.occurrences,2,'also in footer');assert.equal(v.billed.classes,'p-4 gap-6');
+   assert.deepEqual(v.card.locator,{selector:'div[data-testid="plan-pro"]',strategy:'test id'});assert.equal(v.card.classes,'card p-4');
+   assert.ok(v.card.excerpt.length<=300);assert.match(v.card.excerpt,/^<div data-testid="plan-pro" class="card p-4"><h3>Pro<\/h3><p class="price">\$29\/mo<\/p>/);assert.ok(!v.card.excerpt.includes('css-1x9f3k'));
+   assert.match(v.link.excerpt,/href="\/signup"/);assert.ok(!JSON.stringify(v).includes('SYNTHETIC'),'query strings stripped');assert.ok(!JSON.stringify(v).includes('SECRET_SCRIPT_TEXT'));
+   assert.equal(v.link.role,'link');assert.equal(v.link.name,'Learn more');assert.equal(v.link.occurrences,3);
+   assert.deepEqual(v.close.locator,{selector:'role=button[name="Close dialog"]',strategy:'role and name'});assert.equal(v.close.landmark,'main');
+   assert.deepEqual(v.dup.locator,{selector:'#dup',strategy:'id'});assert.equal(v.node.quote.exact,'Billed annually, cancel anytime');
+   assert.deepEqual(v.hashed,[true,true,true,true,false,false,false,false,false,false]);
+ });
+ await run('review context stays bounded on adversarial pages: huge text, deep nesting, long attributes',`<main id=m></main>`,async()=>{
+   const v=await page.evaluate(()=>{const m=document.querySelector('#m');let el=m;for(let i=0;i<400;i++){const d=document.createElement('div');el.append(d);el=d;}
+     el.textContent='word '.repeat(200000);el.setAttribute('aria-label','L'.repeat(100000));el.className=Array.from({length:5000},(_,i)=>'c'+i).join(' ');
+     const h=document.createElement('h2');h.textContent='H'.repeat(50000);m.prepend(h);
+     const t=performance.now();const ctx=PageNotesCore.captureContext(el,el.firstChild);return{ms:performance.now()-t,size:JSON.stringify(ctx).length,ctx};});
+   assert.ok(v.size<3000,`context ${v.size} bytes`);assert.ok(v.ms<1500,`${v.ms}ms`);assert.ok(v.ctx.quote.exact.length<=200);assert.ok(v.ctx.section[0].length<=60);assert.ok(v.ctx.locator.selector.length<=300);assert.ok(v.ctx.ancestors.length<=4);
+ });
 } finally { await browser.close(); }
 const failed=cases.filter(t=>!t.pass);console.log(`${cases.length-failed.length}/${cases.length} adversarial core browser groups passed`);if(failed.length)process.exitCode=1;

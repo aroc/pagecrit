@@ -368,7 +368,245 @@
     return last ? { node: last, offset: last.length } : null;
   }
 
-  // `omit`: live elements left out of the snapshot (sections the reviewer removed).
+  // ---- Review context: just enough for an agent to locate, understand and verify one item.
+  // Captured when the item is created (before any preview change). Every field is capped.
+  const TEST_ATTRS = ['data-testid', 'data-test-id', 'data-test', 'data-cy', 'data-qa'];
+  const SKIP_TEXT = 'script,style,noscript,template,textarea,select,option,' + ROOT;
+  const clip = (text, max) => {
+    const value = String(text || '').replace(/\s+/g, ' ').trim();
+    return value.length > max ? value.slice(0, max - 1).trimEnd() + '…' : value;
+  };
+  // Build-tool hashes (css-1x9f3k, Card_card__ab12c, sc-bdVaJa) can't be found in source.
+  function isHashedToken(token) {
+    if (!token || /[[\]:/.]/.test(token)) return false;
+    if (/^(css|sc|jsx|svelte|emotion|chakra)-/i.test(token) && token.length > 6) return true;
+    if (token.split(/[-_]+/).some(part => part.length >= 4 && /\d/.test(part) && /[a-z]/i.test(part))) return true;
+    return /^[a-z]+[A-Z][a-zA-Z]*$/.test(token) && token.length <= 8 && (token.match(/[A-Z]/g) || []).length >= 2;
+  }
+  const cssString = value => String(value).replace(/["\\]/g, '\\$&').replace(/\n/g, ' ');
+  function stableAttribute(el) {
+    for (const name of TEST_ATTRS) { const value = el.getAttribute(name); if (value) return `[${name}="${cssString(clip(value, 80))}"]`; }
+    if (el.id && !isHashedToken(el.id) && el.id.length <= 80) return '#' + escapeIdentifier(el.id);
+    return null;
+  }
+  const IMPLICIT_ROLES = { button: 'button', nav: 'navigation', main: 'main', header: 'banner', footer: 'contentinfo', aside: 'complementary', dialog: 'dialog', ul: 'list', ol: 'list', li: 'listitem', p: 'paragraph', img: 'img', table: 'table', textarea: 'textbox', select: 'combobox', article: 'article', form: 'form', h1: 'heading', h2: 'heading', h3: 'heading', h4: 'heading', h5: 'heading', h6: 'heading' };
+  function roleOf(el) {
+    const explicit = (el.getAttribute('role') || '').trim().split(/\s+/)[0];
+    if (explicit) return explicit;
+    if (el.localName === 'a') return el.hasAttribute('href') ? 'link' : null;
+    if (el.localName === 'input') return ({ checkbox: 'checkbox', radio: 'radio', range: 'slider', button: 'button', submit: 'button', reset: 'button', search: 'searchbox' })[el.type] || 'textbox';
+    if (el.localName === 'section') return accessibleName(el, false) ? 'region' : null;
+    return IMPLICIT_ROLES[el.localName] || null;
+  }
+  // Never reads form values; only labels and visible text of named-by-content roles.
+  function accessibleName(el, fromContent = true) {
+    const label = el.getAttribute('aria-label');
+    if (label) return clip(label, 80);
+    const labelledBy = el.getAttribute('aria-labelledby');
+    if (labelledBy) {
+      const text = labelledBy.split(/\s+/).map(id => docFor(el).getElementById(id)?.textContent || '').join(' ');
+      if (text.trim()) return clip(text, 80);
+    }
+    if (el.localName === 'img' && el.getAttribute('alt')) return clip(el.getAttribute('alt'), 80);
+    if (fromContent && /^(a|button|h[1-6]|summary|label|legend|th|td|li|option)$/.test(el.localName)) {
+      const text = clip(el.textContent, 80);
+      if (text) return text;
+    }
+    return el.getAttribute('title') ? clip(el.getAttribute('title'), 80) : '';
+  }
+  function nthPart(el) {
+    const tag = escapeIdentifier(el.localName);
+    const siblings = el.parentElement ? Array.from(el.parentElement.children).filter(child => child.localName === el.localName) : [];
+    return siblings.length > 1 ? `${tag}:nth-of-type(${siblings.indexOf(el) + 1})` : tag;
+  }
+  function stableLabel(el) {
+    const stable = stableAttribute(el);
+    if (stable) return stable.startsWith('#') ? el.localName + stable : el.localName + stable;
+    const role = el.getAttribute('role');
+    if (role) return `${el.localName}[role="${cssString(clip(role, 40))}"]`;
+    const label = el.getAttribute('aria-label');
+    return label ? `${el.localName}[aria-label="${cssString(clip(label, 40))}"]` : el.localName;
+  }
+  // Ranked: test id › id › role + accessible name › short tag path from a stable ancestor.
+  function stableLocator(el) {
+    const document = docFor(el);
+    const unique = selector => { try { return document.querySelectorAll(selector).length === 1; } catch (_) { return false; } };
+    const own = stableAttribute(el);
+    if (own) {
+      const selector = own.startsWith('#') ? own : el.localName + own;
+      if (unique(selector)) return { selector, strategy: own.startsWith('#') ? 'id' : 'test id' };
+    }
+    const role = roleOf(el), name = accessibleName(el);
+    if (role && name) {
+      const same = Array.from(document.getElementsByTagName(el.localName)).filter(other => roleOf(other) === role && accessibleName(other) === name);
+      if (same.length === 1) return { selector: `role=${role}[name="${cssString(name)}"]`, strategy: 'role and name' };
+    }
+    const parts = [];
+    for (let current = el; current && current.nodeType === 1 && current !== document.documentElement; current = current.parentElement) {
+      const stable = current !== el && stableAttribute(current);
+      if (stable) { parts.unshift(stable.startsWith('#') ? stable : current.localName + stable); break; }
+      parts.unshift(nthPart(current));
+      if (parts.length >= 6) break;
+    }
+    const short = parts.join(' > ');
+    if (short.length <= 200 && unique(short)) return { selector: short, strategy: 'path' };
+    return { selector: clip(selectorFor(el), 300), strategy: 'full path' };
+  }
+  // Page-level landmarks only; named sections are already covered by the heading path.
+  const LANDMARKS = { banner: 'header', navigation: 'nav', main: 'main', contentinfo: 'footer', complementary: 'aside', dialog: 'dialog', alertdialog: 'dialog' };
+  function landmarkOf(el) {
+    for (let current = el; current && current.nodeType === 1; current = current.parentElement) {
+      const role = roleOf(current);
+      if (!LANDMARKS[role]) continue;
+      // header/footer are page landmarks only outside article/section/main.
+      if ((role === 'banner' || role === 'contentinfo') && !current.getAttribute('role') && current.parentElement?.closest('article,aside,main,nav,section')) continue;
+      const name = accessibleName(current, false);
+      return { element: current, label: LANDMARKS[role] + (name ? ` "${clip(name, 40)}"` : '') };
+    }
+    return null;
+  }
+  function headingLevel(heading) { return /^h[1-6]$/.test(heading.localName) ? Number(heading.localName[1]) : Number(heading.getAttribute('aria-level')) || 2; }
+  // The outline above an element: nearest preceding heading, then each shallower one before it.
+  function sectionPath(el, landmark) {
+    const scope = landmark || docFor(el).body || docFor(el).documentElement;
+    const headings = Array.from(scope.querySelectorAll('h1,h2,h3,h4,h5,h6,[role="heading"]'));
+    const chain = [];
+    let limit = 7;
+    for (let i = headings.length - 1; i >= 0 && chain.length < 4; i--) {
+      const heading = headings[i];
+      if (heading === el || heading.contains(el) || el.contains(heading)) continue;
+      if (!(heading.compareDocumentPosition(el) & 4 /* FOLLOWING */)) continue;
+      const level = headingLevel(heading);
+      if (level >= limit) continue;
+      const text = clip(heading.textContent, 60);
+      if (text) chain.unshift(text);
+      limit = level;
+      if (level === 1) break;
+    }
+    return chain;
+  }
+  function blockOf(node) {
+    const win = winFor(node.parentElement);
+    for (let el = node.parentElement; el; el = el.parentElement) {
+      const display = win.getComputedStyle ? win.getComputedStyle(el).display : 'block';
+      if (!display.startsWith('inline') && display !== 'contents') return el;
+    }
+    return null;
+  }
+  // W3C text-quote selector: exact text plus ~80 characters either side, skipping hidden/script text.
+  function textQuote(subject) {
+    const document = docFor(subject.nodeType === 3 ? subject.parentElement : subject);
+    const exact = clip(subject.nodeType === 3 ? subject.data : (subject.innerText ?? subject.textContent), 200);
+    const scope = (subject.nodeType === 3 ? subject.parentElement : subject).closest('section,article,main,li,tr,form,aside,nav,header,footer,dialog') || document.body;
+    if (!scope) return { exact, prefix: '', suffix: '' };
+    const walker = document.createTreeWalker(scope, 4 /* SHOW_TEXT */, { acceptNode: node => node.parentElement?.closest(SKIP_TEXT) || !node.data.trim() ? 2 : 1 });
+    const collect = (step, start) => {
+      const parts = [];
+      let length = 0, previous = start, node;
+      walker.currentNode = start;
+      while (length < 120 && (node = step())) {
+        if (subject.nodeType === 1 && subject.contains(node)) continue;
+        // Separate words across block boundaries ("day." + "Keep" -> "day. Keep").
+        const gap = blockOf(node) !== blockOf(previous) ? ' ' : '';
+        parts.push([node.data, gap]);
+        length += node.data.length; previous = node;
+      }
+      return parts;
+    };
+    const firstText = subject.nodeType === 3 ? subject : (document.createTreeWalker(subject, 4).nextNode() || subject);
+    const before = collect(() => walker.previousNode(), firstText).reverse().map(([text, gap]) => text + gap).join('');
+    let lastText = subject;
+    if (subject.nodeType === 1) { const all = document.createTreeWalker(subject, 4); for (let n = all.nextNode(); n; n = all.nextNode()) lastText = n; }
+    const after = collect(() => walker.nextNode(), lastText).map(([text, gap]) => gap + text).join('');
+    const prefix = String(before).replace(/\s+/g, ' ').trimStart().slice(-80);
+    const suffix = String(after).replace(/\s+/g, ' ').trimEnd().slice(0, 80);
+    return { exact, prefix: prefix.length === 80 ? prefix.replace(/^\S*\s/, '') : prefix, suffix: suffix.length === 80 ? suffix.replace(/\s\S*$/, '') : suffix };
+  }
+  function countOccurrences(text, document) {
+    const needle = clip(text, 200).replace(/…$/, '');
+    if (needle.length < 3 || !document.body) return null;
+    const haystack = String(document.body.innerText || '').replace(/\s+/g, ' ');
+    let count = 0;
+    for (let at = haystack.indexOf(needle); at !== -1 && count < 99; at = haystack.indexOf(needle, at + needle.length)) count++;
+    return count;
+  }
+  function cleanUrl(value, base) {
+    try {
+      const url = new URL(value, base);
+      if (!['http:', 'https:'].includes(url.protocol)) return null;
+      url.username = ''; url.password = ''; url.search = ''; url.hash = '';
+      return url.origin === new URL(base).origin ? url.pathname : url.href;
+    } catch (_) { return null; }
+  }
+  const escapeAttribute = value => String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  function openTag(el) {
+    const attrs = [];
+    const keep = (name, value) => { if (value) attrs.push(`${name}="${escapeAttribute(clip(value, 60))}"`); };
+    if (el.id && !isHashedToken(el.id)) keep('id', el.id);
+    for (const name of TEST_ATTRS) keep(name, el.getAttribute(name));
+    const classes = classList(el);
+    if (classes) keep('class', classes);
+    for (const name of ['role', 'aria-label', 'alt', 'type', 'name', 'for', 'title']) keep(name, el.getAttribute(name));
+    if (el.hasAttribute('href')) keep('href', cleanUrl(el.getAttribute('href'), docFor(el).baseURI) || '…');
+    return `<${el.localName}${attrs.length ? ' ' + attrs.join(' ') : ''}>`;
+  }
+  const VOID = /^(area|base|br|col|embed|hr|img|input|link|meta|source|track|wbr)$/;
+  // One level of children; anything deeper is elided. Attribute values and text are capped.
+  function elementExcerpt(el, max = 300) {
+    const escapeText = text => text.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    let inner = '';
+    for (const child of el.childNodes) {
+      if (inner.length > max) break;
+      if (child.nodeType === 3) {
+        const text = clip(child.data, 60);
+        if (text) inner += escapeText((/^\s/.test(child.data) ? ' ' : '') + text + (/\s$/.test(child.data) ? ' ' : ''));
+      }
+      else if (child.nodeType === 1 && !child.matches(SKIP_TEXT)) {
+        const onlyText = Array.from(child.childNodes).every(node => node.nodeType === 3);
+        inner += openTag(child) + (VOID.test(child.localName) ? '' : (onlyText ? escapeText(clip(child.textContent, 40)) : '…') + `</${child.localName}>`);
+      }
+    }
+    const html = openTag(el) + (VOID.test(el.localName) ? '' : inner + `</${el.localName}>`);
+    return html.length > max ? html.slice(0, max - 1) + '…' : html;
+  }
+  function classList(el) {
+    const value = typeof el.className === 'string' ? el.className : el.getAttribute('class') || '';
+    return clip(value.split(/\s+/).filter(token => token && !isHashedToken(token)).join(' '), 200);
+  }
+  // Inline markup of an element's content (tags only, no attributes), e.g. "Save <strong>20%</strong> yearly".
+  function inlineMarkup(el, max = 400) {
+    const INLINE = /^(a|strong|b|em|i|u|s|del|ins|code|mark|small|sub|sup|br)$/;
+    const walk = node => {
+      if (node.nodeType === 3) return node.data.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+      if (node.nodeType !== 1 || node.matches(SKIP_TEXT)) return '';
+      const inner = Array.from(node.childNodes).map(walk).join('');
+      if (node.localName === 'br') return '<br>';
+      return INLINE.test(node.localName) ? `<${node.localName}>${inner}</${node.localName}>` : inner;
+    };
+    const html = Array.from(el.childNodes).map(walk).join('').replace(/\s+/g, ' ').trim();
+    return html.length > max ? html.slice(0, max - 1) + '…' : html;
+  }
+  function captureContext(el, textNode) {
+    const landmark = landmarkOf(el);
+    const quote = textQuote(textNode || el);
+    const ancestors = [];
+    for (let current = el.parentElement; current && ancestors.length < 4 && current !== docFor(el).body && current !== docFor(el).documentElement; current = current.parentElement) ancestors.unshift(stableLabel(current));
+    return {
+      tag: el.localName,
+      locator: stableLocator(el),
+      role: roleOf(el) || null,
+      name: accessibleName(el) || null,
+      landmark: landmark?.label || null,
+      section: sectionPath(el, landmark?.element),
+      ancestors,
+      classes: classList(el),
+      excerpt: elementExcerpt(el),
+      quote,
+      occurrences: quote.exact ? countOccurrences(quote.exact, docFor(el)) : null,
+    };
+  }
+
+
   function snapshotDocument({ omit = [] } = {}) {
     const document = root.document;
     if (!document?.documentElement) throw new Error('No page document available');
@@ -435,6 +673,7 @@
 
   const api = {
     MARKS, plainModel, modelFrom, marksAt, replaceRange, toggleMark, modelRuns, modelFormatting, modelsEqual, modelHtml,
+    captureContext, inlineMarkup, isHashedToken, cleanUrl,
     createSegment, segmentCurrent, segmentContains, segmentTextNodes, renderSegment, readSegment, segmentOffset, segmentPosition,
     describeElement, scrollContainerFor, createAnchor, resolveAnchor, findElement, snapshotDocument, caretAtPoint, locateTextNodeAtPoint, describeTextNode, resolveTextNode, isEditableTextNode, applyTextEdit };
   root.PageNotesCore = Object.freeze(api);
