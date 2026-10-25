@@ -30,10 +30,10 @@ try {
  assert.ok(result.length<=1000);assert.ok(result.bytes<=512*1024);assert.ok(result.omitted>5000);assert.equal(result.comments,1);
  await mkdir(path.join(temp,'downloads'));const cdp=await context.newCDPSession(page);await cdp.send('Browser.setDownloadBehavior',{behavior:'allow',downloadPath:path.join(temp,'downloads')});
  async function download(button,status){const ids=await worker.evaluate(async()=>(await chrome.downloads.search({})).map(d=>d.id));await ui.getByRole('button',{name:button,exact:true}).click();await ui.getByRole('status').filter({hasText:status}).waitFor();let d;for(let i=0;i<50;i++){d=await worker.evaluate(async ids=>(await chrome.downloads.search({})).find(d=>!ids.includes(d.id)),ids);if(d?.state==='complete')break;await page.waitForTimeout(100);}assert.equal(d?.state,'complete');return JSON.parse(await readFile(d.filename,'utf8'));}
- const ordinary=await download('Done · Download review','Download started');assert.equal(ordinary.comments.length,1);assert.ok(ordinary.historyOmitted>5000);assert.ok(ordinary.history.length<=1000);
+ const ordinary=await download('Download review','Download started');assert.equal(ordinary.comments.length,1);assert.ok(ordinary.historyOmitted>5000);assert.ok(ordinary.history.length<=1000);
  console.log('PASS 6,000 history events stay bounded; active feedback preserved and export completes');
  page.on('dialog',d=>d.accept());await page.goto(base+'large');await inject();await addNote();
- await ui.getByRole('button',{name:'Done · Download review',exact:true}).click();await ui.getByRole('button',{name:'Download feedback only',exact:true}).waitFor();
+ await ui.getByRole('button',{name:'Download review',exact:true}).click();await ui.getByRole('button',{name:'Download feedback only',exact:true}).waitFor();
  const light=await download('Download feedback only','Feedback-only download started');
  assert.equal(light.snapshots.omitted,true);assert.equal(light.snapshots.originalHtml,'');assert.equal(light.comments[0].text,'A note that must survive export problems.');assert.equal(light.history.length,0);assert.match(light.warnings.join('\n'),/Feedback-only/);
  assert.equal(await ui.locator('article').count(),1);

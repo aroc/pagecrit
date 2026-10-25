@@ -15,7 +15,24 @@ const destinations = {
     return {ok: true, downloadId: id};
   }
 };
+// The overlay's handwriting face ships inside the extension. Handing the bytes over here
+// avoids web_accessible_resources, so pages cannot probe for the extension.
+let fontData = null;
+async function handFont() {
+  if (!fontData) {
+    const bytes = new Uint8Array(await (await fetch(chrome.runtime.getURL('fonts/caveat-latin.woff2'))).arrayBuffer());
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    fontData = btoa(binary);
+  }
+  return {ok: true, data: fontData};
+}
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
+  if (message?.type === 'PAGE_NOTES_FONT') {
+    if (sender.id !== chrome.runtime.id || !sender.tab) return;
+    handFont().then(respond).catch(() => respond({ok: false}));
+    return true;
+  }
   if (message?.type !== 'PAGE_NOTES_EXPORT') return;
   // Only our injected top-frame script can request a local export. No external messaging API.
   if (sender.id !== chrome.runtime.id || !sender.tab || sender.frameId !== 0 || !/^https?:\/\//i.test(sender.url || '')) {

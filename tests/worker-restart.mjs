@@ -66,7 +66,7 @@ try {
   await eventually(() => lastWorkerState === 'stopped', 'Worker did not stop');
 
   const { nodes } = await cdp.send('Accessibility.getFullAXTree');
-  const done = nodes.find(node => node.role?.value === 'button' && node.name?.value === 'Done · Download review');
+  const done = nodes.find(node => node.role?.value === 'button' && node.name?.value === 'Download review');
   assert.ok(done, 'Done is accessible in the production closed shadow root');
   const { model } = await cdp.send('DOM.getBoxModel', { backendNodeId: done.backendDOMNodeId });
   const quad = model.border;

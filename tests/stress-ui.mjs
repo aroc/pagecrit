@@ -36,7 +36,7 @@ try {
   const typeInline=async value=>{await page.keyboard.press('ControlOrMeta+A');if(value)await page.keyboard.insertText(value);else await page.keyboard.press('Backspace');};
   const editing=()=>page.locator('[contenteditable="plaintext-only"]').count();
   const edit=async(selector,value,index=0)=>{await button('Aa Edit text').click();await clickText(selector,index);await typeInline(value);await button('Save').click();};
-  const exportBundle=async()=>{const before=await worker.evaluate(async()=>(await chrome.downloads.search({})).map(d=>d.id));await button('Done · Download review').click();await ui.getByRole('status').filter({hasText:'Download started'}).waitFor();let d;for(let i=0;i<40;i++){d=await worker.evaluate(async before=>(await chrome.downloads.search({})).find(d=>!before.includes(d.id)),before);if(d?.state==='complete')break;await page.waitForTimeout(75);}assert.equal(d?.state,'complete');return JSON.parse(await readFile(d.filename,'utf8'));};
+  const exportBundle=async()=>{const before=await worker.evaluate(async()=>(await chrome.downloads.search({})).map(d=>d.id));await button('Download review').click();await ui.getByRole('status').filter({hasText:'Download started'}).waitFor();let d;for(let i=0;i<40;i++){d=await worker.evaluate(async before=>(await chrome.downloads.search({})).find(d=>!before.includes(d.id)),before);if(d?.state==='complete')break;await page.waitForTimeout(75);}assert.equal(d?.state,'complete');return JSON.parse(await readFile(d.filename,'utf8'));};
   return{page,ui,button,clickText,edit,typeInline,editing,exportBundle,inject,tab};
  }
  async function test(name,run){let env;try{env=await setup();await run(env);checks++;console.log('PASS',name);}catch(e){failures.push({name,error:e.stack});console.error('FAIL',name,e.message);}finally{if(env)await env.page.close({runBeforeUnload:false});}}
@@ -114,7 +114,7 @@ try {
   await dragBy(ui.locator('.header'),-2000,-2000);b=await panel.boundingBox();assert.ok(b.y>=0&&b.x+b.width>=47,`top-left clamp ${JSON.stringify(b)}`);
   // Only the header buttons remain visible here; they still work as a drag handle without being clicked.
   await dragBy(ui.locator('.header'),300,600);await button('Snap to nearest corner').click();b=await panel.boundingBox();assert.ok(Math.abs(b.x-18)<1&&Math.abs(b.y+b.height-(vh-18))<1,`bottom-left ${JSON.stringify(b)}`);
-  await button('Minimize').click();const pill=ui.getByRole('button',{name:/Page Notes ·/});let p=await pill.boundingBox();assert.ok(Math.abs(p.x-18)<1&&Math.abs(p.y+p.height-(vh-18))<1,'pill docked bottom-left');
+  await button('Minimize').click();const pill=ui.getByRole('button',{name:/Open Page Notes/});let p=await pill.boundingBox();assert.ok(Math.abs(p.x-18)<1&&Math.abs(p.y+p.height-(vh-18))<1,'pill docked bottom-left');
   await dragBy(pill,400,-500);p=await pill.boundingBox();assert.ok(Math.abs(p.x-418)<1.5,`pill dragged ${JSON.stringify(p)}`);assert.equal(await panel.isVisible(),false,'dragging the pill does not expand it');
   await pill.click();assert.equal(await panel.isVisible(),true,'plain click expands');b=await panel.boundingBox();assert.ok(Math.abs(b.x-p.x)<1.5&&Math.abs(b.y-p.y)<1.5,'expands where the pill was');
   await dragBy(ui.locator('.header'),20,-400);await button('Snap to nearest corner').click();b=await panel.boundingBox();assert.ok(Math.abs(b.x-18)<1&&Math.abs(b.y-18)<1,`top-left ${JSON.stringify(b)}`);
@@ -196,9 +196,9 @@ try {
  await test('download confirms on the button only, and clicking a review row scrolls to it',async({page,ui,button,clickText,edit,exportBundle})=>{
   await edit('#plain','Changed copy');await button('⊕ Pin').click();await clickText('#pin3');await ui.locator('textarea').fill('Far note');await button('Save').click();
   await exportBundle();assert.equal(await ui.locator('.notice').count(),0,'no lingering callout');assert.match(await ui.locator('.done').first().textContent(),/✓ Download started/);
-  await page.waitForTimeout(2700);assert.equal(await ui.locator('.done').first().textContent(),'Done · Download review');
+  await page.waitForTimeout(2700);assert.equal(await ui.locator('.done').first().textContent(),'Download review');
   assert.equal(await ui.getByRole('button',{name:'Show',exact:true}).count(),0,'no Show buttons');
-  assert.equal(await ui.locator('.logo').textContent(),'📝');
+  assert.equal(await ui.locator('.header .logo').textContent(),'📝');
   await page.evaluate(()=>window.scrollTo(0,document.body.scrollHeight));await page.waitForTimeout(100);
   await ui.locator('article').filter({hasText:'Far note'}).locator('.itemtext').click();await page.waitForTimeout(700);
   const r=await page.locator('#pin3').boundingBox();assert.ok(r.y>0&&r.y<1000,`scrolled to note ${JSON.stringify(r)}`);
@@ -216,7 +216,7 @@ try {
   await page.mouse.click(b.x+10,b.y+b.height/2);
   assert.equal(await page.locator('#pin2').isVisible(),false);assert.ok((await page.locator('#pin3').boundingBox()).y<next.y,'content below moves up');
   const row=ui.locator('article').filter({hasText:'Removed p#pin2'});assert.equal(await row.locator('.itemtext').textContent(),'Second comment target');assert.match(await row.textContent(),/Second comment target/);
-  assert.match(await ui.getByRole('button',{name:/Page Notes ·/,includeHidden:true}).textContent(),/· 1/);
+  assert.equal(await ui.locator('.pill .count').textContent(),'1');
   // A site button is removed without running its click handler; html/body are never removable.
   const bt=await page.locator('#button').boundingBox();await page.mouse.click(bt.x+5,bt.y+5);assert.equal(await page.evaluate(()=>window.siteActions),0);assert.equal(await page.locator('#button').isVisible(),false);
   const bundle=await exportBundle();assert.equal(bundle.removals.length,2);assert.equal(bundle.removals[0].element.id,'pin2');assert.equal(bundle.removals[0].previewState,'applied');
@@ -242,8 +242,8 @@ try {
  });
  await test('Escape, switching mode, minimize all restore pending preview and keep saved edit',async({page,ui,button,clickText,edit,typeInline,editing,exportBundle})=>{
   await edit('#plain','Saved value');
-  for(const action of ['escape','mode','minimize']){await button('Aa Edit text').click();await clickText('#plain');await typeInline(`Pending ${action}`);assert.equal(await page.locator('#plain').textContent(),`Pending ${action}`);assert.equal(await button('Done · Download review').isEnabled(),false);
-   if(action==='escape')await page.keyboard.press('Escape');if(action==='mode')await button('⊕ Pin').click();if(action==='minimize'){await button('Minimize').click();await ui.getByRole('button',{name:/Page Notes ·/}).click();}
+  for(const action of ['escape','mode','minimize']){await button('Aa Edit text').click();await clickText('#plain');await typeInline(`Pending ${action}`);assert.equal(await page.locator('#plain').textContent(),`Pending ${action}`);assert.equal(await button('Download review').isEnabled(),false);
+   if(action==='escape')await page.keyboard.press('Escape');if(action==='mode')await button('⊕ Pin').click();if(action==='minimize'){await button('Minimize').click();await ui.getByRole('button',{name:/Open Page Notes/}).click();}
    assert.equal(await page.locator('#plain').textContent(),'Saved value');assert.equal(await editing(),0);assert.equal(await page.locator('#plain').getAttribute('contenteditable'),null);
   }assert.equal((await exportBundle()).edits[0].after,'Saved value');
  });
@@ -264,9 +264,9 @@ try {
   const initial=page.url();await edit('#plain','Old route requested value');await page.evaluate(()=>{history.pushState({},'','/new-route');document.title='New route title';document.querySelector('#plain').textContent='New route paragraph';});await ui.getByRole('status').filter({hasText:'navigated within'}).waitFor();const bundle=await exportBundle();assert.equal(bundle.page.url,initial);assert.ok(bundle.warnings.some(w=>w.includes('URL changed')));assert.equal(bundle.edits[0].previewState,'page-changed');await button('Close review').click();await button('Discard & close').click();await inject();const fresh=await exportBundle();assert.equal(fresh.page.url,new URL('/new-route',initial).href);assert.equal(fresh.page.title,'New route title');assert.equal(fresh.edits.length,0);assert.match(fresh.snapshots.originalHtml,/New route paragraph/);
  });
  await test('small viewport controls remain reachable when the note editor and review list are tall',async({page,ui,button,clickText})=>{
-  await page.setViewportSize({width:390,height:500});const h=await ui.locator('.header').boundingBox();await page.mouse.move(h.x+40,h.y+15);await page.mouse.down();await page.mouse.move(h.x-60,h.y+120,{steps:5});await page.mouse.up();await button('Snap to nearest corner').click();await button('Minimize').click();await page.locator('#deep').scrollIntoViewIfNeeded();await ui.getByRole('button',{name:/Page Notes ·/}).click();
-  for(const name of ['Aa Edit text','⊕ Pin','Browse','Done · Download review','Close review']){assert.equal(await button(name).isVisible(),true,name);const b=await button(name).boundingBox();assert.ok(b.x>=0&&b.x+b.width<=391&&b.y>=0&&b.y+b.height<=501,`${name}: ${JSON.stringify(b)}`);}
-  await button('⊕ Pin').click();await page.mouse.click(370,300);await ui.locator('textarea').fill('Long note\n'.repeat(80));await button('Save').click();assert.match(await ui.locator('article').textContent(),/Long note/);const footer=await button('Done · Download review').boundingBox();assert.ok(footer.y+footer.height<=501);
+  await page.setViewportSize({width:390,height:500});const h=await ui.locator('.header').boundingBox();await page.mouse.move(h.x+40,h.y+15);await page.mouse.down();await page.mouse.move(h.x-60,h.y+120,{steps:5});await page.mouse.up();await button('Snap to nearest corner').click();await button('Minimize').click();await page.locator('#deep').scrollIntoViewIfNeeded();await ui.getByRole('button',{name:/Open Page Notes/}).click();
+  for(const name of ['Aa Edit text','⊕ Pin','Browse','Download review','Close review']){assert.equal(await button(name).isVisible(),true,name);const b=await button(name).boundingBox();assert.ok(b.x>=0&&b.x+b.width<=391&&b.y>=0&&b.y+b.height<=501,`${name}: ${JSON.stringify(b)}`);}
+  await button('⊕ Pin').click();await page.mouse.click(370,300);await ui.locator('textarea').fill('Long note\n'.repeat(80));await button('Save').click();assert.match(await ui.locator('article').textContent(),/Long note/);const footer=await button('Download review').boundingBox();assert.ok(footer.y+footer.height<=501);
  });
 
  await test('distinct text nodes within the same element retain separate before/after locators',async({page,ui,button,edit,exportBundle})=>{
@@ -280,7 +280,7 @@ try {
  await test('page-script clicks, input events and export actions cannot drive review UI',async({page,ui,button,clickText,typeInline,editing,exportBundle})=>{
   await button('Aa Edit text').evaluate(el=>el.click());assert.equal(await button('Browse').getAttribute('aria-pressed'),'true');
   await button('Aa Edit text').click();await clickText('#plain');await typeInline('Actual trusted edit');await page.locator('#plain').evaluate(el=>{for(const type of ['beforeinput','input'])el.dispatchEvent(new InputEvent(type,{bubbles:true,cancelable:true,composed:true,inputType:'insertText',data:'Forged'}));el.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));});assert.equal(await page.locator('#plain').textContent(),'Actual trusted edit');await button('Save').evaluate(el=>el.click());assert.equal(await editing(),1);await button('Save').click();assert.equal(await page.locator('#plain').textContent(),'Actual trusted edit');
-  const before=await worker.evaluate(async()=>(await chrome.downloads.search({})).length);await button('Done · Download review').evaluate(el=>el.click());await page.waitForTimeout(100);assert.equal(await worker.evaluate(async()=>(await chrome.downloads.search({})).length),before);assert.equal((await exportBundle()).edits[0].after,'Actual trusted edit');
+  const before=await worker.evaluate(async()=>(await chrome.downloads.search({})).length);await button('Download review').evaluate(el=>el.click());await page.waitForTimeout(100);assert.equal(await worker.evaluate(async()=>(await chrome.downloads.search({})).length),before);assert.equal((await exportBundle()).edits[0].after,'Actual trusted edit');
  });
  await test('actual clipboard paste remains plain text and preserves literal HTML',async({page,ui,button,clickText,exportBundle})=>{
   const pasted='Clipboard 🦆\n<strong>not markup</strong>\n"quotes" & apostrophe\'s';await context.grantPermissions(['clipboard-read','clipboard-write'],{origin:base});await page.evaluate(text=>navigator.clipboard.writeText(text),pasted);await button('Aa Edit text').click();await clickText('#inline');await page.keyboard.press('ControlOrMeta+A');await page.keyboard.press('ControlOrMeta+V');assert.equal(await page.locator('#inline').textContent(),pasted);await button('Save').click();assert.equal(await page.locator('#inline').textContent(),pasted);assert.equal(await page.locator('#inline strong').count(),0);assert.equal((await exportBundle()).edits[0].after,pasted);

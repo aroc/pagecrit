@@ -89,7 +89,7 @@ try {
  const cdp=await context.newCDPSession(page);
  await cdp.send('Browser.setDownloadBehavior',{behavior:'allow',downloadPath:path.join(temp,'downloads'),eventsEnabled:true});
  await worker.evaluate(()=>{const original=chrome.downloads.download.bind(chrome.downloads);globalThis.testDownloadOriginal=original;chrome.downloads.download=opts=>{globalThis.testRequestedFilename=opts.filename;return original({...opts,saveAs:false});};});
- await ui.getByRole('button',{name:'Done · Download review',exact:true}).click();
+ await ui.getByRole('button',{name:'Download review',exact:true}).click();
  await ui.getByRole('status').filter({hasText:'Download started'}).waitFor();
  let downloaded;
  for(let i=0;i<30;i++){
@@ -113,7 +113,7 @@ try {
  // Dynamic replacement remains a request with conflict flag, never silently matched to replacement.
  await page.locator('#headline').evaluate(el=>{el.innerHTML='Server replaced this heading';});
  await worker.evaluate(()=>{chrome.downloads.download=async()=>{throw new Error('User canceled the save dialog');};});
- await ui.getByRole('button',{name:'Done · Download review',exact:true}).click();
+ await ui.getByRole('button',{name:'Download review',exact:true}).click();
  await ui.getByRole('status').filter({hasText:'User canceled'}).waitFor();
  assert.equal(await ui.locator('.after').count(),2);
  assert.ok(await ui.getByText('The page changed this text. Your requested edit is still saved.').count());
