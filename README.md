@@ -52,7 +52,7 @@ Browsing is the default. Turn a tool on, use it, and turn it off with the same k
 - **Severity:** every item has **Must fix** (red), **Suggested** (orange, the default), **Nit** (yellow) and **Note** (blue, no change needed). Pins take the color; the review lists urgent items first and notes last.
 - **The panel:** click a pin to highlight its note, or click a note to scroll to its pin. Drag the header (or the minimized pill) anywhere; the corner button snaps it back to a corner.
 - **Done** appears after you copy or download, and closes the review in one click. If you change anything afterwards, it hides until you copy or download again, so unsent feedback is never thrown away.
-- **Reloads and navigation:** the review lives with its tab. Refresh or click through the site and your pins come back; each page you visit becomes P1, P2… in the same review. Chrome's session storage keeps the draft until you close the tab, discard the review or quit the browser.
+- **Reloads and navigation:** the review lives with its tab. Refresh or click through the site and your pins come back; each page you visit becomes P1, P2… in the same review. On a different site, click the icon to continue it. Chrome's session storage keeps the draft until you close the tab, discard the review or quit the browser.
 
 ## What your agent gets
 
@@ -62,10 +62,10 @@ One short Markdown file. A header with the page, timing and environment, a "How 
 ### 1. Comment · pin 1 · must fix
 - Note: Annual price reads like monthly. Lead with the per-month price.
 - Section: main › Plan the week your team actually has. › Pro
-- Text: `per seat` (appears 2× on page)
-- Context: …Get started Pro $96 **per seat** $8 a month per seat, billed yearly…
-- Locator: `div[data-testid="plan-pro"] > div > small`
-- Excerpt: `<small>per seat</small>`
+- Text: `$96 per seat`
+- Context: …Get started Pro **$96 per seat** $8 a month per seat, billed yearly…
+- Locator: `div[data-testid="plan-pro"] > div`
+- Excerpt: `<div class="price">$96 <small>per seat</small></div>`
 ```
 
 Text edits give the exact original and replacement (plus formatting and the element's inline markup); removals give the section. There's no full-page HTML, no form values and no action history. See the [full sample](site/assets/sample-review.md) and the [format reference](docs/format.md). Paste it with your source project open:

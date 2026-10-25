@@ -1,8 +1,8 @@
 # Review: Kettle: plan the week your team actually has
 
 - Page: https://kettle.example/pricing
-- Review: r-20261025-ae64 · Page Notes 0.2.0 · digest v1
-- Started: 2026-10-25T00:31:43-04:00 · Exported: 2026-10-25T00:31:47-04:00 (0 min)
+- Review: r-20261025-415c · Page Notes 0.2.0 · digest v1
+- Started: 2026-10-25T12:05:32-04:00 · Exported: 2026-10-25T12:05:36-04:00 (0 min)
 - Environment: Chromium 141 · macOS · 1440×900 @2x · light
 - Summary: 3 comments, 2 text edits, 1 removal
 - Severity: 1 must fix, 4 suggested, 0 nits, 1 note
@@ -19,12 +19,13 @@
 ### 1. Comment · pin 1 · must fix
 - Note: Annual price reads like monthly. Lead with the per-month price.
 - Section: main › Plan the week your team actually has. › Pro
-- Text: `per seat` (appears 2× on page)
-- Context: …For trying it with one team. Up to 5 people Weekly plans Get started Pro $96 **per seat** $8 a month per seat, billed yearly. Unlimited teams Calendar sync Buy Pro…
-- Locator: `div[data-testid="plan-pro"] > div > small`
-- Ancestors: `main` › `section[aria-label="Plans"]` › `div[data-testid="plan-pro"]` › `div`
-- Excerpt: `<small>per seat</small>`
-- Pin: on the element, 86% across and -11% down
+- Text: `$96 per seat`
+- Context: …$0 For trying it with one team. Up to 5 people Weekly plans Get started Pro **$96 per seat** $8 a month per seat, billed yearly. Unlimited teams Calendar sync Buy Pro…
+- Locator: `div[data-testid="plan-pro"] > div`
+- Ancestors: `main` › `section[aria-label="Plans"]` › `div[data-testid="plan-pro"]`
+- Classes: `price`
+- Excerpt: `<div class="price">$96 <small>per seat</small></div>`
+- Pin: on the element, 92% across and 15% down
 
 ### 2. Text edit · suggested
 - Original: `Kettle turns meetings, focus time and real capacity into one weekly plan, so nobody promises a Tuesday they don't have.`

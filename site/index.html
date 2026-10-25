@@ -50,10 +50,9 @@
   .shot{position:relative}
   .shot>img{border-radius:18px;box-shadow:0 1px 0 #1f24300d,0 30px 70px -34px #1f243088;outline:1px solid #1f243014}
   /* Hand-written review notes on the screenshots: the page is marked up like the product does. */
-  .note{position:absolute;font:600 25px/1.05 var(--hand);color:var(--cobalt);white-space:nowrap;pointer-events:none}
-  .note svg{position:absolute;overflow:visible;fill:none;stroke:var(--cobalt);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
-  .note.pin{left:6%;top:103%}.note.pin svg{left:62%;top:-168px;width:70px;height:160px}
-  .note.copy{right:-1%;top:103%}.note.copy svg{right:12%;top:-50px;width:40px;height:46px}
+  .notes{position:absolute;left:0;top:0;width:100%;height:auto;overflow:visible;pointer-events:none}
+  .notes text{font:600 66px var(--hand);fill:var(--cobalt)}
+  .notes path{fill:none;stroke:var(--cobalt);stroke-width:7;stroke-linecap:round;stroke-linejoin:round}
 
   /* Bento */
   .section-head{max-width:640px;margin:0 0 28px}
@@ -96,14 +95,13 @@
     .bento{grid-template-columns:repeat(2,minmax(0,1fr))}
     .s3,.s4{grid-column:span 2}.s2{grid-column:span 1}.r2{grid-row:auto}
     .install{grid-template-columns:1fr;gap:24px}
-    .note.pin{left:8%}
   }
   @media (max-width:640px){
     .wrap{padding:0 16px}
     .bar nav a:not(.button){display:none}
     .bento{grid-template-columns:1fr}
     .s2,.s3,.s4{grid-column:auto}
-    .note{display:none}
+    .notes{display:none}
     .hero{gap:32px;padding-bottom:64px}
     .lede{font-size:18px}
   }
@@ -136,13 +134,14 @@
         <p class="small">Free Chrome extension. No account, nothing uploaded.</p>
       </div>
       <figure class="shot">
-        <img src="assets/hero.png" width="1800" height="1125" alt="A pricing page being reviewed: numbered comment pins on the Pro price and the Business button, and the Page Notes panel listing comments, text edits and a removal with severity chips.">
-        <div class="note pin">pinned right on the price
-          <svg viewBox="0 0 70 160" aria-hidden="true"><path d="M6 156C10 110 24 60 52 8"/><path d="M40 12L53 6L57 20"/></svg>
-        </div>
-        <div class="note copy">one click, ready to paste
-          <svg viewBox="0 0 40 46" aria-hidden="true"><path d="M20 44C16 30 18 16 24 4"/><path d="M15 12L24 3L30 14"/></svg>
-        </div>
+        <img src="assets/hero.png" width="1800" height="1125" alt="A pricing page being reviewed: numbered comment pins on the Pro plan and the Business button, and the Page Notes panel listing comments, text edits and a removal with severity chips.">
+        <!-- Drawn in the screenshot's own pixel space so labels and arrows scale with it. -->
+        <svg class="notes" viewBox="0 0 1800 1300" aria-hidden="true">
+          <text x="250" y="1236">pin anywhere</text>
+          <path d="M480 1178C520 1010 640 850 722 724"/><path d="M688 742L724 720L728 762"/>
+          <text x="1790" y="1236" text-anchor="end">one click, ready to paste</text>
+          <path d="M1470 1178C1466 1150 1474 1122 1484 1096"/><path d="M1462 1112L1486 1092L1504 1116"/>
+        </svg>
       </figure>
     </section>
 
@@ -188,8 +187,8 @@
 <span class="h">### 1. Comment · pin 1 · <span class="m">must fix</span></span>
 - Note: Annual price reads like monthly. Lead with the per-month price.
 - Section: main › Plan the week your team actually has. › Pro
-- Text: <span class="c">`per seat`</span> (appears 2× on page)
-- Locator: <span class="c">`div[data-testid="plan-pro"] > div > small`</span>
+- Text: <span class="c">`$96 per seat`</span>
+- Locator: <span class="c">`div[data-testid="plan-pro"] > div`</span>
 
 <span class="h">### 3. Text edit · suggested</span>
 - Original: <span class="c">`Billed annually, cancel anytime.`</span>
@@ -209,7 +208,7 @@
 
         <article class="card s2">
           <h3>Survives a reload</h3>
-          <p>Refresh or click through the site and your pins come back. Every page you visit joins the same review.</p>
+          <p>Refresh or click through to other pages and your pins come back. Each page joins the same review as P1, P2… On another site, click the icon to carry on.</p>
           <ul class="pages" aria-label="Pages in one review"><li><b>P1</b>/pricing</li><li><b>P2</b>/checkout</li></ul>
         </article>
         <article class="card s2">
