@@ -42,10 +42,11 @@ try {
  const box=async locator=>locator.boundingBox();
  const pad=(b,x,y=x)=>({x:Math.max(0,b.x-x),y:Math.max(0,b.y-y),width:b.width+2*x,height:b.height+2*y});
 
- // A realistic small review: two text edits (one formatted), three pins, one removal.
+ // A realistic small review: two text edits, three pins, one removal. The short pricing edit
+ // goes first so the landing page's excerpt can show items 1 and 2 in order.
  await ensure('Edit text');
- await clickAt(await textPoint('.lede'));await page.keyboard.press('ControlOrMeta+A');await page.keyboard.insertText('Kettle turns meetings, focus time and real capacity into one honest weekly plan.');await page.keyboard.press('Enter');
  await clickAt(await textPoint('[data-testid="plan-pro"] p'));await page.keyboard.press('ControlOrMeta+A');await page.keyboard.insertText('$8 a month per seat, billed yearly.');await page.keyboard.press('Enter');
+ await clickAt(await textPoint('.lede'));await page.keyboard.press('ControlOrMeta+A');await page.keyboard.insertText('Kettle turns meetings, focus time and real capacity into one honest weekly plan.');await page.keyboard.press('Enter');
  await note('[data-testid="plan-pro"] .price','Annual price reads like monthly. Lead with the per-month price.','Must fix',[0.92,0.15]);
  await note('[data-testid="plan-team"] .button','Sales-led plan: say "Talk to us", not "Buy now".');
  await note('.quote .avatar','Love this quote. Keep it right under pricing.','Note',[0.5,0.3]);

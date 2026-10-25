@@ -1,8 +1,8 @@
 # Review: Kettle: plan the week your team actually has
 
 - Page: https://kettle.example/pricing
-- Review: r-20261025-e313 · Page Notes 0.2.0 · digest v1
-- Started: 2026-10-25T12:46:39-04:00 · Exported: 2026-10-25T12:46:43-04:00 (0 min)
+- Review: r-20261025-e320 · Page Notes 0.2.0 · digest v1
+- Started: 2026-10-25T12:55:01-04:00 · Exported: 2026-10-25T12:55:04-04:00 (0 min)
 - Environment: Chromium 141 · macOS · 1440×900 @2x · light
 - Summary: 3 comments, 2 text edits, 1 removal
 - Severity: 1 must fix, 4 suggested, 0 nits, 1 note
@@ -28,6 +28,15 @@
 - Pin: on the element, 92% across and 15% down
 
 ### 2. Text edit · suggested
+- Original: `Billed annually, cancel anytime.`
+- Replace: `$8 a month per seat, billed yearly.`
+- Section: main › Plan the week your team actually has. › Pro
+- Context: …it with one team. Up to 5 people Weekly plans Get started Pro $96 per seat **Billed annually, cancel anytime.** Unlimited teams Calendar sync Buy Pro Business Custom SSO, audit logs and a…
+- Locator: `div[data-testid="plan-pro"] > p` · role: paragraph
+- Ancestors: `main` › `section[aria-label="Plans"]` › `div[data-testid="plan-pro"]`
+- Excerpt: `<p>Billed annually, cancel anytime.</p>`
+
+### 3. Text edit · suggested
 - Original: `Kettle turns meetings, focus time and real capacity into one weekly plan, so nobody promises a Tuesday they don't have.`
 - Replace: `Kettle turns meetings, focus time and real capacity into one honest weekly plan.`
 - Section: main › Plan the week your team actually has.
@@ -36,15 +45,6 @@
 - Ancestors: `main`
 - Classes: `lede`
 - Excerpt: `<p class="lede">Kettle turns meetings, focus time and real capacity into on…</p>`
-
-### 3. Text edit · suggested
-- Original: `Billed annually, cancel anytime.`
-- Replace: `$8 a month per seat, billed yearly.`
-- Section: main › Plan the week your team actually has. › Pro
-- Context: …it with one team. Up to 5 people Weekly plans Get started Pro $96 per seat **Billed annually, cancel anytime.** Unlimited teams Calendar sync Buy Pro Business Custom SSO, audit logs and a…
-- Locator: `div[data-testid="plan-pro"] > p` · role: paragraph
-- Ancestors: `main` › `section[aria-label="Plans"]` › `div[data-testid="plan-pro"]`
-- Excerpt: `<p>Billed annually, cancel anytime.</p>`
 
 ### 4. Comment · pin 2 · suggested
 - Note: Sales-led plan: say "Talk to us", not "Buy now".
