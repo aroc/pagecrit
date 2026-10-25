@@ -118,15 +118,20 @@
     .wrap{padding:0 16px}
     /* GitHub stays beside the logo; the section links drop to their own row instead of disappearing. */
     html{scroll-padding-top:120px}
-    .bar{top:10px;flex-wrap:wrap;gap:6px 12px;width:auto;margin-top:10px;padding:8px 8px 10px 14px;border-radius:22px}
-    .mark{font-size:24px}.mark svg{width:26px;height:26px}
-    .bar .button{margin-left:auto;padding:8px 13px;font-size:14px}
-    .bar nav{order:1;margin-left:0;width:100%;gap:18px;font-size:14px}
+    /* Logo centered on top; links and GitHub centered on the line below. */
+    .bar{top:10px;flex-wrap:wrap;justify-content:center;gap:8px 12px;width:auto;margin-top:10px;padding:10px 8px;border-radius:22px}
+    .mark{width:100%;justify-content:center;font-size:24px}.mark svg{width:26px;height:26px}
+    .bar nav{margin-left:0;gap:12px;font-size:13.5px}
+    .bar .button{padding:6px 11px;font-size:13.5px}
     .bento{grid-template-columns:1fr}
     .s2,.s3,.s4{grid-column:auto}
     .note,.arrows{display:none}
     .hero{gap:32px;padding-bottom:64px}
     .lede{font-size:18px}
+  }
+  @media (max-width:350px){
+    .wrap{padding:0 12px}
+    .bar{gap:8px 10px;padding:10px 6px}.bar nav{gap:10px;font-size:13px}.bar .button{padding:6px 9px;font-size:13px}
   }
 </style>
 </head>
