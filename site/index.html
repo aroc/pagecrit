@@ -63,13 +63,15 @@
   /* The demo needs a mouse, like the extension: touch screens get the sample review instead. */
   .try{display:none}
   @media (hover:hover) and (pointer:fine){.try{display:inline-flex}.sample-link{display:none}}
-  /* After Try it: a sticky note under the PageCrit panel saying what to do first. */
-  .try-hint{position:fixed;top:304px;right:40px;z-index:20;width:236px;padding:16px 18px 14px;background:var(--marker);color:var(--ink);font:600 23px/1.15 var(--hand);border-radius:3px 3px 14px 3px;box-shadow:0 14px 30px -14px #1f243066;transform:rotate(1.5deg);pointer-events:none;animation:hint .4s .3s both cubic-bezier(.2,.9,.3,1.2)}
-  .try-hint svg{position:absolute;left:50%;bottom:100%;width:34px;height:44px;margin-left:-17px;overflow:visible}
+  /* After Try it: a sticky note just left of the PageCrit panel (docked 18px from the top right,
+     364px wide) saying what to do first, with an arrow into the panel's left edge. */
+  .try-hint{position:fixed;top:170px;right:410px;z-index:20;width:236px;padding:16px 18px 14px;background:var(--marker);color:var(--ink);font:600 23px/1.15 var(--hand);border-radius:3px 3px 14px 3px;box-shadow:0 14px 30px -14px #1f243066;transform:rotate(1.5deg);pointer-events:none;animation:hint .4s .3s both cubic-bezier(.2,.9,.3,1.2)}
+  .try-hint svg{position:absolute;left:0;bottom:100%;width:280px;height:60px;overflow:visible}
   .try-hint path{fill:none;stroke:var(--cobalt);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
   .try-hint b{display:block;color:var(--cobalt);font-size:27px}
   @keyframes hint{from{opacity:0;transform:translateY(10px) rotate(1.5deg)}}
   @media (prefers-reduced-motion:reduce){.try-hint{animation:none}}
+  @media (max-width:1000px){.try-hint{top:270px;right:24px}.try-hint svg{display:none}}
   .small{font-size:14px;color:var(--faint);margin:18px 0 0}
   figure{margin:0}
   .shot{position:relative}
@@ -328,7 +330,7 @@
       hint = document.createElement('div');
       hint.className = 'try-hint';
       hint.setAttribute('role', 'status');
-      hint.innerHTML = '<svg viewBox="0 0 34 44" aria-hidden="true"><path d="M20 42C10 32 9 18 17 4M10 11L17 3L23 11"/></svg><b>Here it is!</b>Pick Pin, then click anything on this page.';
+      hint.innerHTML = '<svg viewBox="0 -60 280 60" aria-hidden="true"><path d="M200 -6Q214 -44 258 -40M249.6 -45.5L258 -40L248.8 -36.1"/></svg><b>Here it is!</b>Pick Pin, then click anything on this page.';
       document.body.append(hint);
     };
     button.addEventListener('click', async () => {
