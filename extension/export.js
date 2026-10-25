@@ -10,6 +10,7 @@
     assert(typeof bundle.page?.url === 'string' && /^https?:\/\//i.test(bundle.page.url), 'Invalid page URL.');
     assert(typeof bundle.snapshots?.originalHtml === 'string' && typeof bundle.snapshots?.editedHtml === 'string', 'Missing page snapshots.');
     for (const key of ['comments', 'edits', 'history']) assert(Array.isArray(bundle[key]), `Missing ${key}.`);
+    assert(bundle.removals === undefined || (Array.isArray(bundle.removals) && bundle.removals.length <= 500 && bundle.removals.every(removal => typeof removal.id === 'string' && removal.element && typeof removal.element.tag === 'string')), 'Invalid section removal.');
     assert(bundle.comments.length <= 500 && bundle.edits.length <= 500 && bundle.history.length <= 5000, 'Review is too large. Export smaller review sessions.');
     for (const comment of bundle.comments) {
       assert(typeof comment.id === 'string' && typeof comment.text === 'string' && comment.text.length <= 20000, 'Invalid comment.');
@@ -31,6 +32,9 @@
     bundle.edits.forEach((edit, i) => {
       lines.push(`## Text edit ${i + 1}`, 'Before:', quote(edit.before), '', 'After:', quote(edit.after), '');
       if (edit.formatting?.length) lines.push('After, with requested formatting (HTML):', quote(edit.afterHtml || ''), '');
+    });
+    (bundle.removals || []).forEach((removal, i) => {
+      lines.push(`## Remove section ${i + 1}`, `Element: <${removal.element.tag}>${removal.element.selector ? ` (${removal.element.selector})` : ''}`, 'Content:', quote(removal.text || removal.element.text || '(no text)'), '');
     });
     return lines.join('\n');
   }

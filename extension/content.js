@@ -23,7 +23,7 @@
   const initialScroll = { x: scrollX, y: scrollY };
   const state = {
     sessionId: id(), startedAt: now(), originalHtml,
-    mode: 'browse', anchorKind: 'element', comments: [], edits: [], history: [],
+    mode: 'browse', anchorKind: 'element', comments: [], edits: [], removals: [], history: [],
     pending: null, notice: '', noticeType: '', busy: false, confirmingClose: false,
     collapsed: false, dock: 'tr', pos: null, closed: false, frame: 0, routeChanged: false,
     historyBytes: 0, historyOmitted: 0, offerLightExport: false, sent: '', hoverPoint: null, selectedId: null, revealSelected: false,
@@ -33,6 +33,7 @@
   const pinElements = new Map();
   const pinContainers = new Map();
   const editSegments = new Map();
+  const removedElements = new Map();
 
   const host = document.createElement('div');
   host.setAttribute('data-page-notes-root', '');
@@ -44,19 +45,19 @@
     *,*::before,*::after{box-sizing:border-box} [hidden]{display:none!important}.sr{position:fixed;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
     button,input,textarea,select{font:inherit} button{cursor:pointer} button:disabled{cursor:wait;opacity:.5}
     button:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid #9e91ee;outline-offset:2px}
-    .panel{font:14px/1.45 ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#25242b;pointer-events:auto;position:fixed;right:18px;top:18px;width:336px;max-width:calc(100vw - 32px);max-height:calc(100vh - 36px);display:flex;flex-direction:column;background:#fffefb;border:1px solid #e4e0da;border-radius:18px;box-shadow:0 12px 50px #231b3930;overflow:hidden}
+    .panel{font:14px/1.45 ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#25242b;pointer-events:auto;position:fixed;right:18px;top:18px;width:364px;max-width:calc(100vw - 32px);max-height:calc(100vh - 36px);display:flex;flex-direction:column;background:#fffefb;border:1px solid #e4e0da;border-radius:18px;box-shadow:0 12px 50px #231b3930;overflow:hidden}
     .header{padding:17px 18px 12px;display:flex;gap:9px;align-items:center;cursor:grab;user-select:none;-webkit-user-select:none;touch-action:none}.dragging,.dragging .header{cursor:grabbing}.snap{display:grid;place-items:center;padding:5px 7px}.brand{font-size:16px;font-weight:750;letter-spacing:-.4px;flex:1}.logo{font-size:18px;line-height:1}.smallbutton{border:0;background:transparent;border-radius:6px;color:#736d7f;padding:4px 7px;font-size:17px}
     .body{overflow:auto;padding:0 16px 14px}.muted{color:#77717d;font-size:12px}.intro{margin:0 0 13px;color:#736b7b;font-size:12px}
-    .modes{display:flex;border:1px solid #e3dfeb;background:#f0edf4;border-radius:10px;padding:3px;gap:3px;margin-bottom:10px}.mode{flex:1;border:0;color:#6e657d;background:transparent;font-size:12px;padding:8px 4px;border-radius:7px;white-space:nowrap}.mode.active{background:white;color:#4d3396;box-shadow:0 1px 4px #24193c15;font-weight:700}
+    .modes{display:flex;border:1px solid #e3dfeb;background:#f0edf4;border-radius:10px;padding:3px;gap:3px;margin-bottom:10px}.mode{flex:1 1 auto;border:0;color:#6e657d;background:transparent;font-size:12px;padding:8px 3px;border-radius:7px;white-space:nowrap}.mode.active{background:white;color:#4d3396;box-shadow:0 1px 4px #24193c15;font-weight:700}
     .instructions{font-size:12px;line-height:1.5;color:#686271;margin:8px 0 13px}.anchor{display:flex;gap:6px;margin:8px 0}.anchoropt{flex:1;font-size:12px;border:1px solid #ddd7e5;border-radius:7px;background:white;color:#6e657d;padding:6px 4px}.anchoropt.active{border-color:#8e77d6;background:#f4f0fd;color:#4d3396;font-weight:700}
     .notice{padding:9px 10px;background:#eef3ed;color:#40583c;border:1px solid #d6e2d2;border-radius:8px;font-size:12px;margin:10px 0;overflow-wrap:anywhere}.notice.error{background:#fff1eb;color:#994027;border-color:#f0d1c5}
     .editor{padding:12px;border:1px solid #cbbfe8;border-radius:10px;background:#f8f5fe;margin:12px 0}.editor h3{font-size:13px;margin:0 0 7px}.editor textarea{resize:vertical;width:100%;min-height:105px;max-height:300px;background:white;border:1px solid #cfc6de;border-radius:7px;padding:9px;color:#26222d;font-size:13px;line-height:1.5}.editor label{display:block;font-size:12px;margin-bottom:7px}.actions{display:flex;gap:7px;justify-content:flex-end;margin-top:9px}
     .button{border:1px solid #dad4e3;border-radius:8px;padding:7px 11px;background:white;color:#534762;font-size:12px;font-weight:600}.primary{background:#6250b8;color:white;border-color:#6250b8}.danger{color:#a03f33;border-color:#e4b6af}
-    .sectionhead{display:flex;align-items:center;justify-content:space-between;margin:17px 0 8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#82798c}.empty{padding:20px 14px;text-align:center;border:1px dashed #ddd6e5;border-radius:10px;color:#8b8293;font-size:12px}.item{padding:11px 0;border-bottom:1px solid #ece7ef}.itemtop{display:flex;gap:8px;align-items:center;margin-bottom:5px}.badge{background:#ede7f9;color:#6249a5;font-size:11px;font-weight:750;min-width:23px;height:23px;border-radius:8px;display:grid;place-items:center}.itemlabel{flex:1;font-size:11px;color:#81758b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.link{font-size:11px;background:none;border:0;color:#786295;padding:3px}.itemtext{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;color:#4c4258;max-height:108px;overflow:auto}.diff{font-size:12px;margin:4px 0;padding:6px 8px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:90px;overflow:auto;border-radius:5px}.before{background:#f8ecea;color:#8f514b;text-decoration:line-through}.after{background:#edf4eb;color:#486640}.warning{color:#aa533b;font-size:11px;margin:6px 0 0}.itemactions{display:flex;justify-content:flex-end;gap:5px;margin-top:5px}.item.reveal{cursor:pointer;margin:0 -16px;padding:11px 16px;border-radius:0}.item.reveal:hover{background:#faf8fd}.item.reveal:focus-visible{outline:2px solid #9e91ee;outline-offset:-2px}.item.selected{margin:0 -16px;padding:11px 16px 11px 13px;border-left:3px solid #6250b8;background:#f5f1fe}.item.pulse{animation:pulse .9s ease-out}.item.selected .badge{background:#6250b8;color:white}@keyframes pulse{from{background:#e2d9fb}to{background:#f5f1fe}}
+    .sectionhead{display:flex;align-items:center;justify-content:space-between;margin:17px 0 8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#82798c}.empty{padding:20px 14px;text-align:center;border:1px dashed #ddd6e5;border-radius:10px;color:#8b8293;font-size:12px}.item{padding:11px 0;border-bottom:1px solid #ece7ef}.itemtop{display:flex;gap:8px;align-items:center;margin-bottom:5px}.badge.removed{background:#fbe9e6;color:#a03f33}.struck{text-decoration:line-through;color:#8f514b}.hover.danger{border-color:#d0543f;background:#d0543f14}.hover.danger .hovertag{background:#b8432f}.badge{background:#ede7f9;color:#6249a5;font-size:11px;font-weight:750;min-width:23px;height:23px;border-radius:8px;display:grid;place-items:center}.itemlabel{flex:1;font-size:11px;color:#81758b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.link{font-size:11px;background:none;border:0;color:#786295;padding:3px}.itemtext{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;color:#4c4258;max-height:108px;overflow:auto}.diff{font-size:12px;margin:4px 0;padding:6px 8px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:90px;overflow:auto;border-radius:5px}.before{background:#f8ecea;color:#8f514b;text-decoration:line-through}.after{background:#edf4eb;color:#486640}.warning{color:#aa533b;font-size:11px;margin:6px 0 0}.itemactions{display:flex;justify-content:flex-end;gap:5px;margin-top:5px}.item.reveal{cursor:pointer;margin:0 -16px;padding:11px 16px;border-radius:0}.item.reveal:hover{background:#faf8fd}.item.reveal:focus-visible{outline:2px solid #9e91ee;outline-offset:-2px}.item.selected{margin:0 -16px;padding:11px 16px 11px 13px;border-left:3px solid #6250b8;background:#f5f1fe}.item.pulse{animation:pulse .9s ease-out}.item.selected .badge{background:#6250b8;color:white}@keyframes pulse{from{background:#e2d9fb}to{background:#f5f1fe}}
     .footer{border-top:1px solid #e9e3ed;padding:13px 16px;background:#faf8fd}.done{width:100%;padding:11px;font-size:13px}.privacy{font-size:10px;color:#8a8292;text-align:center;margin:8px 0 0}.pill{pointer-events:auto;position:fixed;right:18px;top:18px;border:1px solid #dcd4e8;border-radius:999px;padding:10px 15px;background:#fffefb;color:#4e3d73;box-shadow:0 6px 25px #231b3925;font:600 13px ui-sans-serif,system-ui;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
     .pin{pointer-events:auto;position:fixed;width:27px;height:27px;display:grid;place-items:center;border:2px solid white;border-radius:50% 50% 50% 4px;transform:translate(-50%,-100%) rotate(-5deg);box-shadow:0 2px 8px #231b3945;background:#6650bb;color:white;font-size:11px;font-weight:750}.pin.lost{background:#9b7c46}.pin.selected{background:#43298f;z-index:1;box-shadow:0 0 0 3px #c9bcf3,0 2px 10px #231b3960}.pin.pending{background:#a68cd6}
     .highlight,.hover{pointer-events:none;position:fixed;border:2px solid #8e77d6;border-radius:3px;background:#a995e912;display:none}.hover{background:#a995e90d;border-width:1.5px}.hovertag{position:absolute;left:-1.5px;bottom:100%;margin-bottom:2px;background:#6250b8;color:white;font:600 10px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;padding:1px 5px;border-radius:4px;white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis}.hover.inside .hovertag{bottom:auto;top:0;margin:2px}.closebox{padding:11px;border:1px solid #e4c9bd;background:#fff7ed;border-radius:9px;margin-bottom:12px;font-size:12px}.closebox p{margin:0 0 10px}
-    @media(max-width:500px){.panel{right:8px;top:8px;max-height:calc(100vh - 16px);width:310px}.pill{right:8px;top:8px}}
+    @media(max-width:500px){.mode{white-space:normal;line-height:1.2}.panel{right:8px;top:8px;max-height:calc(100vh - 16px);width:310px}.pill{right:8px;top:8px}}
   `;
   const pinsLayer = document.createElement('div');
   const highlight = document.createElement('div');
@@ -176,12 +177,14 @@
   }
   function tell(message, error = false) { state.notice = message; state.noticeType = error ? 'error' : ''; render(); }
   function ownEvent(event) { return event.composedPath().includes(host); }
-  function dirty() { return state.comments.length || state.edits.length || state.pending; }
+  function dirty() { return state.comments.length || state.edits.length || state.removals.length || state.pending; }
+  function itemCount() { return state.comments.length + state.edits.length + state.removals.length; }
   function modeLabel() {
     if (state.mode === 'pin' && state.anchorKind === 'element') return 'Hover to choose an element, then click to pin a note to it. The note follows the element.';
     if (state.mode === 'pin') return 'Click anywhere to pin a note to that spot. It scrolls with the page.';
     if (state.mode === 'edit') return 'Click any text to edit it right on the page. Enter saves, Esc cancels.';
-    return 'Browse and scroll normally. Switch to Pin or Edit text to start reviewing.';
+    if (state.mode === 'remove') return 'Hover to choose a section, then click to remove it from the page. Restore it from the list below.';
+    return 'Browse and scroll normally. Pick a tool to start reviewing.';
   }
   function setMode(mode) {
     if (state.busy) return;
@@ -199,7 +202,7 @@
     panel.hidden = state.collapsed;
     pill.hidden = !state.collapsed;
     shownCollapsed = state.collapsed;
-    pill.textContent = `📝 Page Notes · ${state.comments.length + state.edits.length}`;
+    pill.textContent = `📝 Page Notes · ${itemCount()}`;
     panel.replaceChildren();
     const header = element('header', 'header');
     header.append(element('span', 'logo', '📝'), element('span', 'brand', 'Page Notes'));
@@ -217,7 +220,7 @@
       box.append(actions); body.append(box);
     }
     const modes = element('div', 'modes');
-    for (const [key, label] of [['browse', 'Browse'], ['pin', '⊕ Pin'], ['edit', 'Aa Edit text']]) {
+    for (const [key, label] of [['browse', 'Browse'], ['pin', '⊕ Pin'], ['edit', 'Aa Edit text'], ['remove', '⊖ Remove']]) {
       const b = button(label, () => setMode(key), `mode${state.mode === key ? ' active' : ''}`);
       b.setAttribute('aria-pressed', String(state.mode === key)); modes.append(b);
     }
@@ -235,11 +238,12 @@
     if (state.notice) { const notice = element('div', `notice ${state.noticeType}`, state.notice); notice.setAttribute('role', 'status'); body.append(notice); }
     if (state.pending) body.append(renderEditor());
     const heading = element('div', 'sectionhead');
-    heading.append(element('span', '', 'This review'), element('span', '', `${state.comments.length} ${state.comments.length === 1 ? "note" : "notes"} · ${state.edits.length} ${state.edits.length === 1 ? "edit" : "edits"}`));
+    heading.append(element('span', '', 'This review'), element('span', '', `${state.comments.length} ${state.comments.length === 1 ? "note" : "notes"} · ${state.edits.length} ${state.edits.length === 1 ? "edit" : "edits"}${state.removals.length ? ` · ${state.removals.length} removed` : ''}`));
     body.append(heading);
-    if (!state.comments.length && !state.edits.length) body.append(element('div', 'empty', 'Your feedback will appear here. Everything stays in this tab until you download it.'));
+    if (!itemCount()) body.append(element('div', 'empty', 'Your feedback will appear here. Everything stays in this tab until you download it.'));
     state.comments.forEach((comment, index) => body.append(renderComment(comment, index)));
     state.edits.forEach(edit => body.append(renderEdit(edit)));
+    state.removals.forEach(removal => body.append(renderRemoval(removal)));
     const footer = element('footer', 'footer');
     const done = button(state.busy ? 'Preparing download…' : state.sent === 'full' ? '✓ Download started' : 'Done · Download review', exportReview, 'button primary done');
     done.setAttribute('aria-label', 'Done · Download review');
@@ -329,6 +333,55 @@
     actions.append(button('Edit', () => beginTextEdit(null, edit), 'link'), button('Revert', () => revertEdit(edit), 'link'));
     item.append(actions);
     return item;
+  }
+  function renderRemoval(removal) {
+    const item = element('article', 'item');
+    const top = element('div', 'itemtop');
+    top.append(element('span', 'badge removed', '⊖'), element('span', 'itemlabel', `Removed ${removal.label}`));
+    revealOnClick(item, () => showRemoval(removal), 'Show where this section was');
+    item.append(top, element('p', 'itemtext struck', removal.text || '(no text)'));
+    if (!removedElements.get(removal.id)?.el.isConnected) item.append(element('p', 'warning', 'The page replaced this section. The removal request is still saved.'));
+    const actions = element('div', 'itemactions');
+    actions.append(button('Restore', () => restoreRemoval(removal), 'link'));
+    item.append(actions);
+    return item;
+  }
+  function removableTarget(el) {
+    return el instanceof Element && el.isConnected && el !== document.documentElement && el !== document.body && el !== document.head && !el.contains(host) && el !== host;
+  }
+  // Hidden with an inline display:none so the site's own DOM and framework state stay intact.
+  function removeSection(el) {
+    if (!removableTarget(el)) { tell('Pick a section inside the page body.', true); return; }
+    if (state.removals.length >= MAX_ITEMS) { tell('This review has reached 500 removals. Download it and start a new review.', true); return; }
+    // Rendered text (with line breaks between blocks) reads better than raw textContent.
+    const removal = { id: id(), createdAt: now(), label: tagLabel(el), text: String(el.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 500), element: core.describeElement(el) };
+    const style = el.getAttribute('style');
+    el.style.setProperty('display', 'none', 'important');
+    removedElements.set(removal.id, { el, style, applied: el.getAttribute('style') });
+    state.removals.push(removal);
+    record('section_removed', { removalId: removal.id, element: removal.element });
+    state.notice = ''; render();
+  }
+  function unhide(removal) {
+    const entry = removedElements.get(removal.id);
+    if (!entry?.el.isConnected) return false;
+    // Restore the exact original style unless the site changed it meanwhile.
+    if (entry.el.getAttribute('style') === entry.applied) {
+      if (entry.style === null) entry.el.removeAttribute('style'); else entry.el.setAttribute('style', entry.style);
+    } else if (entry.el.style.getPropertyValue('display') === 'none') entry.el.style.removeProperty('display');
+    return true;
+  }
+  function restoreRemoval(removal) {
+    const restored = unhide(removal);
+    record('section_restored', { removalId: removal.id, previewRestored: restored });
+    state.removals = state.removals.filter(r => r.id !== removal.id); removedElements.delete(removal.id);
+    state.notice = ''; render();
+  }
+  function showRemoval(removal) {
+    const entry = removedElements.get(removal.id);
+    const anchor = entry?.el.isConnected ? (entry.el.previousElementSibling || entry.el.parentElement) : null;
+    if (anchor) { anchor.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' }); flash(anchor); }
+    else tell('The page replaced this section. The removal request is still in the review.', true);
   }
   function renderFormatted(model, cls) {
     const box = element('div', cls);
@@ -635,9 +688,9 @@
     if (p?.type === 'text') return p.editHost;
     if (!state.hoverPoint || state.collapsed || state.busy) return null;
     const { x, y } = state.hoverPoint;
-    if (state.mode === 'pin' && state.anchorKind === 'element') {
+    if ((state.mode === 'pin' && state.anchorKind === 'element') || state.mode === 'remove') {
       const el = document.elementFromPoint(x, y);
-      return el && !host.contains(el) && el !== host ? el : null;
+      return state.mode === 'remove' ? (removableTarget(el) ? el : null) : el && !host.contains(el) && el !== host ? el : null;
     }
     if (state.mode === 'edit') return core.locateTextNodeAtPoint(x, y)?.parentElement || null;
     return null;
@@ -652,7 +705,9 @@
     const target = hoverTarget();
     const rect = target?.isConnected ? target.getBoundingClientRect() : null;
     if (!rect || (!rect.width && !rect.height)) { hoverBox.style.display = 'none'; return; }
-    hoverTag.textContent = state.pending?.type === 'text' ? 'Editing text' : tagLabel(target);
+    const removing = state.mode === 'remove' && !state.pending;
+    hoverTag.textContent = state.pending?.type === 'text' ? 'Editing text' : removing ? `Remove ${tagLabel(target)}` : tagLabel(target);
+    hoverBox.classList.toggle('danger', removing);
     hoverBox.classList.toggle('inside', rect.top < 20);
     Object.assign(hoverBox.style, { display: 'block', left: `${rect.left}px`, top: `${rect.top}px`, width: `${rect.width}px`, height: `${rect.height}px` });
   }
@@ -681,7 +736,9 @@
       committed = true;
     }
     if (state.pending) { tell('Save or cancel your current edit first.', true); focusEditor(); return; }
-    if (state.mode === 'pin') {
+    if (state.mode === 'remove') {
+      removeSection(event.target instanceof Element ? event.target : event.target.parentElement);
+    } else if (state.mode === 'pin') {
       if (state.comments.length >= MAX_ITEMS) { tell('This review has reached 500 notes. Download it and start a new review.', true); return; }
       const target = event.target instanceof Element ? event.target : event.target.parentElement;
       const anchor = core.createAnchor(target, event.clientX, event.clientY, state.anchorKind);
@@ -734,6 +791,7 @@
       const segment = editSegments.get(edit.id);
       if (core.segmentCurrent(segment)) core.renderSegment(segment, core.plainModel(edit.before));
     }
+    for (const removal of state.removals) unhide(removal);
     state.closed = true;
     observer.disconnect(); resizeObserver.disconnect(); clearInterval(routeTimer);
     if (state.frame) cancelAnimationFrame(state.frame);
@@ -768,9 +826,10 @@
         schemaVersion: 1, tool: { name: 'Page Notes', version: '0.1.1' },
         session: { id: state.sessionId, startedAt: state.startedAt, exportedAt: now() },
         page: { url: startUrl, title: startTitle, initialViewport, initialScroll, viewport: { width: innerWidth, height: innerHeight, devicePixelRatio }, scroll: { x: scrollX, y: scrollY } },
-        snapshots: feedbackOnly ? { originalHtml: '', editedHtml: '', omitted: true, reason: 'Reviewer chose feedback-only export.' } : { originalHtml: state.originalHtml, editedHtml: core.snapshotDocument() },
+        snapshots: feedbackOnly ? { originalHtml: '', editedHtml: '', omitted: true, reason: 'Reviewer chose feedback-only export.' } : { originalHtml: state.originalHtml, editedHtml: core.snapshotDocument({ omit: [...removedElements.values()].map(entry => entry.el) }) },
         comments,
         edits: state.edits.map(edit => ({ ...edit, previewState: core.segmentCurrent(editSegments.get(edit.id)) ? 'applied' : 'page-changed' })),
+        removals: state.removals.map(removal => ({ ...removal, previewState: removedElements.get(removal.id)?.el.isConnected ? 'applied' : 'page-changed' })),
         history: feedbackOnly ? [] : state.history,
         historyOmitted: state.historyOmitted + (feedbackOnly ? state.history.length : 0),
         warnings: [

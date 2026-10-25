@@ -30,6 +30,11 @@ test('formatted edits carry ranges and escaped HTML into the summary; bad ranges
  b.edits[0].formatting=[{start:4,end:20,marks:['bold']}];assert.throws(()=>api.serializeBundle(b),/formatting/);
  b.edits[0].formatting=[{start:0,end:2,marks:['script']}];assert.throws(()=>api.serializeBundle(b),/formatting/);
 });
+test('section removals are validated and summarized',()=>{
+ const b=sample();b.removals=[{id:'r1',element:{tag:'section',selector:'main > section:nth-of-type(2)',text:'Old pricing table'}}];
+ assert.match(JSON.parse(api.serializeBundle(b)).reviewMarkdown,/## Remove section 1\nElement: <section> \(main > section:nth-of-type\(2\)\)\nContent:\n> Old pricing table/);
+ b.removals=[{id:'r1'}];assert.throws(()=>api.serializeBundle(b),/removal/);
+});
 test('reject malformed or oversized bundles before download',()=>{
  assert.throws(()=>api.serializeBundle({schemaVersion:2}),/Unsupported/);
  const b=sample(); b.snapshots.originalHtml='x'.repeat(api.MAX_BYTES);

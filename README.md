@@ -19,7 +19,8 @@ After updating the repo, click **Reload** on the extension card in `chrome://ext
 - **Browse:** navigate within the page and scroll normally.
 - **Pin:** choose **Pin to element** (hover outlines the element you'll pin; the note follows it as you scroll or resize) or **Pin to page** (the note stays at that spot in the page content), then click and write feedback.
 - **Edit text:** click visible text and type directly on the page. Each edit covers one run of plain text (⌘/Ctrl+A selects just that run); inline formatting and neighboring elements stay intact. ⌘/Ctrl+B, I and U toggle bold, italic and underline and ⇧⌘/Ctrl+X toggles strikethrough on the selection (or on what you type next). Enter saves, Shift+Enter adds a line break, Esc cancels, ⌘/Ctrl+Z undoes, and clicking elsewhere saves. While you type, the element is temporarily `contenteditable` and your keystrokes are kept from the site's own keyboard shortcuts.
-- Review and remove feedback or revert a text edit in the panel.
+- **Remove:** hover to outline a section in red, click to remove it from the page. Restore it from the panel.
+- Review and remove feedback or revert a text edit or restore a removed section in the panel.
 - **Move the panel:** drag its header, or the minimized pill, anywhere — partly off screen is fine. The corner button snaps it to the nearest corner. Clicking a pin highlights its note in the panel; use **Edit** there to change it.
 - **Done:** choose where to save a single `.page-notes.json` file, named with the date, time and page title (e.g. `2026-10-24 14-05 Pricing.page-notes.json`). Chrome's Save As dialog lets you choose Desktop or another folder.
 

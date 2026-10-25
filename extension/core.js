@@ -368,13 +368,30 @@
     return last ? { node: last, offset: last.length } : null;
   }
 
-  function snapshotDocument() {
+  // `omit`: live elements left out of the snapshot (sections the reviewer removed).
+  function snapshotDocument({ omit = [] } = {}) {
     const document = root.document;
     if (!document?.documentElement) throw new Error('No page document available');
+    const pathTo = el => {
+      const path = [];
+      for (let node = el; node && node !== document.documentElement; node = node.parentNode) {
+        if (!node.parentNode) return null;
+        path.unshift(Array.prototype.indexOf.call(node.parentNode.childNodes, node));
+      }
+      return path;
+    };
+    const omitted = omit.filter(el => el?.isConnected && el !== document.documentElement).map(pathTo).filter(Boolean);
     // Import into an inert document: cloning in the live document upgrades custom
     // elements and can run site constructors/attribute callbacks during export.
     const inertDocument = document.implementation.createHTMLDocument('');
     const clone = inertDocument.importNode(document.documentElement, true);
+    // Remove later document positions first so earlier paths stay valid.
+    omitted.sort((a, b) => { for (let i = 0; i < Math.min(a.length, b.length); i++) if (a[i] !== b[i]) return b[i] - a[i]; return b.length - a.length; });
+    for (const path of omitted) {
+      let node = clone;
+      for (const index of path) node = node?.childNodes[index];
+      node?.remove();
+    }
     clone.querySelectorAll(ROOT + ',script,style,noscript,iframe,object,embed,template,input[type="hidden"],meta,base').forEach(el => el.remove());
     const comments = inertDocument.createTreeWalker(clone, 128 /* SHOW_COMMENT */);
     const remove = [];

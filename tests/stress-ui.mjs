@@ -207,6 +207,25 @@ try {
   await ui.locator('article').filter({hasText:'Changed copy'}).focus();await page.keyboard.press('Enter');await page.waitForTimeout(700);
   const t=await page.locator('#plain').boundingBox();assert.ok(t.y>0&&t.y<1000,`scrolled to edit ${JSON.stringify(t)}`);assert.equal(await page.locator('[contenteditable]').count(),1,'only the site editor; no edit started');
  });
+ await test('remove tool hides a hovered section, restores it exactly, and exports the removal',async({page,ui,button,exportBundle})=>{
+  await page.locator('#pin2').evaluate(el=>el.setAttribute('style','color: rgb(1, 2, 3)'));
+  await button('⊖ Remove').click();assert.equal(await button('⊖ Remove').getAttribute('aria-pressed'),'true');
+  const b=await page.locator('#pin2').boundingBox();const next=await page.locator('#pin3').boundingBox();
+  await page.mouse.move(b.x+10,b.y+b.height/2);await page.waitForTimeout(50);
+  assert.equal(await ui.locator('.hover').textContent(),'Remove p#pin2');assert.equal(await ui.locator('.hover').evaluate(el=>el.classList.contains('danger')),true);
+  await page.mouse.click(b.x+10,b.y+b.height/2);
+  assert.equal(await page.locator('#pin2').isVisible(),false);assert.ok((await page.locator('#pin3').boundingBox()).y<next.y,'content below moves up');
+  const row=ui.locator('article').filter({hasText:'Removed p#pin2'});assert.equal(await row.locator('.itemtext').textContent(),'Second comment target');assert.match(await row.textContent(),/Second comment target/);
+  assert.match(await ui.getByRole('button',{name:/Page Notes ·/,includeHidden:true}).textContent(),/· 1/);
+  // A site button is removed without running its click handler; html/body are never removable.
+  const bt=await page.locator('#button').boundingBox();await page.mouse.click(bt.x+5,bt.y+5);assert.equal(await page.evaluate(()=>window.siteActions),0);assert.equal(await page.locator('#button').isVisible(),false);
+  const bundle=await exportBundle();assert.equal(bundle.removals.length,2);assert.equal(bundle.removals[0].element.id,'pin2');assert.equal(bundle.removals[0].previewState,'applied');
+  assert.match(bundle.snapshots.originalHtml,/Second comment target/);assert.ok(!bundle.snapshots.editedHtml.includes('Second comment target'),'edited snapshot omits removed section');assert.ok(!bundle.snapshots.editedHtml.includes('Do not submit this button'));
+  assert.match(bundle.snapshots.editedHtml,/Third comment target/);assert.match(bundle.reviewMarkdown,/## Remove section 1/);
+  await row.getByRole('button',{name:'Restore',exact:true}).click();assert.equal(await page.locator('#pin2').isVisible(),true);assert.equal(await page.locator('#pin2').getAttribute('style'),'color: rgb(1, 2, 3)');
+  assert.equal((await exportBundle()).removals.length,1);assert.equal(await page.evaluate(()=>window.siteActions),0);
+  await button('Close review').click();await button('Discard & close').click();assert.equal(await page.locator('#button').isVisible(),true);assert.equal(await page.locator('#button').getAttribute('style'),null);
+ });
  await test('blank comment rejected, cancel does not create a phantom note',async({ui,button,clickText,exportBundle})=>{
   await button('⊕ Pin').click();await clickText('#pin1');await ui.locator('textarea').fill(' \n\t ');await button('Save').click();assert.match(await ui.locator('.notice').textContent(),/Add a note/);await button('Cancel').click();assert.equal((await exportBundle()).comments.length,0);
  });
