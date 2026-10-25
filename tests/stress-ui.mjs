@@ -23,7 +23,10 @@ try {
  const worker=context.serviceWorkers()[0]||await context.waitForEvent('serviceworker');
  await mkdir(path.join(temp,'downloads'));
  // Keep the rendered review model alongside the downloaded Markdown so tests can check both.
- await worker.evaluate(()=>{const download=chrome.downloads.download.bind(chrome.downloads);chrome.downloads.download=opts=>download({...opts,saveAs:false});const render=PageNotesExport.renderDigest;PageNotesExport.renderDigest=review=>{globalThis.lastReview=review;return render(review);};});
+ // Reinstalled before each export: an idle MV3 worker can restart mid-suite and drop it.
+ const sw=()=>context.serviceWorkers().at(-1)||worker;
+ const instrument=()=>sw().evaluate(()=>{if(globalThis.testInstrumented)return;globalThis.testInstrumented=true;const download=chrome.downloads.download.bind(chrome.downloads);chrome.downloads.download=opts=>download({...opts,saveAs:false});const render=PageNotesExport.renderDigest;PageNotesExport.renderDigest=review=>{globalThis.lastReview=review;return render(review);};});
+ await instrument();
  async function setup(){
   const page=await context.newPage();await page.goto(base+crypto.randomUUID());
   const tab=await worker.evaluate(async url=>(await chrome.tabs.query({})).find(t=>t.url===url).id,page.url());
@@ -37,7 +40,7 @@ try {
   const typeInline=async value=>{await page.keyboard.press('ControlOrMeta+A');if(value)await page.keyboard.insertText(value);else await page.keyboard.press('Backspace');};
   const editing=()=>page.locator('[contenteditable="plaintext-only"]').count();
   const edit=async(selector,value,index=0)=>{await button('Aa Edit text').click();await clickText(selector,index);await typeInline(value);await button('Save').click();};
-  const exportBundle=async()=>{const before=await worker.evaluate(async()=>(await chrome.downloads.search({})).map(d=>d.id));await button('Download review').click();await ui.getByRole('status').filter({hasText:'Download started'}).waitFor();let d;for(let i=0;i<40;i++){d=await worker.evaluate(async before=>(await chrome.downloads.search({})).find(d=>!before.includes(d.id)),before);if(d?.state==='complete')break;await page.waitForTimeout(75);}assert.equal(d?.state,'complete');return{...await worker.evaluate(()=>globalThis.lastReview),markdown:await readFile(d.filename,'utf8')};};
+  const exportBundle=async()=>{await instrument();const before=await sw().evaluate(async()=>(await chrome.downloads.search({})).map(d=>d.id));await button('Download review').click();await ui.getByRole('status').filter({hasText:'Download started'}).waitFor();let d;for(let i=0;i<40;i++){d=await sw().evaluate(async before=>(await chrome.downloads.search({})).find(d=>!before.includes(d.id)),before);if(d?.state==='complete')break;await page.waitForTimeout(75);}assert.equal(d?.state,'complete');return{...await sw().evaluate(()=>globalThis.lastReview),markdown:await readFile(d.filename,'utf8')};};
   return{page,ui,button,clickText,edit,typeInline,editing,exportBundle,inject,tab};
  }
  async function test(name,run){let env;try{env=await setup();await run(env);checks++;console.log('PASS',name);}catch(e){failures.push({name,error:e.stack});console.error('FAIL',name,e.message);}finally{if(env)await env.page.close({runBeforeUnload:false});}}
