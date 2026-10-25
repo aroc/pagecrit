@@ -149,16 +149,6 @@ test('copied and downloaded reviews are remembered locally: newest first, last 1
  await send({type:'PAGECRIT_RECENT',action:'delete',id:'s12'});assert.deepEqual(JSON.parse(JSON.stringify((await send({type:'PAGECRIT_RECENT',action:'list'})).reviews.map(r=>r.id))),['s5','s11','s10','s9','s8','s7','s6','s4','s3']);
  await send({type:'PAGECRIT_RECENT',action:'clear'});assert.equal((await send({type:'PAGECRIT_RECENT',action:'list'})).reviews.length,0);
 });
-test('start-review keyboard command injects into http(s) HTML pages only, never past a modal dialog',async()=>{
- let onCommand;const calls=[];let inspection={modal:false,contentType:'text/html'};
- vm.runInNewContext(readFileSync(new URL('../extension/background.js',import.meta.url),'utf8'),{importScripts(){},PageCritExport:api,encodeURIComponent,chrome:{runtime:{id:'ext',onMessage:{addListener(){}}},downloads:{},commands:{onCommand:{addListener(fn){onCommand=fn}}},scripting:{async executeScript(opts){calls.push(opts);return opts.func?[{result:inspection}]:[]}}}});
- const settle=()=>new Promise(r=>setTimeout(r,10));const seen=()=>JSON.parse(JSON.stringify(calls.map(c=>c.files||'inspect')));
- onCommand('start-review',{id:7,url:'https://example.com/a'});await settle();
- assert.deepEqual(seen(),['inspect',['core.js','content.js']]);assert.equal(calls[1].target.tabId,7);
- calls.length=0;onCommand('start-review',{id:7,url:'chrome://settings'});onCommand('other',{id:7,url:'https://example.com'});await settle();assert.equal(calls.length,0);
- inspection={modal:true,contentType:'text/html'};onCommand('start-review',{id:7,url:'https://example.com'});await settle();assert.deepEqual(seen(),['inspect']);
- calls.length=0;inspection={modal:false,contentType:'application/pdf'};onCommand('start-review',{id:7,url:'https://example.com/x.pdf'});await settle();assert.deepEqual(seen(),['inspect']);
-});
 test('toolbar click opens the panel directly; pages that cannot be reviewed explain why on the button',async()=>{
  let onClicked;const calls=[],badges=[],titles=[];let inspection={modal:false,contentType:'text/html'};
  const action={onClicked:{addListener(fn){onClicked=fn}},async setBadgeText(o){badges.push(o.text)},async setBadgeBackgroundColor(){},async setTitle(o){titles.push(o.title)}};

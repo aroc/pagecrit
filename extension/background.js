@@ -110,8 +110,8 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   return true;
 });
 
-// The toolbar button and the keyboard shortcut (Alt+Shift+N) open the review panel directly.
-// Either grants activeTab for the current tab only. Pages that can't be reviewed get a short
+// The toolbar button opens the review panel directly.
+// Clicking it grants activeTab for the current tab only. Pages that can't be reviewed get a short
 // reason on the toolbar button instead of an overlay.
 async function startReview(tab) {
   if (!tab?.id) return false;
@@ -149,9 +149,6 @@ async function inject(tabId, {show}) {
   await chrome.scripting.executeScript({target: {tabId: tab.id}, files: ['core.js', 'content.js']});
   return true;
 }
-chrome.commands?.onCommand.addListener((command, tab) => {
-  if (command === 'start-review') startReview(tab).catch(() => {});
-});
 
 // After a reload or navigation, continue an open review if Chrome still grants access to the tab.
 // Without access (e.g. another site), the draft waits until the reviewer clicks the toolbar button.

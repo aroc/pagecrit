@@ -34,7 +34,7 @@ When you're done, **Copy Markdown** and paste it into Claude Code, Cursor, an is
 1. [**Download pagecrit.zip**](https://github.com/aroc/pagecrit/releases/latest/download/pagecrit.zip) from the [latest release](https://github.com/aroc/pagecrit/releases/latest) and unzip it.
 2. Open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked** and choose the unzipped **`pagecrit`** folder. (Working from a clone? Choose its `extension` folder instead.)
 3. Pin **PageCrit** to the toolbar.
-4. Open the page you want to review and click the icon, or press **Alt+Shift+N**. The panel opens right away. If a page can't be reviewed, the icon shows a red **!** and its tooltip says why.
+4. Open the page you want to review and click the PageCrit button in the toolbar. The panel opens right away. If a page can't be reviewed, the icon shows a red **!** and its tooltip says why.
 
 To update, download the new release and load it the same way. From a clone, pull and click **Reload** on the extension in `chrome://extensions`, then refresh the page.
 

@@ -28,13 +28,5 @@
   },
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'none'"
-  },
-  "commands": {
-    "start-review": {
-      "suggested_key": {
-        "default": "Alt+Shift+N"
-      },
-      "description": "Start or show a PageCrit review of this page"
-    }
   }
 }
