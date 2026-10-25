@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kettle: plan the week your team actually has</title>
+<!-- Synthetic demo product used only for Page Notes screenshots. -->
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#fbfaf7;color:#1d2b24;font:17px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+  nav{display:flex;align-items:center;gap:28px;padding:22px 64px;border-bottom:1px solid #e7e4dc}
+  .brand{font-weight:800;letter-spacing:-.3px;font-size:19px;margin-right:12px;display:flex;align-items:center;gap:8px}
+  .brand i{width:22px;height:22px;border-radius:7px;background:#e0703a;display:inline-block}
+  nav a{color:#4f5d55;text-decoration:none;font-size:15px}
+  main{max-width:1000px;padding:56px 64px 80px}
+  .eyebrow{color:#a2562f;font-weight:700;font-size:14px;margin:0 0 14px}
+  h1{font-size:58px;line-height:1.04;letter-spacing:-2px;margin:0 0 20px;max-width:760px}
+  .lede{font-size:20px;color:#55635a;max-width:600px;margin:0 0 30px}
+  .actions{display:flex;gap:12px;margin-bottom:56px}
+  .button{border:0;border-radius:999px;padding:14px 22px;font:600 16px system-ui;background:#e0703a;color:#fff}
+  .button.ghost{background:#fff;color:#1d2b24;box-shadow:inset 0 0 0 1px #d9d5cb}
+  .plans{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  .plan{background:#fff;border:1px solid #e7e4dc;border-radius:20px;padding:24px}
+  .plan h3{margin:0 0 6px;font-size:18px}
+  .plan .price{font-size:36px;font-weight:800;letter-spacing:-1px;margin:6px 0 4px}
+  .plan .price small{font-size:15px;font-weight:500;color:#6b776f;letter-spacing:0}
+  .plan p{margin:0 0 18px;color:#5c6a62;font-size:15px}
+  .plan ul{margin:0 0 20px;padding:0 0 0 18px;color:#3d4a43;font-size:15px}
+  .plan .button{width:100%;padding:11px}
+  .plan.featured{border-color:#e0703a;box-shadow:0 10px 30px -18px #e0703a}
+  .quote{margin-top:44px;display:flex;gap:18px;align-items:center;background:#f1efe8;border-radius:20px;padding:22px 26px}
+  .quote b{display:block}
+  .avatar{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#f1b48d,#e0703a);flex:none}
+  .banner{margin:0 0 28px;padding:12px 18px;border-radius:14px;background:#fff3d6;color:#7a5a12;font-size:15px}
+</style>
+</head>
+<body>
+<nav><span class="brand"><i></i>Kettle</span><a href="#">Product</a><a href="#">Pricing</a><a href="#">Customers</a><a href="#">Sign in</a></nav>
+<main>
+  <div class="banner" id="promo">Spring offer: two months free on annual plans. Ends Friday.</div>
+  <p class="eyebrow">Team planning</p>
+  <h1 id="headline">Plan the week your team <em>actually</em> has.</h1>
+  <p class="lede">Kettle turns meetings, focus time and real capacity into one weekly plan, so nobody promises a Tuesday they don't have.</p>
+  <div class="actions"><button class="button">Start planning free</button><button class="button ghost">Watch a 2 minute tour</button></div>
+  <section class="plans" aria-label="Plans">
+    <div class="plan" data-testid="plan-free"><h3>Free</h3><div class="price">$0</div><p>For trying it with one team.</p><ul><li>Up to 5 people</li><li>Weekly plans</li></ul><button class="button ghost">Get started</button></div>
+    <div class="plan featured" data-testid="plan-pro"><h3>Pro</h3><div class="price">$96 <small>per seat</small></div><p>Billed annually, cancel anytime.</p><ul><li>Unlimited teams</li><li>Calendar sync</li></ul><button class="button">Buy Pro</button></div>
+    <div class="plan" data-testid="plan-team"><h3>Business</h3><div class="price">Custom</div><p>SSO, audit logs and a planning coach.</p><ul><li>Everything in Pro</li><li>Priority support</li></ul><button class="button ghost">Buy now</button></div>
+  </section>
+  <div class="quote"><span class="avatar"></span><div><b>“We stopped overbooking Mondays in a week.”</b>Priya, product lead at a 40-person studio</div></div>
+</main>
+</body>
+</html>
