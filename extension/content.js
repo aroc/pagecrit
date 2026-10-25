@@ -26,7 +26,7 @@
     mode: 'browse', anchorKind: 'element', comments: [], edits: [], history: [],
     pending: null, notice: '', noticeType: '', busy: false, confirmingClose: false,
     collapsed: false, left: false, closed: false, frame: 0, routeChanged: false,
-    historyBytes: 0, historyOmitted: 0, offerLightExport: false, hoverPoint: null,
+    historyBytes: 0, historyOmitted: 0, offerLightExport: false, hoverPoint: null, selectedId: null, revealSelected: false,
   };
   // References never enter the exported bundle. Keeping them avoids matching a different
   // repeated element when a framework replaces DOM nodes during a review.
@@ -52,9 +52,9 @@
     .notice{padding:9px 10px;background:#eef3ed;color:#40583c;border:1px solid #d6e2d2;border-radius:8px;font-size:12px;margin:10px 0;overflow-wrap:anywhere}.notice.error{background:#fff1eb;color:#994027;border-color:#f0d1c5}
     .editor{padding:12px;border:1px solid #cbbfe8;border-radius:10px;background:#f8f5fe;margin:12px 0}.editor h3{font-size:13px;margin:0 0 7px}.editor textarea{resize:vertical;width:100%;min-height:105px;max-height:300px;background:white;border:1px solid #cfc6de;border-radius:7px;padding:9px;color:#26222d;font-size:13px;line-height:1.5}.editor label{display:block;font-size:12px;margin-bottom:7px}.actions{display:flex;gap:7px;justify-content:flex-end;margin-top:9px}
     .button{border:1px solid #dad4e3;border-radius:8px;padding:7px 11px;background:white;color:#534762;font-size:12px;font-weight:600}.primary{background:#6250b8;color:white;border-color:#6250b8}.danger{color:#a03f33;border-color:#e4b6af}
-    .sectionhead{display:flex;align-items:center;justify-content:space-between;margin:17px 0 8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#82798c}.empty{padding:20px 14px;text-align:center;border:1px dashed #ddd6e5;border-radius:10px;color:#8b8293;font-size:12px}.item{padding:11px 0;border-bottom:1px solid #ece7ef}.itemtop{display:flex;gap:8px;align-items:center;margin-bottom:5px}.badge{background:#ede7f9;color:#6249a5;font-size:11px;font-weight:750;min-width:23px;height:23px;border-radius:8px;display:grid;place-items:center}.itemlabel{flex:1;font-size:11px;color:#81758b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.link{font-size:11px;background:none;border:0;color:#786295;padding:3px}.itemtext{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;color:#4c4258;max-height:108px;overflow:auto}.diff{font-size:12px;margin:4px 0;padding:6px 8px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:90px;overflow:auto;border-radius:5px}.before{background:#f8ecea;color:#8f514b;text-decoration:line-through}.after{background:#edf4eb;color:#486640}.warning{color:#aa533b;font-size:11px;margin:6px 0 0}.itemactions{display:flex;justify-content:flex-end;gap:5px;margin-top:5px}
+    .sectionhead{display:flex;align-items:center;justify-content:space-between;margin:17px 0 8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#82798c}.empty{padding:20px 14px;text-align:center;border:1px dashed #ddd6e5;border-radius:10px;color:#8b8293;font-size:12px}.item{padding:11px 0;border-bottom:1px solid #ece7ef}.itemtop{display:flex;gap:8px;align-items:center;margin-bottom:5px}.badge{background:#ede7f9;color:#6249a5;font-size:11px;font-weight:750;min-width:23px;height:23px;border-radius:8px;display:grid;place-items:center}.itemlabel{flex:1;font-size:11px;color:#81758b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.link{font-size:11px;background:none;border:0;color:#786295;padding:3px}.itemtext{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;color:#4c4258;max-height:108px;overflow:auto}.diff{font-size:12px;margin:4px 0;padding:6px 8px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:90px;overflow:auto;border-radius:5px}.before{background:#f8ecea;color:#8f514b;text-decoration:line-through}.after{background:#edf4eb;color:#486640}.warning{color:#aa533b;font-size:11px;margin:6px 0 0}.itemactions{display:flex;justify-content:flex-end;gap:5px;margin-top:5px}.item.selected{margin:0 -16px;padding:11px 16px 11px 13px;border-left:3px solid #6250b8;background:#f5f1fe}.item.pulse{animation:pulse .9s ease-out}.item.selected .badge{background:#6250b8;color:white}@keyframes pulse{from{background:#e2d9fb}to{background:#f5f1fe}}
     .footer{border-top:1px solid #e9e3ed;padding:13px 16px;background:#faf8fd}.done{width:100%;padding:11px;font-size:13px}.privacy{font-size:10px;color:#8a8292;text-align:center;margin:8px 0 0}.pill{pointer-events:auto;position:fixed;right:18px;top:18px;border:1px solid #dcd4e8;border-radius:999px;padding:10px 15px;background:#fffefb;color:#4e3d73;box-shadow:0 6px 25px #231b3925;font:600 13px ui-sans-serif,system-ui}
-    .pin{pointer-events:auto;position:fixed;width:27px;height:27px;display:grid;place-items:center;border:2px solid white;border-radius:50% 50% 50% 4px;transform:translate(-50%,-100%) rotate(-5deg);box-shadow:0 2px 8px #231b3945;background:#6650bb;color:white;font-size:11px;font-weight:750}.pin.lost{background:#9b7c46}.pin.pending{background:#a68cd6}
+    .pin{pointer-events:auto;position:fixed;width:27px;height:27px;display:grid;place-items:center;border:2px solid white;border-radius:50% 50% 50% 4px;transform:translate(-50%,-100%) rotate(-5deg);box-shadow:0 2px 8px #231b3945;background:#6650bb;color:white;font-size:11px;font-weight:750}.pin.lost{background:#9b7c46}.pin.selected{background:#43298f;z-index:1;box-shadow:0 0 0 3px #c9bcf3,0 2px 10px #231b3960}.pin.pending{background:#a68cd6}
     .highlight,.hover{pointer-events:none;position:fixed;border:2px solid #8e77d6;border-radius:3px;background:#a995e912;display:none}.hover{background:#a995e90d;border-width:1.5px}.hovertag{position:absolute;left:-1.5px;bottom:100%;margin-bottom:2px;background:#6250b8;color:white;font:600 10px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;padding:1px 5px;border-radius:4px;white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis}.hover.inside .hovertag{bottom:auto;top:0;margin:2px}.closebox{padding:11px;border:1px solid #e4c9bd;background:#fff7ed;border-radius:9px;margin-bottom:12px;font-size:12px}.closebox p{margin:0 0 10px}
     @media(max-width:500px){.panel{right:8px;top:8px;max-height:calc(100vh - 16px);width:310px}.pill{right:8px;top:8px}}
   `;
@@ -176,6 +176,11 @@
       footer.append(light, element('p', 'privacy', 'Keeps all current notes and edits. Omits HTML and action history.'));
     }
     panel.append(header, body, footer);
+    if (state.revealSelected) {
+      state.revealSelected = false;
+      const item = body.querySelector('.item.selected');
+      if (item) requestAnimationFrame(() => item.scrollIntoView({ block: 'nearest' }));
+    }
     renderPins();
   }
   function renderEditor() {
@@ -213,7 +218,8 @@
     return box;
   }
   function renderComment(comment, index) {
-    const item = element('article', 'item');
+    const item = element('article', `item${state.selectedId === comment.id ? ` selected${state.revealSelected ? ' pulse' : ''}` : ''}`);
+    if (state.selectedId === comment.id) item.setAttribute('aria-current', 'true');
     const top = element('div', 'itemtop');
     top.append(element('span', 'badge', String(index + 1)), element('span', 'itemlabel', comment.anchor.kind === 'element' ? 'Element note' : 'Page note'), button('Show', () => showComment(comment), 'link'));
     item.append(top, element('p', 'itemtext', comment.text));
@@ -297,6 +303,7 @@
   function removeComment(comment) {
     if (state.pending?.commentId === comment.id) cancelPending(false);
     state.comments = state.comments.filter(c => c.id !== comment.id); pinElements.delete(comment.id); pinContainers.delete(comment.id);
+    if (state.selectedId === comment.id) state.selectedId = null;
     record('comment_removed', { commentId: comment.id, text: comment.text }); render();
   }
   function revertEdit(edit) {
@@ -318,7 +325,11 @@
       const { x, y } = comment.anchor.container.offset;
       container.scrollTo({ left: Math.max(0, x - container.clientWidth / 2), top: Math.max(0, y - container.clientHeight / 2), behavior: 'smooth' });
     } else window.scrollTo({ left: Math.max(0, comment.anchor.document.x - innerWidth / 2), top: Math.max(0, comment.anchor.document.y - innerHeight / 2), behavior: 'smooth' });
-    state.collapsed = false; render();
+    state.selectedId = comment.id; state.collapsed = false; render();
+  }
+  // Clicking a pin only points at its note in the panel; editing stays an explicit choice.
+  function selectComment(comment) {
+    state.selectedId = comment.id; state.revealSelected = true; state.collapsed = false; render();
   }
   function showEdit(edit) {
     const node = editNodes.get(edit.id);
@@ -333,7 +344,7 @@
   function renderPins() {
     pinsLayer.replaceChildren();
     state.comments.forEach((comment, index) => {
-      const b = button(String(index + 1), () => { state.collapsed = false; editComment(comment); }, 'pin', comment.text);
+      const b = button(String(index + 1), () => selectComment(comment), `pin${state.selectedId === comment.id ? ' selected' : ''}`, comment.text);
       b.setAttribute('aria-label', `Note ${index + 1}: ${comment.text.slice(0, 100)}`);
       b.dataset.id = comment.id; pinsLayer.append(b);
     });
@@ -421,7 +432,7 @@
   function onKey(event) {
     if (!event.isTrusted) return;
     if (event.key === 'Escape' && !state.busy && (state.pending || state.mode !== 'browse' || state.confirmingClose)) {
-      event.preventDefault(); event.stopImmediatePropagation(); cancelPending(false); state.mode = 'browse'; state.confirmingClose = false; highlight.style.display = 'none'; render(); return;
+      event.preventDefault(); event.stopImmediatePropagation(); cancelPending(false); state.mode = 'browse'; state.confirmingClose = false; state.selectedId = null; highlight.style.display = 'none'; render(); return;
     }
     if (!ownEvent(event) && state.mode !== 'browse' && !state.collapsed) {
       // Space/Enter on a previously focused site button must not activate it.

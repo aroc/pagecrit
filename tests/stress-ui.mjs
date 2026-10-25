@@ -89,6 +89,16 @@ try {
   const bundle=await exportBundle();const anchor=bundle.comments[0].anchor;assert.equal(anchor.kind,'page');assert.equal(anchor.container.element.tag,'body');assert.equal(bundle.comments[0].anchorState,'resolved');
   const expected=await page.locator('#pin2').evaluate(el=>el.getBoundingClientRect().top+document.body.scrollTop);assert.ok(Math.abs(anchor.container.offset.y-expected)<30,JSON.stringify(anchor.container));
  });
+ await test('clicking a placed pin highlights its note in the panel without opening the editor',async({page,ui,button,clickText})=>{
+  for(let i=1;i<=3;i++){await button('⊕ Pin').click();await clickText(`#pin${i}`);await ui.locator('textarea').fill(`Comment ${i}`);await button('Save').click();}
+  await button('Browse').click();await button('Minimize').click();
+  await ui.getByRole('button',{name:'Note 2: Comment 2'}).click();
+  assert.equal(await ui.locator('textarea').count(),0,'no editor opened');assert.equal(await ui.getByRole('region',{name:'Page Notes review'}).isVisible(),true,'panel expands');
+  const selected=ui.locator('article[aria-current="true"]');assert.equal(await selected.count(),1);assert.match(await selected.textContent(),/Comment 2/);
+  assert.equal(await ui.getByRole('button',{name:'Note 2: Comment 2'}).evaluate(el=>el.classList.contains('selected')),true);
+  await ui.getByRole('button',{name:'Note 3: Comment 3'}).click();assert.match(await ui.locator('article[aria-current="true"]').textContent(),/Comment 3/);
+  await selected.getByRole('button',{name:'Edit',exact:true}).click();assert.equal(await ui.locator('textarea').inputValue(),'Comment 3');
+ });
  await test('blank comment rejected, cancel does not create a phantom note',async({ui,button,clickText,exportBundle})=>{
   await button('⊕ Pin').click();await clickText('#pin1');await ui.locator('textarea').fill(' \n\t ');await button('Save').click();assert.match(await ui.getByRole('status').textContent(),/Add a note/);await button('Cancel').click();assert.equal((await exportBundle()).comments.length,0);
  });
