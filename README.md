@@ -52,7 +52,7 @@ Browsing is the default. Turn a tool on, use it, and turn it off with the same k
 - **Severity:** every item has **Must fix** (red), **Suggested** (orange, the default), **Nit** (yellow) and **Note** (blue, no change needed). Pins take the color; the review lists urgent items first and notes last.
 - **The panel:** click a pin to highlight its note, or click a note to scroll to its pin. Drag the header (or the minimized pill) anywhere; the corner button snaps it back to a corner.
 - **Done** appears after you copy or download, and closes the review in one click. If you change anything afterwards, it hides until you copy or download again, so unsent feedback is never thrown away.
-- **Recent reviews:** when the current review is empty, a **Recent reviews** link opens your last 10 copied or downloaded reviews, even after Done or a browser restart. Open one to read its full Markdown and copy or download it again (pins don't come back), or delete reviews one at a time or all at once.
+- **Recent reviews:** when the current review is empty, a **Recent reviews** link opens your last 10 copied or downloaded reviews, even after Done or a browser restart. Open one to read the whole review, then copy or download its Markdown again (pins don't come back). Delete reviews one at a time or all at once; each asks once in place.
 - **Reloads and navigation:** the review lives with its tab. Refresh or click through the site and your pins come back; each page you visit becomes P1, P2… in the same review. On a different site, click the icon to continue it. Chrome's session storage keeps the draft until you close the tab, discard the review or quit the browser.
 
 ## What your agent gets

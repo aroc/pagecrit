@@ -23,7 +23,7 @@
     pending: null, notice: '', noticeType: '', busy: false, confirmingClose: false,
     collapsed: false, dock: 'tr', pos: null, closed: false, frame: 0,
     pages: [], pageId: null, restored: false,
-    sent: '', deliveredSignature: null, recent: [], view: '', recentOpen: null, recentCopied: null, clearingRecent: false, hoverPoint: null, selectedId: null, revealSelected: false,
+    sent: '', deliveredSignature: null, recent: [], view: '', recentOpen: null, recentCopied: null, clearingRecent: false, confirmDelete: null, hoverPoint: null, selectedId: null, revealSelected: false,
   };
   // References never enter the exported review. Keeping them avoids matching a different
   // repeated element when a framework replaces DOM nodes during a review.
@@ -68,8 +68,10 @@
     .itemtext{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;max-height:120px;overflow:auto}.struck{text-decoration:line-through;text-decoration-color:var(--red);text-decoration-thickness:1.5px;color:var(--pencil)}
     .diff{font-size:14px;margin:2px 0;white-space:pre-wrap;overflow-wrap:anywhere;max-height:96px;overflow:auto}.before{color:var(--faint);text-decoration:line-through;text-decoration-color:var(--red);text-decoration-thickness:1.5px}.after{color:var(--ink)}.after .mark{background:linear-gradient(transparent 58%,var(--green-mark) 58%,var(--green-mark) 92%,transparent 92%);-webkit-box-decoration-break:clone;box-decoration-break:clone}
     .warning{color:#a8322a;font-size:12px;margin:6px 0 0}.itemactions{display:flex;justify-content:flex-end;gap:2px;margin-top:4px}.link{font-size:12px;font-weight:600;background:none;border:0;color:var(--pencil);padding:3px 7px;border-radius:8px}.link:hover{color:var(--cobalt);background:var(--cobalt-soft)}
-    .recentlink{display:block;margin:6px auto 0}.link.confirm{color:#a8322a;background:var(--red-soft)}.recenthead{display:flex;align-items:center;gap:8px;margin:10px 0 4px}.recenthead .back{margin-left:-7px}.recenthead .title{flex:1;font:700 15px/1.2 var(--sans)}.recenthead .link:last-child{margin-right:-7px}
-    .recentnote{margin:12px 0 0;text-align:center}.recentitem .smallbutton{flex:none}.recentname{font:700 16px/1.3 var(--sans);margin:12px 0 2px;overflow-wrap:anywhere}.recent .recentactions{display:flex;gap:8px;margin:12px 0}.reviewtext{margin:0;padding:12px;background:var(--wash);border-radius:12px;font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;overflow-wrap:anywhere;max-height:calc(100vh - 290px);overflow:auto}
+    .recentlink{display:block;margin:14px -7px 0 auto}.button.danger.confirm{background:var(--red-soft)}.link.confirm{color:#a8322a;background:var(--red-soft)}.recenthead{display:flex;align-items:center;gap:8px;margin:10px 0 4px}.recenthead .back{margin-left:-7px}.recenthead .title{flex:1;font:700 15px/1.2 var(--sans)}.recenthead .link:last-child{margin-right:-7px}
+    .recentnote{margin:12px 0 0;text-align:center}.recentitem .smallbutton{flex:none}.recentname{font:700 16px/1.3 var(--sans);margin:12px 0 2px;overflow-wrap:anywhere}.recent .recentactions{display:flex;gap:8px;margin:12px 0}.markdown{font-size:13px;line-height:1.5;overflow-wrap:anywhere;border-top:1px solid var(--line);padding-top:4px}.markdown .mdhead{margin:14px 0 4px;font-weight:700;line-height:1.3}.markdown h5{font-size:12px;color:var(--pencil);margin-top:16px}.markdown h6{font-size:14px;padding-top:12px;border-top:1px solid var(--line)}.markdown h5+h6{border-top:0;padding-top:0}
+    .markdown .mdlist{margin:4px 0;padding-left:18px}.markdown li{margin:2px 0}.markdown li::marker{color:var(--faint)}.markdown .mdpara{margin:6px 0}.markdown .mdquote{margin:2px 0;padding-left:10px;border-left:2px solid var(--line);color:var(--pencil)}
+    .mdinline{font:11.5px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--wash);border-radius:5px;padding:1px 4px}.mdcode{margin:4px 0;padding:8px 10px;background:var(--wash);border-radius:8px;font:11.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap}
     .recentitem{display:flex;align-items:center;gap:10px;padding:10px 0}.recentinfo{flex:1;min-width:0}.recentinfo p{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.recentinfo .recentmeta{white-space:normal}
     .recenttitle{font-size:14px;font-weight:600}.recentmeta{font-size:12px;color:var(--faint)}
     .pagehead{margin:14px 0 2px;font-size:12px;font-weight:600;color:var(--pencil);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.item.archived .itemtext{color:var(--pencil)}
@@ -269,7 +271,10 @@
       box.append(actions); body.append(box);
     }
     // Recent reviews replace the review body while open; Back or Esc returns to it.
-    if (state.view === 'recent') body.append(state.recentOpen ? renderRecentReview(state.recentOpen) : renderRecentList());
+    if (state.view === 'recent') {
+      if (state.notice) { const notice = element('div', `notice ${state.noticeType}`, state.notice); notice.setAttribute('role', 'status'); body.append(notice); }
+      body.append(state.recentOpen ? renderRecentReview(state.recentOpen) : renderRecentList());
+    }
     else {
       // Browsing is the default. Tools toggle on; the active one shows Esc, which turns it off.
       const modes = element('div', 'modes');
@@ -445,7 +450,9 @@
       revealOnClick(row, () => openRecent(review), `Open ${recentName(review)}`);
       const info = element('div', 'recentinfo');
       info.append(element('p', 'recenttitle', recentName(review)), element('p', 'recentmeta', recentMeta(review)));
-      const remove = button('×', () => deleteRecent(review), 'smallbutton', `Delete ${recentName(review)}`);
+      const confirming = state.confirmDelete === review.id;
+      const remove = button(confirming ? 'Delete?' : '×', () => deleteRecent(review), confirming ? 'link confirm' : 'smallbutton');
+      remove.setAttribute('aria-label', confirming ? `Confirm deleting ${recentName(review)}` : `Delete ${recentName(review)}`);
       row.append(info, remove);
       box.append(row);
     }
@@ -464,11 +471,12 @@
     copy.setAttribute('aria-label', 'Copy this review');
     const save = button('Download', () => downloadRecent(review), 'button');
     save.setAttribute('aria-label', 'Download this review');
-    actions.append(copy, save, button('Delete', () => deleteRecent(review), 'button danger', 'Delete this review'));
+    const confirming = state.confirmDelete === review.id;
+    const remove = button(confirming ? 'Delete?' : 'Delete', () => deleteRecent(review), `button danger${confirming ? ' confirm' : ''}`);
+    remove.setAttribute('aria-label', confirming ? 'Confirm deleting this review' : 'Delete this review');
+    actions.append(copy, save, remove);
     box.append(actions);
-    // Shown as text only: the Markdown quotes page content and is never rendered as HTML.
-    const text = element('pre', 'reviewtext', open.markdown ?? 'Loading…');
-    text.tabIndex = 0;
+    const text = open.markdown === null ? element('p', 'muted', 'Loading…') : renderMarkdown(open.markdown);
     box.append(text);
     return box;
   }
@@ -478,14 +486,93 @@
     state.view = 'recent'; state.clearingRecent = false;
     state.recentOpen = review ? { id: review.id, markdown: null } : null;
     render();
-    if (!review) return;
+    if (!review) { loadRecent(); return; }
     try {
       const result = await chrome.runtime.sendMessage({ type: 'PAGE_NOTES_RECENT', action: 'markdown', id: review.id });
       if (state.recentOpen?.id === review.id) { state.recentOpen.markdown = result?.ok ? result.markdown : (result?.error || 'That review could not be loaded.'); render(); }
     } catch (_) { /* Stays on Loading. */ }
   }
+  // A small renderer for the digest's own Markdown: headings, lists, quotes, code spans and
+  // blocks, bold and backslash escapes. It builds elements and sets only textContent, so
+  // page text quoted in a review can never become markup.
+  function renderMarkdown(markdown) {
+    const root = element('div', 'markdown');
+    const lines = String(markdown).split('\n');
+    let list = null, item = null;
+    const endList = () => { list = null; item = null; };
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const fence = /^\s*(`{3,})\w*\s*$/.exec(line);
+      if (fence) {
+        const body = [];
+        while (++i < lines.length && lines[i].trim() !== fence[1]) body.push(lines[i].replace(/^ {2}/, ''));
+        (item || root).append(element('pre', 'mdcode', body.join('\n')));
+        continue;
+      }
+      const heading = /^(#{1,3}) (.*)$/.exec(line);
+      const bullet = /^(\s*)- (.*)$/.exec(line);
+      const numbered = /^(\d+)\. (.*)$/.exec(line);
+      const quote = /^\s*> ?(.*)$/.exec(line);
+      if (!line.trim()) { endList(); continue; }
+      // The title is already shown above the review.
+      if (heading && heading[1] === '#') { endList(); continue; }
+      if (heading) { endList(); const h = element(`h${heading[1].length + 3}`, 'mdhead'); h.append(inlineMarkdown(heading[2])); root.append(h); continue; }
+      if (quote && item) { const q = element('blockquote', 'mdquote'); q.append(inlineMarkdown(quote[1])); item.append(q); continue; }
+      if (bullet || numbered) {
+        const kind = bullet ? 'ul' : 'ol', nested = bullet && bullet[1].length >= 2;
+        if (nested && item) {
+          let sub = item.lastElementChild?.localName === 'ul' ? item.lastElementChild : null;
+          if (!sub) { sub = element('ul', 'mdlist'); item.append(sub); }
+          const li = element('li'); li.append(inlineMarkdown(bullet[2])); sub.append(li); continue;
+        }
+        if (!list || list.localName !== kind) { list = element(kind, 'mdlist'); if (numbered) list.start = Number(numbered[1]); root.append(list); }
+        item = element('li'); item.append(inlineMarkdown((bullet || numbered)[2])); list.append(item); continue;
+      }
+      endList();
+      const p = element('p', 'mdpara'); p.append(inlineMarkdown(line)); root.append(p);
+    }
+    return root;
+  }
+  function inlineMarkdown(text) {
+    const out = document.createDocumentFragment();
+    let strong = null, buffer = '';
+    const flush = () => { if (buffer) { (strong || out).append(document.createTextNode(buffer)); buffer = ''; } };
+    for (let i = 0; i < text.length;) {
+      const ch = text[i];
+      if (ch === '\\' && i + 1 < text.length) { buffer += text[i + 1]; i += 2; continue; }
+      if (ch === '`') {
+        const run = /^`+/.exec(text.slice(i))[0];
+        const close = text.indexOf(run, i + run.length);
+        if (close > -1) {
+          flush();
+          let value = text.slice(i + run.length, close);
+          if (/^ .* $/.test(value)) value = value.slice(1, -1);
+          (strong || out).append(element('code', 'mdinline', value));
+          i = close + run.length; continue;
+        }
+      }
+      if (text.startsWith('**', i)) {
+        flush();
+        if (strong) { out.append(strong); strong = null; } else strong = element('strong');
+        i += 2; continue;
+      }
+      buffer += ch; i++;
+    }
+    flush();
+    if (strong) out.append(strong);
+    return out;
+  }
   function closeRecent() { state.view = ''; state.recentOpen = null; state.clearingRecent = false; render(); }
+  // First click asks in place ("Delete?"); a second click within 3 seconds deletes.
+  let deleteTimer = 0;
   async function deleteRecent(review) {
+    clearTimeout(deleteTimer);
+    if (state.confirmDelete !== review.id) {
+      state.confirmDelete = review.id; render();
+      deleteTimer = setTimeout(() => { state.confirmDelete = null; render(); }, 3000);
+      return;
+    }
+    state.confirmDelete = null;
     try {
       const result = await chrome.runtime.sendMessage({ type: 'PAGE_NOTES_RECENT', action: 'delete', id: review.id });
       if (!result?.ok) throw new Error('That review could not be deleted.');
@@ -1283,7 +1370,7 @@
   loadRecent();
   globalThis.__pageNotesSession = { show() {
     if (!host.isConnected) document.documentElement.appendChild(host);
-    state.collapsed = false; render();
+    state.collapsed = false; render(); loadRecent();
   } };
   render();
 })();

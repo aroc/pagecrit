@@ -424,7 +424,7 @@ try {
   await page.context().grantPermissions(['clipboard-read','clipboard-write'],{origin:new URL(page.url()).origin});
   await sw().evaluate(()=>chrome.storage.local.clear());
   const done=()=>ui.getByRole('button',{name:'Close the review',exact:true}).click();
-  await edit('#plain','Remember me');await button('Copy Markdown').click();
+  await edit('#plain','Remember me <img src=x onerror="window.__pwned=1"> **not bold**');await button('Copy Markdown').click();
   const copied=await page.evaluate(()=>navigator.clipboard.readText());await done();
   await inject();await edit('#plain','Second review');await button('Copy Markdown').click();await done();
   await page.evaluate(()=>navigator.clipboard.writeText('something else'));
@@ -433,9 +433,11 @@ try {
   await link.click();const list=ui.getByRole('region',{name:'Recent reviews'});await list.waitFor();
   const rows=list.locator('.recentitem');assert.equal(await rows.count(),2);
   assert.match(await rows.nth(1).textContent(),/Stress fixture127\.0\.0\.1 · 1\u00a0item · just now/);
-  // Open the older review: its full Markdown, with Copy and Download.
-  await rows.nth(1).click();const open=ui.getByRole('region',{name:'Recent review'});await open.locator('pre').filter({hasText:'Remember me'}).waitFor();
-  assert.equal(await open.locator('pre').textContent(),copied,'the full review, as text');
+  // Open the older review: rendered from its Markdown, page text staying text, with Copy and Download.
+  await rows.nth(1).click();const open=ui.getByRole('region',{name:'Recent review'});const rendered=open.locator('.markdown');await rendered.filter({hasText:'Remember me'}).waitFor();
+  assert.equal(await rendered.locator('img').count(),0,'quoted HTML is never markup');assert.equal(await page.evaluate(()=>window.__pwned),undefined);
+  assert.match(await rendered.locator('code').filter({hasText:'Remember me'}).first().textContent(),/^Remember me <img src=x onerror="window\.__pwned=1"> \*\*not bold\*\*$/);
+  assert.equal(await rendered.locator('h6').first().textContent(),'1. Text edit · suggested');assert.ok(!(await rendered.textContent()).includes('###'),'no Markdown syntax showing');
   await button('Copy this review').click();await open.getByText('✓ Copied').waitFor();
   assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),copied);
   const before=await sw().evaluate(async()=>(await chrome.downloads.search({})).map(d=>d.id));
@@ -444,9 +446,16 @@ try {
   assert.equal(await readFile(d.filename,'utf8'),copied);
   // Esc steps back to the list, then Delete removes one review.
   await page.keyboard.press('Escape');await list.waitFor();
-  await list.getByRole('button',{name:'Delete Stress fixture'}).first().click();await page.waitForFunction(()=>true);
+  await list.getByRole('button',{name:'Delete Stress fixture'}).first().click();assert.equal(await list.locator('.recentitem').count(),2,'asks first');
+  await list.getByRole('button',{name:'Confirm deleting Stress fixture'}).click();
   await list.locator('.recentitem').nth(1).waitFor({state:'detached'});
   assert.equal((await sw().evaluate(()=>chrome.storage.local.get('recent'))).recent.length,1);
+  // Delete from an open review also asks in place.
+  await list.locator('.recentitem').click();await button('Delete this review').click();await button('Confirm deleting this review').click();await list.waitFor();
+  assert.equal((await sw().evaluate(()=>chrome.storage.local.get('recent'))).recent.length,0);
+  await sw().evaluate(()=>chrome.storage.local.set({recent:[{id:'x',title:'Seeded',url:'https://example.com/',pages:1,items:1,savedAt:new Date().toISOString(),filename:'x.md',markdown:'# Review: Seeded'}]}));
+  // Reopening the panel picks up reviews saved meanwhile (e.g. in another tab).
+  await button('← Back').click();await inject();await button('Recent reviews (1)').click();
   await button('Clear recent reviews').click();await button('Confirm clearing recent reviews').click();
   await list.getByText('No recent reviews.').waitFor();assert.equal((await sw().evaluate(()=>chrome.storage.local.get(null))).recent,undefined);
   // Back returns to the empty review; tools still work from the list.
