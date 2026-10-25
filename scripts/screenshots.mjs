@@ -91,6 +91,9 @@ try {
  // The Markdown digest exactly as Copy Markdown produces it.
  await page.keyboard.press('c');await ui.getByRole('button',{name:'Copy Markdown'}).filter({hasText:'Copied'}).waitFor().catch(()=>{});
  const markdown=await page.evaluate(()=>navigator.clipboard.readText());
+ // The footer once the review is copied: Copy, Download and Done.
+ await page.waitForTimeout(2700);await ui.getByRole('button',{name:'Close the review'}).waitFor();
+ const fb=await box(ui.locator('footer'));await shot('footer.png',{x:fb.x,y:fb.y+1,width:fb.width,height:fb.height-1});
  if(!markdown.startsWith('# Review'))throw new Error('Copy Markdown did not produce a digest');
  await writeFile(path.join(out,'sample-review.md'),markdown.replace(/http:\/\/127\.0\.0\.1:\d+\//g,'https://kettle.example/pricing'));
 
@@ -99,6 +102,20 @@ try {
  await button('Minimize').click();const pill=ui.locator('.pill');await pill.waitFor();
  await page.addStyleTag({content:'html,body,nav{background:#f6f7fa!important;border-color:transparent!important}nav>*{visibility:hidden}'});
  await shot('pill.png',pad(await box(pill),24,20));
+
+ // Recent reviews in a fresh, empty panel, from made-up entries seeded into local storage.
+ const ago=minutes=>new Date(Date.now()-minutes*60000).toISOString();
+ await worker.evaluate(async recent=>chrome.storage.local.set({recent}),[
+  {id:'demo-1',title:'Kettle: plan the week your team actually has',url:'https://kettle.example/pricing',pages:1,items:6,savedAt:ago(3),filename:'demo.md',markdown:'# Review: demo'},
+  {id:'demo-2',title:'Checkout · Kettle',url:'https://kettle.example/checkout',pages:2,items:4,savedAt:ago(130),filename:'demo.md',markdown:'# Review: demo'},
+  {id:'demo-3',title:'Sign up · Kettle',url:'https://staging.kettle.example/signup',pages:1,items:9,savedAt:ago(26*60),filename:'demo.md',markdown:'# Review: demo'},
+ ]);
+ const fresh=await context.newPage();await fresh.setViewportSize({width:1440,height:900});await fresh.goto(url);
+ const freshTab=await worker.evaluate(async()=>(await chrome.tabs.query({active:true,currentWindow:true}))[0].id);
+ await worker.evaluate(async tabId=>chrome.scripting.executeScript({target:{tabId},files:['core.js','content.js']}),freshTab);
+ const recentList=fresh.locator('[data-page-notes-root]').getByRole('region',{name:'Recent reviews'});await recentList.waitFor();await fresh.waitForTimeout(400);
+ const rb=await recentList.boundingBox();await fresh.mouse.move(1,899);
+ await fresh.screenshot({path:path.join(out,'recent.png'),clip:{x:rb.x-18,y:rb.y-6,width:rb.width+36,height:rb.height+10}});
 
  // README banner: the product on the left, the hero screenshot on the right.
  const font=(await readFile(path.join(root,'extension/fonts/caveat-latin.woff2'))).toString('base64');
@@ -119,7 +136,7 @@ try {
   <div class="shot"><img src="data:image/png;base64,${heroData}"></div>`);
  await banner.waitForTimeout(300);
  await banner.screenshot({path:path.join(out,'readme-banner.png')});
- console.log('Wrote',['hero.png','panel.png','row-severity.png','pin-hover.png','tools.png','edit-inline.png','remove-hover.png','pill.png','sample-review.md','readme-banner.png'].join(', '));
+ console.log('Wrote',['hero.png','panel.png','row-severity.png','pin-hover.png','tools.png','edit-inline.png','remove-hover.png','footer.png','pill.png','recent.png','sample-review.md','readme-banner.png'].join(', '));
 } finally {
  if(context)await context.close();
  await new Promise(resolve=>server.close(resolve));

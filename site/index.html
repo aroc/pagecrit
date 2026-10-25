@@ -65,6 +65,11 @@
   .card p{margin:0;color:var(--pencil);font-size:16px}
   .card .art{background:var(--wash);border-radius:16px;padding:14px;display:grid;place-items:center;overflow:hidden}
   .card .art img{border-radius:10px;box-shadow:0 10px 30px -18px #1f243066}
+  .bars{list-style:none;margin:0;padding:4px 0;display:grid;gap:10px;width:min(100%,380px)}
+  .bars li{display:flex;align-items:center;gap:10px;background:var(--paper);border-radius:999px;padding:7px 8px 7px 16px;box-shadow:0 8px 24px -18px #1f243066,0 0 0 1px #1f24300f;font-size:14px;color:var(--faint)}
+  .bars li:nth-child(2){margin-left:18px;margin-right:-18px}
+  .bars .url{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bars .url b{color:var(--ink);font-weight:500}
+  .card .bars img{border-radius:0;box-shadow:none;flex:none}
   .card .art.roomy{padding:30px 14px}.card .art img.flat{box-shadow:none;border-radius:0}
   .s2{grid-column:span 2}.s3{grid-column:span 3}.s4{grid-column:span 4}.r2{grid-row:span 2}
   .keys{display:flex;flex-wrap:wrap;gap:8px}
@@ -203,20 +208,22 @@
           <div class="keys" aria-label="Shortcuts"><kbd>P</kbd><kbd>E</kbd><kbd>R</kbd><kbd>C</kbd><kbd>Esc</kbd></div>
         </article>
         <article class="card s2">
-          <h3>Nothing leaves your browser</h3>
-          <p>No account and no server. Your last 10 reviews stay in this browser so you can grab one again, and form fields are never read.</p>
-          <p class="hand">your review, your machine</p>
-        </article>
-
-        <article class="card s3">
           <h3>Review a whole flow</h3>
           <p>Click from pricing to signup to checkout and every page joins one review as P1, P2, P3. Reload and your pins are still there.</p>
           <ul class="pages" aria-label="Pages in one review"><li><b>P1</b>/pricing</li><li><b>P2</b>/signup</li><li><b>P3</b>/checkout</li></ul>
         </article>
         <article class="card s3">
+          <div class="art roomy"><img src="assets/footer.png" width="366" alt="The panel's footer after copying: Copy, Download and Done buttons." loading="lazy"></div>
           <h3>Copy in one click, or download</h3>
           <p>Paste into Claude Code, Cursor or an issue, or save a .md file. Then click Done. Your last 10 reviews wait under Recent reviews if you need one again.</p>
           <div class="keys"><kbd>C</kbd><kbd>Done</kbd></div>
+          <p class="hand">paste it anywhere</p>
+        </article>
+        <article class="card s3">
+          <div class="art"><img src="assets/recent.png" width="362" alt="The panel's Recent reviews list: three earlier reviews with Copy and Download buttons, and Clear." loading="lazy"></div>
+          <h3>Nothing leaves your browser</h3>
+          <p>No account and no server. Your last 10 reviews stay in this browser so you can grab one again, and form fields are never read.</p>
+          <p class="hand">your review, your machine</p>
         </article>
         <article class="card s3">
           <div class="art roomy"><img class="flat" src="assets/pill.png" width="228" alt="The Page Notes panel minimized to a small pill showing 6 items." loading="lazy"></div>
@@ -224,6 +231,11 @@
           <p>Drag the panel anywhere, snap it back to a corner, or shrink it to a pill that keeps count while you look at the page.</p>
         </article>
         <article class="card s3">
+          <div class="art"><ul class="bars" aria-label="Works on localhost, staging and production">
+            <li><span class="url"><b>localhost</b>:3000/pricing</span><img src="assets/icon-128.png" alt="" width="22" height="22"></li>
+            <li><span class="url"><b>staging.</b>kettle.example</span><img src="assets/icon-128.png" alt="" width="22" height="22"></li>
+            <li><span class="url"><b>kettle.example</b>/checkout</span><img src="assets/icon-128.png" alt="" width="22" height="22"></li>
+          </ul></div>
           <h3>Works on the site you have</h3>
           <p>Localhost, staging or production: anything you can open in Chrome. Nothing to add to your codebase.</p>
           <p class="hand">no snippet, no SDK</p>

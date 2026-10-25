@@ -69,7 +69,7 @@
     .diff{font-size:14px;margin:2px 0;white-space:pre-wrap;overflow-wrap:anywhere;max-height:96px;overflow:auto}.before{color:var(--faint);text-decoration:line-through;text-decoration-color:var(--red);text-decoration-thickness:1.5px}.after{color:var(--ink)}.after .mark{background:linear-gradient(transparent 58%,var(--green-mark) 58%,var(--green-mark) 92%,transparent 92%);-webkit-box-decoration-break:clone;box-decoration-break:clone}
     .warning{color:#a8322a;font-size:12px;margin:6px 0 0}.itemactions{display:flex;justify-content:flex-end;gap:2px;margin-top:4px}.link{font-size:12px;font-weight:600;background:none;border:0;color:var(--pencil);padding:3px 7px;border-radius:8px}.link:hover{color:var(--cobalt);background:var(--cobalt-soft)}
     .recent{margin-top:10px}.recent .sectionhead{align-items:center}.recent .link{margin-right:-7px}.link.confirm{color:#a8322a;background:var(--red-soft)}
-    .recentitem{display:flex;align-items:center;gap:10px;padding:10px 0}.recentinfo{flex:1;min-width:0}.recentinfo p{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .recentitem{display:flex;align-items:center;gap:10px;padding:10px 0}.recentinfo{flex:1;min-width:0}.recentinfo p{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.recentinfo .recentmeta{white-space:normal}
     .recenttitle{font-size:14px;font-weight:600}.recentmeta{font-size:12px;color:var(--faint)}.recentactions{display:flex;gap:2px;flex:none}
     .pagehead{margin:14px 0 2px;font-size:12px;font-weight:600;color:var(--pencil);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.item.archived .itemtext{color:var(--pencil)}
     .item.reveal{cursor:pointer;margin:0 -18px;padding:12px 18px}.item.reveal:hover{background:#fafbfc}.item.reveal:focus-visible{outline-offset:-2px}
@@ -436,11 +436,11 @@
   function ago(iso) {
     const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
     if (!(minutes >= 1)) return 'just now';
-    if (minutes < 60) return `${minutes} min ago`;
+    if (minutes < 60) return `${minutes}\u00a0min ago`;
     const hours = Math.round(minutes / 60);
-    if (hours < 24) return `${hours} h ago`;
+    if (hours < 24) return `${hours}\u00a0h ago`;
     const days = Math.round(hours / 24);
-    return days === 1 ? 'yesterday' : days < 7 ? `${days} days ago` : new Date(iso).toLocaleDateString();
+    return days === 1 ? 'yesterday' : days < 7 ? `${days}\u00a0days ago` : new Date(iso).toLocaleDateString();
   }
   async function loadRecent() {
     try {
