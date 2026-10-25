@@ -113,9 +113,10 @@ try {
  const fresh=await context.newPage();await fresh.setViewportSize({width:1440,height:900});await fresh.goto(url);
  const freshTab=await worker.evaluate(async()=>(await chrome.tabs.query({active:true,currentWindow:true}))[0].id);
  await worker.evaluate(async tabId=>chrome.scripting.executeScript({target:{tabId},files:['core.js','content.js']}),freshTab);
- const recentList=fresh.locator('[data-page-notes-root]').getByRole('region',{name:'Recent reviews'});await recentList.waitFor();await fresh.waitForTimeout(400);
+ const freshUi=fresh.locator('[data-page-notes-root]');await freshUi.getByRole('button',{name:'Recent reviews (3)'}).click();
+ const recentList=freshUi.getByRole('region',{name:'Recent reviews'});await recentList.waitFor();await fresh.waitForTimeout(400);
  const rb=await recentList.boundingBox();await fresh.mouse.move(1,899);
- await fresh.screenshot({path:path.join(out,'recent.png'),clip:{x:rb.x-18,y:rb.y-6,width:rb.width+36,height:rb.height+10}});
+ await fresh.screenshot({path:path.join(out,'recent.png'),clip:{x:rb.x-18,y:rb.y-4,width:rb.width+36,height:rb.height+14}});
 
  // README banner: the product on the left, the hero screenshot on the right.
  const font=(await readFile(path.join(root,'extension/fonts/caveat-latin.woff2'))).toString('base64');

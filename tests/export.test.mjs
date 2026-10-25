@@ -146,6 +146,7 @@ test('copied and downloaded reviews are remembered locally: newest first, last 1
  assert.equal((await send({type:'PAGE_NOTES_RECENT',action:'markdown',id:'s1'})).ok,false,'dropped after 10');
  assert.equal((await send({type:'PAGE_NOTES_RECENT',action:'list'},{id:'other',tab:{id:1},frameId:0,url:'https://example.com'})).ok,false);
  assert.equal((await send({type:'PAGE_NOTES_RECENT',action:'list'},{...ours,frameId:2})).ok,false);
+ await send({type:'PAGE_NOTES_RECENT',action:'delete',id:'s12'});assert.deepEqual(JSON.parse(JSON.stringify((await send({type:'PAGE_NOTES_RECENT',action:'list'})).reviews.map(r=>r.id))),['s5','s11','s10','s9','s8','s7','s6','s4','s3']);
  await send({type:'PAGE_NOTES_RECENT',action:'clear'});assert.equal((await send({type:'PAGE_NOTES_RECENT',action:'list'})).reviews.length,0);
 });
 test('start-review keyboard command injects into http(s) HTML pages only, never past a modal dialog',async()=>{

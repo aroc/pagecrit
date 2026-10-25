@@ -45,6 +45,7 @@ async function handleRecent(message) {
   const list = await recentList();
   if (message.action === 'list') return {ok: true, reviews: list.map(({markdown, ...meta}) => meta)};
   if (message.action === 'clear') { await chrome.storage.local.remove(RECENT_KEY); return {ok: true}; }
+  if (message.action === 'delete') { await chrome.storage.local.set({[RECENT_KEY]: list.filter(other => other.id !== message.id)}); return {ok: true}; }
   const entry = list.find(other => other.id === message.id);
   if (!entry) return {ok: false, error: 'That review is no longer saved.'};
   if (message.action === 'markdown') return {ok: true, markdown: entry.markdown};

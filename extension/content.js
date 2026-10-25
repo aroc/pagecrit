@@ -23,7 +23,7 @@
     pending: null, notice: '', noticeType: '', busy: false, confirmingClose: false,
     collapsed: false, dock: 'tr', pos: null, closed: false, frame: 0,
     pages: [], pageId: null, restored: false,
-    sent: '', deliveredSignature: null, recent: [], recentCopied: null, clearingRecent: false, hoverPoint: null, selectedId: null, revealSelected: false,
+    sent: '', deliveredSignature: null, recent: [], view: '', recentOpen: null, recentCopied: null, clearingRecent: false, hoverPoint: null, selectedId: null, revealSelected: false,
   };
   // References never enter the exported review. Keeping them avoids matching a different
   // repeated element when a framework replaces DOM nodes during a review.
@@ -68,9 +68,10 @@
     .itemtext{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;max-height:120px;overflow:auto}.struck{text-decoration:line-through;text-decoration-color:var(--red);text-decoration-thickness:1.5px;color:var(--pencil)}
     .diff{font-size:14px;margin:2px 0;white-space:pre-wrap;overflow-wrap:anywhere;max-height:96px;overflow:auto}.before{color:var(--faint);text-decoration:line-through;text-decoration-color:var(--red);text-decoration-thickness:1.5px}.after{color:var(--ink)}.after .mark{background:linear-gradient(transparent 58%,var(--green-mark) 58%,var(--green-mark) 92%,transparent 92%);-webkit-box-decoration-break:clone;box-decoration-break:clone}
     .warning{color:#a8322a;font-size:12px;margin:6px 0 0}.itemactions{display:flex;justify-content:flex-end;gap:2px;margin-top:4px}.link{font-size:12px;font-weight:600;background:none;border:0;color:var(--pencil);padding:3px 7px;border-radius:8px}.link:hover{color:var(--cobalt);background:var(--cobalt-soft)}
-    .recent{margin-top:10px}.recent .sectionhead{align-items:center}.recent .link{margin-right:-7px}.link.confirm{color:#a8322a;background:var(--red-soft)}
+    .recentlink{display:block;margin:6px auto 0}.link.confirm{color:#a8322a;background:var(--red-soft)}.recenthead{display:flex;align-items:center;gap:8px;margin:10px 0 4px}.recenthead .back{margin-left:-7px}.recenthead .title{flex:1;font:700 15px/1.2 var(--sans)}.recenthead .link:last-child{margin-right:-7px}
+    .recentnote{margin:12px 0 0;text-align:center}.recentitem .smallbutton{flex:none}.recentname{font:700 16px/1.3 var(--sans);margin:12px 0 2px;overflow-wrap:anywhere}.recent .recentactions{display:flex;gap:8px;margin:12px 0}.reviewtext{margin:0;padding:12px;background:var(--wash);border-radius:12px;font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;overflow-wrap:anywhere;max-height:calc(100vh - 290px);overflow:auto}
     .recentitem{display:flex;align-items:center;gap:10px;padding:10px 0}.recentinfo{flex:1;min-width:0}.recentinfo p{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.recentinfo .recentmeta{white-space:normal}
-    .recenttitle{font-size:14px;font-weight:600}.recentmeta{font-size:12px;color:var(--faint)}.recentactions{display:flex;gap:2px;flex:none}
+    .recenttitle{font-size:14px;font-weight:600}.recentmeta{font-size:12px;color:var(--faint)}
     .pagehead{margin:14px 0 2px;font-size:12px;font-weight:600;color:var(--pencil);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.item.archived .itemtext{color:var(--pencil)}
     .item.reveal{cursor:pointer;margin:0 -18px;padding:12px 18px}.item.reveal:hover{background:#fafbfc}.item.reveal:focus-visible{outline-offset:-2px}
     .item.selected{background:var(--marker-soft)}.item.selected:hover{background:var(--marker-soft)}.item.pulse{animation:pulse 1s ease-out}@keyframes pulse{from{background:var(--marker)}to{background:var(--marker-soft)}}
@@ -78,9 +79,10 @@
     .closebox{padding:14px;background:var(--red-soft);border-radius:16px;margin:8px 0 12px;font-size:13px}.closebox p{margin:0}
     .pill{pointer-events:auto;position:fixed;right:18px;top:18px;display:flex;align-items:center;gap:8px;border:1px solid #e3e4eb;border-radius:999px;padding:7px 9px 7px 13px;background:var(--paper);box-shadow:0 1px 0 #1f24300a,0 14px 34px -14px #1f243066;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}.pill .brand{font-size:23px;flex:none}.pill .count{min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:var(--cobalt);color:white;font:700 12px/22px var(--sans);text-align:center}
     .pin{pointer-events:auto;position:fixed;min-width:32px;height:24px;padding:0 8px;display:grid;place-items:center;border:2px solid white;border-radius:8px 9px 7px 9px/9px 7px 9px 8px;transform:translate(-50%,calc(-100% - 9px)) rotate(-3deg);transform-origin:50% calc(100% + 9px);box-shadow:0 3px 10px #1f243055;background:var(--cobalt);color:white;font:700 12px/1 var(--sans);font-variant-numeric:tabular-nums}
-    .pin::after,.badge.bubble::after{content:'';position:absolute;left:50%;bottom:-7px;width:9px;height:9px;background:inherit;border-right:2px solid white;border-bottom:2px solid white;border-bottom-right-radius:3px;transform:translateX(-50%) rotate(45deg)}
+    /* The tail: a white triangle (the outline) under one in the pin's color, which also covers the body's bottom border so the two join cleanly. */
+    .pin::before,.pin::after,.badge.bubble::after{content:'';position:absolute;left:50%;top:calc(100% - 1px);transform:translateX(-50%);clip-path:polygon(0 0,100% 0,50% 100%)}.pin::before{width:17px;height:12.5px;background:white}.pin::after{width:12px;height:9px;background:inherit}
     .pin:hover{filter:brightness(.92)}.pin.lost{background:#8d8f9a}.pin.pending{background:var(--marker);color:var(--ink)}.pin.selected{z-index:1;box-shadow:0 0 0 4px var(--marker),0 3px 12px #1f243066}
-    .badge.bubble{position:relative;min-width:27px;height:20px;padding:0 7px;margin-bottom:4px;border-radius:6px 7px 6px 7px/7px 6px 7px 6px;transform:rotate(-3deg)}.badge.bubble::after{bottom:-4px;width:7px;height:7px;border:0}
+    .badge.bubble{position:relative;min-width:27px;height:20px;padding:0 7px;margin-bottom:4px;border-radius:6px 7px 6px 7px/7px 6px 7px 6px;transform:rotate(-3deg)}.badge.bubble::after{width:9px;height:5.5px;background:inherit}
     .highlight,.hover{pointer-events:none;position:fixed;border:2px dashed var(--cobalt);border-radius:6px;background:#2f4be00a;display:none}.highlight{border-style:solid;background:#ffe36e33;border-color:#e8c534}
     .hovertag{position:absolute;left:-2px;bottom:100%;margin-bottom:4px;background:var(--cobalt);color:white;font:600 11px/1.6 var(--sans);padding:1px 7px;border-radius:999px;white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis}.hover.inside .hovertag{bottom:auto;top:0;margin:4px}
     .hover.danger{border-color:var(--red);background:#d9443a12}.hover.danger .hovertag{background:var(--red)}
@@ -236,6 +238,7 @@
     if (state.busy) return;
     cancelPending(false);
     state.mode = mode;
+    state.view = ''; state.recentOpen = null;
     state.confirmingClose = false;
     state.notice = '';
     highlight.style.display = 'none';
@@ -265,56 +268,60 @@
       actions.append(button('Keep reviewing', () => { state.confirmingClose = false; render(); }), button('Discard & close', close, 'button danger'));
       box.append(actions); body.append(box);
     }
-    // Browsing is the default. Tools toggle on; the active one shows Esc, which turns it off.
-    const modes = element('div', 'modes');
-    modes.setAttribute('role', 'group'); modes.setAttribute('aria-label', 'Tools');
-    for (const [key, label, shortcut, name] of TOOLS) {
-      const active = state.mode === key;
-      const b = button('', () => setMode(active ? 'browse' : key), `mode${active ? ' active' : ''}`);
-      b.append(element('span', '', label), element('kbd', 'kbd', active ? 'Esc' : shortcut));
-      b.setAttribute('aria-label', name); b.setAttribute('aria-pressed', String(active));
-      b.setAttribute('aria-keyshortcuts', active ? 'Escape' : shortcut.toLowerCase());
-      b.title = active ? `Turn off ${label} (Esc)` : `${label} (${shortcut})`;
-      modes.append(b);
-    }
-    body.append(modes);
-    if (state.mode === 'pin') {
-      const row = element('div', 'anchor');
-      row.setAttribute('role', 'group'); row.setAttribute('aria-label', 'Pin position');
-      for (const [value, text] of [['element', 'Pin to element'], ['page', 'Pin to page']]) {
-        const b = button(text, () => { state.anchorKind = value; render(); }, `anchoropt${state.anchorKind === value ? ' active' : ''}`);
-        b.setAttribute('aria-pressed', String(state.anchorKind === value)); row.append(b);
+    // Recent reviews replace the review body while open; Back or Esc returns to it.
+    if (state.view === 'recent') body.append(state.recentOpen ? renderRecentReview(state.recentOpen) : renderRecentList());
+    else {
+      // Browsing is the default. Tools toggle on; the active one shows Esc, which turns it off.
+      const modes = element('div', 'modes');
+      modes.setAttribute('role', 'group'); modes.setAttribute('aria-label', 'Tools');
+      for (const [key, label, shortcut, name] of TOOLS) {
+        const active = state.mode === key;
+        const b = button('', () => setMode(active ? 'browse' : key), `mode${active ? ' active' : ''}`);
+        b.append(element('span', '', label), element('kbd', 'kbd', active ? 'Esc' : shortcut));
+        b.setAttribute('aria-label', name); b.setAttribute('aria-pressed', String(active));
+        b.setAttribute('aria-keyshortcuts', active ? 'Escape' : shortcut.toLowerCase());
+        b.title = active ? `Turn off ${label} (Esc)` : `${label} (${shortcut})`;
+        modes.append(b);
       }
-      body.append(row);
-    }
-    if (state.mode !== 'browse') body.append(element('p', 'instructions', modeLabel()));
-    if (state.notice) { const notice = element('div', `notice ${state.noticeType}`, state.notice); notice.setAttribute('role', 'status'); body.append(notice); }
-    if (state.pending) body.append(renderEditor());
-    const heading = element('div', 'sectionhead');
-    const counts = [[state.comments.length, 'comment', 'comments'], [state.edits.length, 'edit', 'edits'], [state.removals.length, 'removal', 'removals']].filter(([n], i) => n || i < 2).map(([n, one, many]) => `${n} ${n === 1 ? one : many}`);
-    heading.append(element('span', 'title', 'This review'), element('span', 'count', counts.join(', ')));
-    body.append(heading);
-    if (!itemCount()) body.append(element('div', 'empty', 'Nothing marked up yet. Pick a tool and click the page.'));
-    if (!itemCount() && state.recent.length) body.append(renderRecent());
-    const multi = state.pages.length > 1;
-    for (const page of [currentPage(), ...state.pages.filter(page => page.id !== state.pageId)].filter(Boolean)) {
-      const here = page.id === state.pageId;
-      const comments = state.comments.map((comment, index) => [comment, index]).filter(([comment]) => onPage(comment, page.id));
-      const edits = state.edits.filter(edit => onPage(edit, page.id)), removals = state.removals.filter(removal => onPage(removal, page.id));
-      if (multi && (here || comments.length + edits.length + removals.length)) body.append(element('div', 'pagehead', `${page.id} · ${pagePath(page.url)}${here ? ' (this page)' : ''}`));
-      if (here) {
-        comments.forEach(([comment, index]) => body.append(renderComment(comment, index)));
-        edits.forEach(edit => body.append(renderEdit(edit)));
-        removals.forEach(removal => body.append(renderRemoval(removal)));
-      } else {
-        comments.forEach(([comment, index]) => body.append(renderArchived(comment, String(index + 1), comment.text, () => removeComment(comment))));
-        edits.forEach(edit => body.append(renderArchived(edit, 'Aa', `${edit.before} → ${edit.after}`, () => dropItem('edits', edit))));
-        removals.forEach(removal => body.append(renderArchived(removal, '⊖', `Remove ${removal.label}`, () => dropItem('removals', removal))));
+      body.append(modes);
+      if (state.mode === 'pin') {
+        const row = element('div', 'anchor');
+        row.setAttribute('role', 'group'); row.setAttribute('aria-label', 'Pin position');
+        for (const [value, text] of [['element', 'Pin to element'], ['page', 'Pin to page']]) {
+          const b = button(text, () => { state.anchorKind = value; render(); }, `anchoropt${state.anchorKind === value ? ' active' : ''}`);
+          b.setAttribute('aria-pressed', String(state.anchorKind === value)); row.append(b);
+        }
+        body.append(row);
+      }
+      if (state.mode !== 'browse') body.append(element('p', 'instructions', modeLabel()));
+      if (state.notice) { const notice = element('div', `notice ${state.noticeType}`, state.notice); notice.setAttribute('role', 'status'); body.append(notice); }
+      if (state.pending) body.append(renderEditor());
+      const heading = element('div', 'sectionhead');
+      const counts = [[state.comments.length, 'comment', 'comments'], [state.edits.length, 'edit', 'edits'], [state.removals.length, 'removal', 'removals']].filter(([n], i) => n || i < 2).map(([n, one, many]) => `${n} ${n === 1 ? one : many}`);
+      heading.append(element('span', 'title', 'This review'), element('span', 'count', counts.join(', ')));
+      body.append(heading);
+      if (!itemCount()) body.append(element('div', 'empty', 'Nothing marked up yet. Pick a tool and click the page.'));
+      if (!itemCount() && state.recent.length) body.append(recentLink());
+      const multi = state.pages.length > 1;
+      for (const page of [currentPage(), ...state.pages.filter(page => page.id !== state.pageId)].filter(Boolean)) {
+        const here = page.id === state.pageId;
+        const comments = state.comments.map((comment, index) => [comment, index]).filter(([comment]) => onPage(comment, page.id));
+        const edits = state.edits.filter(edit => onPage(edit, page.id)), removals = state.removals.filter(removal => onPage(removal, page.id));
+        if (multi && (here || comments.length + edits.length + removals.length)) body.append(element('div', 'pagehead', `${page.id} · ${pagePath(page.url)}${here ? ' (this page)' : ''}`));
+        if (here) {
+          comments.forEach(([comment, index]) => body.append(renderComment(comment, index)));
+          edits.forEach(edit => body.append(renderEdit(edit)));
+          removals.forEach(removal => body.append(renderRemoval(removal)));
+        } else {
+          comments.forEach(([comment, index]) => body.append(renderArchived(comment, String(index + 1), comment.text, () => removeComment(comment))));
+          edits.forEach(edit => body.append(renderArchived(edit, 'Aa', `${edit.before} → ${edit.after}`, () => dropItem('edits', edit))));
+          removals.forEach(removal => body.append(renderArchived(removal, '⊖', `Remove ${removal.label}`, () => dropItem('removals', removal))));
+        }
       }
     }
     // Nothing to send yet: no Copy/Download until there is feedback.
     const footer = element('footer', 'footer');
-    footer.hidden = !itemCount();
+    footer.hidden = !itemCount() || state.view === 'recent';
     // Copy is the quick path (paste into your agent, an issue or a PR); the file is the alternative.
     const finishing = delivered();
     const copy = button(state.sent === 'copied' ? '✓ Copied' : finishing ? 'Copy' : 'Copy Markdown', copyMarkdown, 'button primary done');
@@ -406,32 +413,87 @@
     return group;
   }
   // Reviews you copied or downloaded lately, newest first, so one closed with Done isn't lost.
-  function renderRecent() {
+  // A link under the empty state opens the list; a review opens as its full Markdown (no pins).
+  function recentLink() {
+    const link = button(`Recent reviews (${state.recent.length})`, () => openRecent(), 'link recentlink');
+    return link;
+  }
+  function recentHost(review) { try { return new URL(review.url).hostname; } catch (_) { return ''; } }
+  function recentMeta(review) {
+    return [recentHost(review), `${review.items}\u00a0${review.items === 1 ? 'item' : 'items'}`, review.pages > 1 ? `${review.pages}\u00a0pages` : '', ago(review.savedAt)].filter(Boolean).join(' · ');
+  }
+  function recentName(review) { return review.title || recentHost(review) || 'Untitled page'; }
+  function recentHead(backLabel, back, title) {
+    const head = element('div', 'recenthead');
+    const backButton = button(`← ${backLabel}`, back, 'link back');
+    head.append(backButton, element('span', 'title', title));
+    return head;
+  }
+  function renderRecentList() {
     const box = element('section', 'recent');
     box.setAttribute('aria-label', 'Recent reviews');
-    const head = element('div', 'sectionhead');
-    const clear = button(state.clearingRecent ? 'Clear all?' : 'Clear', clearRecent, `link${state.clearingRecent ? ' confirm' : ''}`);
-    clear.setAttribute('aria-label', state.clearingRecent ? 'Confirm clearing recent reviews' : 'Clear recent reviews');
-    head.append(element('span', 'title', 'Recent reviews'), clear);
+    const head = recentHead('Back', closeRecent, 'Recent reviews');
+    if (state.recent.length) {
+      const clear = button(state.clearingRecent ? 'Clear all?' : 'Clear all', clearRecent, `link${state.clearingRecent ? ' confirm' : ''}`);
+      clear.setAttribute('aria-label', state.clearingRecent ? 'Confirm clearing recent reviews' : 'Clear recent reviews');
+      head.append(clear);
+    }
     box.append(head);
+    if (!state.recent.length) box.append(element('div', 'empty', 'No recent reviews.'));
     for (const review of state.recent) {
       const row = element('div', 'item recentitem');
+      revealOnClick(row, () => openRecent(review), `Open ${recentName(review)}`);
       const info = element('div', 'recentinfo');
-      let host = '';
-      try { host = new URL(review.url).hostname; } catch (_) { /* Shown without a host. */ }
-      info.append(element('p', 'recenttitle', review.title || host || 'Untitled page'));
-      const meta = [host, `${review.items} ${review.items === 1 ? 'item' : 'items'}`, review.pages > 1 ? `${review.pages} pages` : '', ago(review.savedAt)].filter(Boolean).join(' · ');
-      info.append(element('p', 'recentmeta', meta));
-      const actions = element('div', 'recentactions');
-      const copy = button(state.recentCopied === review.id ? '✓ Copied' : 'Copy', () => copyRecent(review), 'link');
-      copy.setAttribute('aria-label', `Copy Markdown for ${review.title || host}`);
-      const save = button('Download', () => downloadRecent(review), 'link');
-      save.setAttribute('aria-label', `Download ${review.title || host}`);
-      actions.append(copy, save);
-      row.append(info, actions);
+      info.append(element('p', 'recenttitle', recentName(review)), element('p', 'recentmeta', recentMeta(review)));
+      const remove = button('×', () => deleteRecent(review), 'smallbutton', `Delete ${recentName(review)}`);
+      row.append(info, remove);
       box.append(row);
     }
+    box.append(element('p', 'muted recentnote', 'Your last 10 copied or downloaded reviews, kept in this browser only.'));
     return box;
+  }
+  function renderRecentReview(open) {
+    const review = state.recent.find(other => other.id === open.id);
+    const box = element('section', 'recent');
+    box.setAttribute('aria-label', 'Recent review');
+    box.append(recentHead('Recent reviews', () => openRecent(), ''));
+    if (!review) { box.append(element('div', 'empty', 'That review is no longer saved.')); return box; }
+    box.append(element('h3', 'recentname', recentName(review)), element('p', 'recentmeta', recentMeta(review)));
+    const actions = element('div', 'recentactions');
+    const copy = button(state.recentCopied === review.id ? '✓ Copied' : 'Copy Markdown', () => copyRecent(review), 'button primary');
+    copy.setAttribute('aria-label', 'Copy this review');
+    const save = button('Download', () => downloadRecent(review), 'button');
+    save.setAttribute('aria-label', 'Download this review');
+    actions.append(copy, save, button('Delete', () => deleteRecent(review), 'button danger', 'Delete this review'));
+    box.append(actions);
+    // Shown as text only: the Markdown quotes page content and is never rendered as HTML.
+    const text = element('pre', 'reviewtext', open.markdown ?? 'Loading…');
+    text.tabIndex = 0;
+    box.append(text);
+    return box;
+  }
+  async function openRecent(review) {
+    cancelPending(false);
+    state.mode = 'browse'; highlight.style.display = 'none';
+    state.view = 'recent'; state.clearingRecent = false;
+    state.recentOpen = review ? { id: review.id, markdown: null } : null;
+    render();
+    if (!review) return;
+    try {
+      const result = await chrome.runtime.sendMessage({ type: 'PAGE_NOTES_RECENT', action: 'markdown', id: review.id });
+      if (state.recentOpen?.id === review.id) { state.recentOpen.markdown = result?.ok ? result.markdown : (result?.error || 'That review could not be loaded.'); render(); }
+    } catch (_) { /* Stays on Loading. */ }
+  }
+  function closeRecent() { state.view = ''; state.recentOpen = null; state.clearingRecent = false; render(); }
+  async function deleteRecent(review) {
+    try {
+      const result = await chrome.runtime.sendMessage({ type: 'PAGE_NOTES_RECENT', action: 'delete', id: review.id });
+      if (!result?.ok) throw new Error('That review could not be deleted.');
+      state.recent = state.recent.filter(other => other.id !== review.id);
+      announce('Review deleted.');
+      if (state.recentOpen?.id === review.id) state.recentOpen = null;
+      render();
+    } catch (error) { tell(error.message, true); }
   }
   function ago(iso) {
     const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
@@ -478,7 +540,7 @@
       return;
     }
     state.clearingRecent = false;
-    try { await chrome.runtime.sendMessage({ type: 'PAGE_NOTES_RECENT', action: 'clear' }); state.recent = []; } catch (_) { /* Keep showing them. */ }
+    try { await chrome.runtime.sendMessage({ type: 'PAGE_NOTES_RECENT', action: 'clear' }); state.recent = []; state.recentOpen = null; } catch (_) { /* Keep showing them. */ }
     render();
   }
   function renderComment(comment, index) {
@@ -978,6 +1040,11 @@
   }
   function onKey(event) {
     if (!event.isTrusted) return;
+    if (event.key === 'Escape' && state.view && !state.busy && !state.pending && !typingIn(event)) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      if (state.recentOpen) openRecent(); else closeRecent();
+      return;
+    }
     if (event.key === 'Escape' && !state.busy && (state.pending || state.mode !== 'browse' || state.confirmingClose)) {
       event.preventDefault(); event.stopImmediatePropagation();
       // First Escape drops the edit in progress; the next one returns to browsing.

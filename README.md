@@ -52,7 +52,7 @@ Browsing is the default. Turn a tool on, use it, and turn it off with the same k
 - **Severity:** every item has **Must fix** (red), **Suggested** (orange, the default), **Nit** (yellow) and **Note** (blue, no change needed). Pins take the color; the review lists urgent items first and notes last.
 - **The panel:** click a pin to highlight its note, or click a note to scroll to its pin. Drag the header (or the minimized pill) anywhere; the corner button snaps it back to a corner.
 - **Done** appears after you copy or download, and closes the review in one click. If you change anything afterwards, it hides until you copy or download again, so unsent feedback is never thrown away.
-- **Recent reviews:** the panel lists your last 10 copied or downloaded reviews whenever the current review is empty. Copy or download any of them again, even after Done or a browser restart.
+- **Recent reviews:** when the current review is empty, a **Recent reviews** link opens your last 10 copied or downloaded reviews, even after Done or a browser restart. Open one to read its full Markdown and copy or download it again (pins don't come back), or delete reviews one at a time or all at once.
 - **Reloads and navigation:** the review lives with its tab. Refresh or click through the site and your pins come back; each page you visit becomes P1, P2… in the same review. On a different site, click the icon to continue it. Chrome's session storage keeps the draft until you close the tab, discard the review or quit the browser.
 
 ## What your agent gets
@@ -75,7 +75,7 @@ Text edits give the exact original and replacement (plus formatting and the elem
 
 ## Privacy
 
-Nothing is sent anywhere. There's no account and no server. A review in progress stays with its tab. Your last 10 copied or downloaded reviews are kept as Markdown in this browser profile so you can get them back. They are never synced or uploaded, and **Clear** in the panel deletes them. The extension only runs on a page after you click its icon or press the shortcut, and it never reads form fields. The Markdown can still quote visible text near an item, plus the page URL with query strings and fragments removed, so read it before sharing.
+Nothing is sent anywhere. There's no account and no server. A review in progress stays with its tab. Your last 10 copied or downloaded reviews are kept as Markdown in this browser profile so you can get them back. They are never synced or uploaded, and you can delete them one by one or all at once. The extension only runs on a page after you click its icon or press the shortcut, and it never reads form fields. The Markdown can still quote visible text near an item, plus the page URL with query strings and fragments removed, so read it before sharing.
 
 ## Limits
 

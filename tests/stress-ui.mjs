@@ -420,26 +420,38 @@ try {
   } finally {await worker.evaluate(async tab=>chrome.tabs.setZoom(tab,1),tab);}
   assert.equal(await worker.evaluate(tab=>chrome.tabs.getZoom(tab),tab),1);await assertGeometry();
  });
- await test('recent reviews: a review closed with Done can be copied or downloaded again, then cleared',async({page,ui,button,edit,inject})=>{
+ await test('recent reviews: a link opens the list, a review opens in full, and reviews can be deleted or cleared',async({page,ui,button,edit,inject})=>{
   await page.context().grantPermissions(['clipboard-read','clipboard-write'],{origin:new URL(page.url()).origin});
   await sw().evaluate(()=>chrome.storage.local.clear());
+  const done=()=>ui.getByRole('button',{name:'Close the review',exact:true}).click();
   await edit('#plain','Remember me');await button('Copy Markdown').click();
-  const copied=await page.evaluate(()=>navigator.clipboard.readText());
-  await ui.getByRole('button',{name:'Close the review',exact:true}).click();
+  const copied=await page.evaluate(()=>navigator.clipboard.readText());await done();
+  await inject();await edit('#plain','Second review');await button('Copy Markdown').click();await done();
   await page.evaluate(()=>navigator.clipboard.writeText('something else'));
-  await inject();const recent=ui.getByRole('region',{name:'Recent reviews'});await recent.waitFor();
-  assert.match(await recent.textContent(),/Stress fixture.*127\.0\.0\.1 · 1 item · just now/);
-  await recent.getByRole('button',{name:'Copy Markdown for Stress fixture'}).click();await recent.getByText('✓ Copied').waitFor();
-  assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),copied,'exactly the review that was copied');
+  await inject();const link=button('Recent reviews (2)');await link.waitFor();
+  assert.equal(await ui.getByRole('region',{name:'Recent reviews'}).count(),0,'the list stays closed until asked for');
+  await link.click();const list=ui.getByRole('region',{name:'Recent reviews'});await list.waitFor();
+  const rows=list.locator('.recentitem');assert.equal(await rows.count(),2);
+  assert.match(await rows.nth(1).textContent(),/Stress fixture127\.0\.0\.1 · 1\u00a0item · just now/);
+  // Open the older review: its full Markdown, with Copy and Download.
+  await rows.nth(1).click();const open=ui.getByRole('region',{name:'Recent review'});await open.locator('pre').filter({hasText:'Remember me'}).waitFor();
+  assert.equal(await open.locator('pre').textContent(),copied,'the full review, as text');
+  await button('Copy this review').click();await open.getByText('✓ Copied').waitFor();
+  assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),copied);
   const before=await sw().evaluate(async()=>(await chrome.downloads.search({})).map(d=>d.id));
-  await instrument();await recent.getByRole('button',{name:'Download Stress fixture'}).click();
+  await instrument();await button('Download this review').click();
   let d;for(let i=0;i<40;i++){d=await sw().evaluate(async before=>(await chrome.downloads.search({})).find(d=>!before.includes(d.id)),before);if(d?.state==='complete')break;await page.waitForTimeout(75);}
   assert.equal(await readFile(d.filename,'utf8'),copied);
-  // New feedback takes over the panel; the list returns when the review is empty again.
-  await edit('#plain','Second pass');assert.equal(await recent.count(),0);
-  await ui.locator('article').getByRole('button',{name:'Revert',exact:true}).click();await recent.waitFor();
-  await recent.getByRole('button',{name:'Clear recent reviews',exact:true}).click();await recent.getByRole('button',{name:'Confirm clearing recent reviews',exact:true}).click();
-  await recent.waitFor({state:'detached'});assert.equal(JSON.stringify(await sw().evaluate(()=>chrome.storage.local.get(null))),'{}');
+  // Esc steps back to the list, then Delete removes one review.
+  await page.keyboard.press('Escape');await list.waitFor();
+  await list.getByRole('button',{name:'Delete Stress fixture'}).first().click();await page.waitForFunction(()=>true);
+  await list.locator('.recentitem').nth(1).waitFor({state:'detached'});
+  assert.equal((await sw().evaluate(()=>chrome.storage.local.get('recent'))).recent.length,1);
+  await button('Clear recent reviews').click();await button('Confirm clearing recent reviews').click();
+  await list.getByText('No recent reviews.').waitFor();assert.equal((await sw().evaluate(()=>chrome.storage.local.get(null))).recent,undefined);
+  // Back returns to the empty review; tools still work from the list.
+  await button('← Back').click();await ui.locator('.empty').filter({hasText:'Nothing marked up yet'}).waitFor();
+  assert.equal(await ui.getByRole('button',{name:/^Recent reviews/}).count(),0,'no link once nothing is saved');
  });
  await test('two simultaneous tabs keep session IDs, comments, edits and closing independent',async(first)=>{
   let second;
