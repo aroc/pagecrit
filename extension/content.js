@@ -177,7 +177,7 @@
   function modeLabel() {
     if (state.mode === 'pin' && state.anchorKind === 'element') return 'Hover to choose an element, then click to pin a note to it. The note follows the element.';
     if (state.mode === 'pin') return 'Click anywhere to pin a note to that spot. It scrolls with the page.';
-    if (state.mode === 'edit') return 'Click the words you want to change. Edit them here and preview the change on the page.';
+    if (state.mode === 'edit') return 'Click any text to edit it right on the page. Enter saves, Esc cancels.';
     return 'Browse and scroll normally. Switch to Pin or Edit text to start reviewing.';
   }
   function setMode(mode) {
@@ -263,31 +263,31 @@
     const pending = state.pending;
     const box = element('div', 'editor');
     const isText = pending.type === 'text';
-    box.append(element('h3', '', isText ? 'Edit selected text' : (pending.commentId ? 'Edit note' : 'New note')));
-    const label = element('label', '', isText ? 'Preview updates as you type. Save to include it.' : 'What should change here?');
+    if (isText) {
+      box.append(element('h3', '', 'Editing text on the page'));
+      box.append(element('p', 'muted', 'Type in the outlined text. Enter saves · Shift+Enter adds a line break · Esc cancels · clicking elsewhere saves. Links and formatting around it stay intact.'));
+      const actions = element('div', 'actions');
+      actions.append(button('Cancel', () => cancelPending()), button('Save', savePending, 'button primary'));
+      box.append(actions);
+      return box;
+    }
+    box.append(element('h3', '', pending.commentId ? 'Edit note' : 'New note'));
+    const label = element('label', '', 'What should change here?');
     label.htmlFor = 'page-notes-input'; box.append(label);
     const input = element('textarea');
     input.id = 'page-notes-input';
-    input.maxLength = isText ? MAX_TEXT : MAX_COMMENT;
+    input.maxLength = MAX_COMMENT;
     input.value = pending.value;
-    input.placeholder = isText ? 'Replacement text' : 'E.g. Make this headline more specific.';
+    input.placeholder = 'E.g. Make this headline more specific.';
     input.addEventListener('input', event => {
       if (!event.isTrusted) return;
       pending.value = input.value;
-      if (isText && pending.node.isConnected && pending.node.data === pending.preview) {
-        pending.node.data = input.value;
-        pending.preview = input.value;
-        positionPins();
-      } else if (isText) {
-        pending.conflict = true;
-      }
     });
     input.addEventListener('keydown', event => {
       if (!event.isTrusted) return;
       if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') { event.preventDefault(); savePending(); }
     });
     box.append(input);
-    if (isText) box.append(element('p', 'muted', 'Plain text only; surrounding links and formatting stay intact.'));
     const actions = element('div', 'actions');
     actions.append(button('Cancel', () => cancelPending()), button('Save', savePending, 'button primary'));
     box.append(actions);
@@ -319,16 +319,19 @@
   function focusEditor() { requestAnimationFrame(() => { const input = shadow.getElementById('page-notes-input'); input?.focus(); }); }
   function cancelPending(rerender = true) {
     const p = state.pending;
-    if (p?.type === 'text' && p.node.isConnected && p.node.data === p.preview) p.node.data = p.startValue;
+    if (p?.type === 'text') {
+      if (p.node.isConnected && p.node.data === p.preview) p.node.data = p.startValue;
+      endInline(p);
+    }
     state.pending = null;
     if (rerender) render();
   }
   function savePending() {
     const p = state.pending;
-    if (!p || state.busy) return;
+    if (!p || state.busy) return false;
     if (p.type === 'comment') {
       const text = p.value.trim();
-      if (!text) { tell('Add a note before saving.', true); focusEditor(); return; }
+      if (!text) { tell('Add a note before saving.', true); focusEditor(); return false; }
       if (p.commentId) {
         const comment = state.comments.find(c => c.id === p.commentId);
         if (comment && text !== comment.text) {
@@ -343,8 +346,9 @@
     } else {
       if (p.conflict || !p.node.isConnected || p.node.data !== p.preview) {
         // Never overwrite text changed by the page while the editor was open.
-        tell('The page replaced or changed this text while you were editing. Cancel and select it again.', true); return;
+        tell('The page replaced or changed this text while you were editing. Cancel and select it again.', true); return false;
       }
+      endInline(p);
       let edit = p.editId ? state.edits.find(e => e.id === p.editId) : null;
       if (p.value !== p.startValue) record('text_edited', { editId: edit?.id || p.newId, locator: p.locator, before: p.startValue, after: p.value });
       if (edit) {
@@ -357,8 +361,9 @@
       }
     }
     state.pending = null; state.notice = ''; render();
+    return true;
   }
-  function beginTextEdit(node, knownEdit) {
+  function beginTextEdit(node, knownEdit, caret) {
     if (state.busy) return;
     cancelPending(false);
     if (!node?.isConnected || (!knownEdit && !core.isEditableTextNode(node))) { tell('That text is no longer available. Click the current text on the page.', true); return; }
@@ -368,8 +373,132 @@
     }
     if (!existing && state.edits.length >= MAX_ITEMS) { tell('This review has reached 500 text edits. Download it and start a new review.', true); return; }
     if (node.data.length > MAX_TEXT) { tell('This text block is too long to edit here. Leave a pin instead.', true); return; }
-    state.pending = { type: 'text', node, startValue: node.data, preview: node.data, value: node.data, locator: existing?.locator || core.describeTextNode(node), editId: existing?.id, newId: id(), conflict: false };
-    state.mode = 'edit'; state.collapsed = false; state.notice = ''; render(); focusEditor();
+    const editHost = node.parentElement;
+    state.pending = {
+      type: 'text', node, editHost, startValue: node.data, preview: node.data, value: node.data, locator: existing?.locator || core.describeTextNode(node), editId: existing?.id, newId: id(), conflict: false,
+      hadEditable: editHost.hasAttribute('contenteditable'), editableValue: editHost.getAttribute('contenteditable'), undo: [], redo: [], lastKind: '', lastAt: 0,
+    };
+    // Edit in place. Every change is applied by beforeinput to this one text node, so
+    // neighboring markup is never touched and an emptied node is never removed.
+    editHost.setAttribute('contenteditable', 'plaintext-only');
+    state.mode = 'edit'; state.collapsed = false; state.notice = ''; render();
+    if (knownEdit) editHost.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    editHost.focus({ preventScroll: true });
+    placeCaret(state.pending, Number.isInteger(caret) ? Math.min(caret, node.length) : node.length);
+  }
+  function endInline(p) {
+    if (p.hadEditable) p.editHost.setAttribute('contenteditable', p.editableValue);
+    else p.editHost.removeAttribute('contenteditable');
+    const selection = getSelection();
+    if (selection.rangeCount && p.editHost.contains(selection.anchorNode)) selection.removeAllRanges();
+    if (p.editHost.contains(document.activeElement) || document.activeElement === p.editHost) p.editHost.blur();
+  }
+  function placeCaret(p, start, end = start) {
+    if (p.node.isConnected) getSelection().setBaseAndExtent(p.node, start, p.node, end);
+  }
+  function inlineCurrent(p) {
+    if (p.node.isConnected && p.node.data === p.preview) return true;
+    if (!p.conflict) { p.conflict = true; tell('The page replaced or changed this text while you were editing. Cancel and select it again.', true); }
+    return false;
+  }
+  function setInline(p, value, caret) {
+    p.node.data = value; p.preview = value; p.value = value;
+    placeCaret(p, caret); queuePosition();
+  }
+  function offsetIn(node, container, offset) {
+    if (container === node) return Math.min(offset, node.length);
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    try { return range.comparePoint(container, offset) < 0 ? 0 : node.length; } catch (_) { return node.length; }
+  }
+  function inlineRange(p, event) {
+    const ranges = event?.getTargetRanges?.() || [];
+    const selection = getSelection();
+    const first = ranges[0] || (selection.rangeCount ? selection.getRangeAt(0) : null);
+    const last = ranges[ranges.length - 1] || first;
+    if (!first) return [p.node.length, p.node.length, false];
+    const a = offsetIn(p.node, first.startContainer, first.startOffset), b = offsetIn(p.node, last.endContainer, last.endOffset);
+    return [Math.min(a, b), Math.max(a, b), ranges.length > 0];
+  }
+  function inlineReplace(p, start, end, text, kind) {
+    if (!inlineCurrent(p)) return;
+    const value = p.value.slice(0, start) + text + p.value.slice(end);
+    if (value.length > MAX_TEXT) { tell('Text edits are limited to 20,000 characters.', true); return; }
+    const at = Date.now();
+    // Consecutive typing undoes as one step, like a normal text field.
+    if (!(kind === 'type' && p.lastKind === 'type' && at - p.lastAt < 1000)) {
+      p.undo.push({ value: p.value, caret: end });
+      if (p.undo.length > 200) p.undo.shift();
+    }
+    p.redo = []; p.lastKind = kind; p.lastAt = at;
+    setInline(p, value, start + text.length);
+  }
+  function inlineHistory(p, redo) {
+    const from = redo ? p.redo : p.undo, to = redo ? p.undo : p.redo;
+    if (!from.length || !inlineCurrent(p)) return;
+    const step = from.pop();
+    to.push({ value: p.value, caret: inlineRange(p)[1] });
+    p.lastKind = '';
+    setInline(p, step.value, step.caret);
+  }
+  function stepBack(value, offset) { return offset - (offset > 1 && /[\udc00-\udfff]/.test(value[offset - 1]) && /[\ud800-\udbff]/.test(value[offset - 2]) ? 2 : 1); }
+  function stepForward(value, offset) { return offset + (/[\ud800-\udbff]/.test(value[offset]) && /[\udc00-\udfff]/.test(value[offset + 1] || '') ? 2 : 1); }
+  function onBeforeInput(event) {
+    const p = state.pending;
+    if (p?.type !== 'text' || !p.editHost.contains(event.target)) return;
+    event.stopImmediatePropagation();
+    if (!event.isTrusted) { event.preventDefault(); return; }
+    // IME composition cannot be canceled; it edits the focused text node and is read back on input.
+    if (!event.cancelable) return;
+    event.preventDefault();
+    const type = event.inputType;
+    if (type === 'historyUndo' || type === 'historyRedo') { inlineHistory(p, type === 'historyRedo'); return; }
+    if (type === 'insertParagraph') { savePending(); return; }
+    if (!/^(insert|delete)/.test(type) || /^(insertFromDrop|deleteByDrag|insertLink|insertOrderedList|insertUnorderedList|insertHorizontalRule|insertFromYank)$/.test(type)) return;
+    let [start, end, targeted] = inlineRange(p, event);
+    if (type.startsWith('delete')) {
+      if (start === end && !targeted) {
+        if (/Backward$/.test(type)) start = Math.max(0, stepBack(p.value, start));
+        else end = Math.min(p.value.length, stepForward(p.value, end));
+      }
+      if (start !== end) inlineReplace(p, start, end, '', 'delete');
+      return;
+    }
+    const text = type === 'insertLineBreak' ? '\n' : (event.data ?? event.dataTransfer?.getData('text/plain') ?? '');
+    inlineReplace(p, start, end, text.replace(/\r\n?/g, '\n'), type === 'insertText' ? 'type' : 'paste');
+  }
+  // Typing goes to the reviewer's edit, not to site shortcuts, editors or analytics listeners.
+  let swallowKeyUp = '';
+  function isolateEditing(event) {
+    // The keyup of an Enter/Escape that ended an edit arrives after editing stopped.
+    if (event.type === 'keyup' && event.isTrusted && swallowKeyUp && event.code === swallowKeyUp) { swallowKeyUp = ''; event.stopImmediatePropagation(); return; }
+    const p = state.pending;
+    if (p?.type !== 'text' || !p.editHost.contains(event.target)) return;
+    event.stopImmediatePropagation();
+    if (!event.isTrusted) return;
+    if (event.type === 'compositionstart' && inlineCurrent(p)) { p.undo.push({ value: p.value, caret: inlineRange(p)[1] }); p.redo = []; p.lastKind = ''; }
+    if (event.type === 'input' || event.type === 'compositionend') {
+      if (p.node.isConnected && !p.conflict) { p.value = p.preview = p.node.data; queuePosition(); }
+      else inlineCurrent(p);
+    }
+  }
+  function inlineKey(event, p) {
+    event.stopImmediatePropagation();
+    if (event.isComposing || event.keyCode === 229) return;
+    const mod = event.metaKey || event.ctrlKey;
+    const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+    if (key === 'Enter' && !event.shiftKey) { event.preventDefault(); swallowKeyUp = event.code; savePending(); return; }
+    // Handle Space/Shift+Enter here: as native keys they could activate an edited button or link.
+    if (key === 'Enter' || (key === ' ' && !mod && !event.altKey)) {
+      event.preventDefault();
+      const [start, end] = inlineRange(p);
+      inlineReplace(p, start, end, key === 'Enter' ? '\n' : ' ', 'type');
+      return;
+    }
+    if (!mod) return;
+    if (key === 'a') { event.preventDefault(); placeCaret(p, 0, p.node.length); }
+    else if (key === 'z' || key === 'y') { event.preventDefault(); inlineHistory(p, key === 'y' || event.shiftKey); }
+    else if (['b', 'i', 'u'].includes(key)) event.preventDefault();
   }
   function editComment(comment) {
     cancelPending(false);
@@ -447,7 +576,7 @@
   function hoverTarget() {
     const p = state.pending;
     if (p?.type === 'comment') return p.anchor.kind === 'element' ? p.element : null;
-    if (p?.type === 'text') return p.node.parentElement;
+    if (p?.type === 'text') return p.editHost;
     if (!state.hoverPoint || state.collapsed || state.busy) return null;
     const { x, y } = state.hoverPoint;
     if (state.mode === 'pin' && state.anchorKind === 'element') {
@@ -485,6 +614,16 @@
     if (!event.isTrusted) return;
     if (ownEvent(event) || state.mode === 'browse' || state.busy || state.collapsed) return;
     event.preventDefault(); event.stopImmediatePropagation();
+    let committed = false;
+    if (state.pending?.type === 'text') {
+      const p = state.pending;
+      // Keyboard activation of an edited button/link, or caret placement and selection in the edited text.
+      if (event.detail === 0) return;
+      if (core.caretAtPoint(event.clientX, event.clientY)?.node === p.node || (p.editHost.contains(event.target) && !getSelection().isCollapsed)) return;
+      // Clicking elsewhere commits, then continues with whatever was clicked.
+      if (!savePending() || state.mode !== 'edit') return;
+      committed = true;
+    }
     if (state.pending) { tell('Save or cancel your current edit first.', true); focusEditor(); return; }
     if (state.mode === 'pin') {
       if (state.comments.length >= MAX_ITEMS) { tell('This review has reached 500 notes. Download it and start a new review.', true); return; }
@@ -495,21 +634,31 @@
       state.notice = ''; render(); focusEditor();
     } else {
       const node = core.locateTextNodeAtPoint(event.clientX, event.clientY);
-      if (node) beginTextEdit(node);
-      else tell('Click directly on visible text. Inputs, editable fields, frames, and graphics cannot be edited here.', true);
+      const caret = core.caretAtPoint(event.clientX, event.clientY);
+      if (node) beginTextEdit(node, undefined, caret?.node === node ? caret.offset : undefined);
+      else if (!committed) tell('Click directly on visible text. Inputs, editable fields, frames, and graphics cannot be edited here.', true);
     }
   }
   function blockPageInteraction(event) {
     if (!event.isTrusted) return;
     if (ownEvent(event) || state.mode === 'browse' || state.collapsed || state.busy) return;
+    // Native caret placement and selection inside the text being edited; site handlers stay out.
+    const p = state.pending;
+    if (p?.type === 'text' && p.editHost.contains(event.target) && /^(pointer|mouse)(down|up)$|^dblclick$/.test(event.type)) { event.stopImmediatePropagation(); return; }
     // Scroll/wheel/touchmove stay available. No synthetic site click/input is emitted.
     event.preventDefault(); event.stopImmediatePropagation();
   }
   function onKey(event) {
     if (!event.isTrusted) return;
     if (event.key === 'Escape' && !state.busy && (state.pending || state.mode !== 'browse' || state.confirmingClose)) {
-      event.preventDefault(); event.stopImmediatePropagation(); cancelPending(false); state.mode = 'browse'; state.confirmingClose = false; state.selectedId = null; highlight.style.display = 'none'; render(); return;
+      event.preventDefault(); event.stopImmediatePropagation();
+      // First Escape drops the edit in progress; the next one returns to browsing.
+      if (state.pending?.type === 'text' && state.pending.editHost.contains(event.target)) swallowKeyUp = event.code;
+      if (state.pending) { cancelPending(false); state.notice = ''; } else state.mode = 'browse';
+      state.confirmingClose = false; state.selectedId = null; highlight.style.display = 'none'; render(); return;
     }
+    const p = state.pending;
+    if (p?.type === 'text' && p.editHost.contains(event.target)) { inlineKey(event, p); return; }
     if (!ownEvent(event) && state.mode !== 'browse' && !state.collapsed) {
       // Space/Enter on a previously focused site button must not activate it.
       if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopImmediatePropagation(); }
@@ -535,6 +684,8 @@
     window.removeEventListener('click', onClick, true);
     for (const name of blockedEvents) window.removeEventListener(name, blockPageInteraction, true);
     window.removeEventListener('keydown', onKey, true);
+    window.removeEventListener('beforeinput', onBeforeInput, true);
+    for (const name of isolatedEvents) window.removeEventListener(name, isolateEditing, true);
     window.removeEventListener('beforeunload', beforeUnload);
     window.removeEventListener('scroll', queuePosition, true);
     window.removeEventListener('resize', onResize);
@@ -591,6 +742,9 @@
   window.addEventListener('click', onClick, true);
   for (const name of blockedEvents) window.addEventListener(name, blockPageInteraction, true);
   window.addEventListener('keydown', onKey, true);
+  const isolatedEvents = ['keyup', 'keypress', 'input', 'compositionstart', 'compositionupdate', 'compositionend', 'paste', 'cut', 'copy'];
+  window.addEventListener('beforeinput', onBeforeInput, true);
+  for (const name of isolatedEvents) window.addEventListener(name, isolateEditing, true);
   window.addEventListener('beforeunload', beforeUnload);
   window.addEventListener('scroll', queuePosition, true);
   function onResize() { placeFloating(); queuePosition(); }

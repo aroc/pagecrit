@@ -187,11 +187,19 @@
     return true;
   }
 
+  function caretAtPoint(x, y) {
+    const document = root.document;
+    if (document.caretPositionFromPoint) {
+      const position = document.caretPositionFromPoint(x, y);
+      return position ? { node: position.offsetNode, offset: position.offset } : null;
+    }
+    const range = document.caretRangeFromPoint?.(x, y);
+    return range ? { node: range.startContainer, offset: range.startOffset } : null;
+  }
+
   function locateTextNodeAtPoint(x, y) {
     const document = root.document;
-    let node = null;
-    if (document.caretPositionFromPoint) node = document.caretPositionFromPoint(x, y)?.offsetNode;
-    else if (document.caretRangeFromPoint) node = document.caretRangeFromPoint(x, y)?.startContainer;
+    const node = caretAtPoint(x, y)?.node;
     if (!isEditableTextNode(node) || !node.nodeValue?.trim()) return null;
     // Caret APIs may return the nearest text even when clicking a blank part of the page.
     const range = document.createRange();
@@ -268,7 +276,7 @@
     return '<!DOCTYPE html>\n' + clone.outerHTML;
   }
 
-  const api = { describeElement, scrollContainerFor, createAnchor, resolveAnchor, findElement, snapshotDocument, locateTextNodeAtPoint, describeTextNode, resolveTextNode, isEditableTextNode, applyTextEdit };
+  const api = { describeElement, scrollContainerFor, createAnchor, resolveAnchor, findElement, snapshotDocument, caretAtPoint, locateTextNodeAtPoint, describeTextNode, resolveTextNode, isEditableTextNode, applyTextEdit };
   root.PageNotesCore = Object.freeze(api);
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof globalThis !== 'undefined' ? globalThis : window);

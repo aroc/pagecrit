@@ -39,23 +39,25 @@ try {
    const node=[...el.childNodes].filter(n=>n.nodeType===3)[index];const r=document.createRange();r.selectNodeContents(node);const rect=r.getClientRects()[0];return{x:rect.x+Math.min(25,rect.width/2),y:rect.y+rect.height/2};
  },index);
  const clickText=async selector=>{const p=await textPoint(selector);await page.mouse.click(p.x,p.y);};
+ // Text is edited in place on the page; select-all is scoped to the clicked text node.
+ const typeInline=async value=>{await page.keyboard.press('ControlOrMeta+A');if(value)await page.keyboard.insertText(value);else await page.keyboard.press('Backspace');};
  await ui.getByRole('button',{name:'Aa Edit text',exact:true}).click();
  await clickText('#headline');
- await ui.locator('textarea').fill('Make room for ');
+ await typeInline('Make room for ');
  assert.equal(await page.locator('#headline em').textContent(),'better work.');
  await ui.getByRole('button',{name:'Save',exact:true}).click();
  assert.equal(await page.locator('#headline').textContent(),'Make room for better work.');
- await clickText('#headline');await ui.locator('textarea').fill('Find space for ');await ui.getByRole('button',{name:'Save',exact:true}).click();
- await clickText('#headline');await ui.locator('textarea').fill('Discard this preview');await ui.getByRole('button',{name:'Cancel',exact:true}).click();
+ await clickText('#headline');await typeInline('Find space for ');await ui.getByRole('button',{name:'Save',exact:true}).click();
+ await clickText('#headline');await typeInline('Discard this preview');await ui.getByRole('button',{name:'Cancel',exact:true}).click();
  assert.equal(await page.locator('#headline').textContent(),'Find space for better work.');
  console.log('PASS text edits preserve inline markup, repeated edits preserve original, cancel restores preview');
  // Clicking a page button in edit mode must not activate the site.
- await clickText('#cta');await ui.locator('textarea').fill('Try a calmer day');await ui.getByRole('button',{name:'Save',exact:true}).click();
+ await clickText('#cta');await typeInline('Try a calmer day');await ui.getByRole('button',{name:'Save',exact:true}).click();
  assert.equal(await page.evaluate(()=>window.accidentalClicks),0);
  // Test empty text can still be edited/reverted from tracked review row.
- await clickText('#copy');await ui.locator('textarea').fill('');await ui.getByRole('button',{name:'Save',exact:true}).click();
+ await clickText('#copy');await typeInline('');await ui.getByRole('button',{name:'Save',exact:true}).click();
  const emptyRow=ui.locator('article').filter({hasText:'A calmer place for your projects'});
- await emptyRow.getByRole('button',{name:'Edit',exact:true}).click();await ui.locator('textarea').fill('A calm workspace.');await ui.getByRole('button',{name:'Save',exact:true}).click();
+ await emptyRow.getByRole('button',{name:'Edit',exact:true}).click();await typeInline('A calm workspace.');await ui.getByRole('button',{name:'Save',exact:true}).click();
  await emptyRow.getByRole('button',{name:'Revert',exact:true}).click();
  assert.match(await page.locator('#copy').textContent(),/^A calmer place/);
  console.log('PASS normal site button action blocked; empty text edit/revert works');

@@ -32,9 +32,12 @@ try {
   const button=(name)=>ui.getByRole('button',{name,exact:true});
   const textPoint=async(selector,index=0)=>page.locator(selector).evaluate((el,index)=>{const n=[...el.childNodes].filter(n=>n.nodeType===3)[index];const r=document.createRange();r.selectNodeContents(n);const rect=r.getClientRects()[0];return{x:rect.x+Math.min(16,rect.width/2),y:rect.y+rect.height/2};},index);
   const clickText=async(selector,index=0)=>{await page.locator(selector).scrollIntoViewIfNeeded();const p=await textPoint(selector,index);await page.mouse.click(p.x,p.y);};
-  const edit=async(selector,value,index=0)=>{await button('Aa Edit text').click();await clickText(selector,index);await ui.locator('textarea').fill(value);await button('Save').click();};
+  // Replace the clicked text node in place: select-all is scoped to that node.
+  const typeInline=async value=>{await page.keyboard.press('ControlOrMeta+A');if(value)await page.keyboard.insertText(value);else await page.keyboard.press('Backspace');};
+  const editing=()=>page.locator('[contenteditable="plaintext-only"]').count();
+  const edit=async(selector,value,index=0)=>{await button('Aa Edit text').click();await clickText(selector,index);await typeInline(value);await button('Save').click();};
   const exportBundle=async()=>{const before=await worker.evaluate(async()=>(await chrome.downloads.search({})).map(d=>d.id));await button('Done · Download review').click();await ui.getByRole('status').filter({hasText:'Download started'}).waitFor();let d;for(let i=0;i<40;i++){d=await worker.evaluate(async before=>(await chrome.downloads.search({})).find(d=>!before.includes(d.id)),before);if(d?.state==='complete')break;await page.waitForTimeout(75);}assert.equal(d?.state,'complete');return JSON.parse(await readFile(d.filename,'utf8'));};
-  return{page,ui,button,clickText,edit,exportBundle,inject,tab};
+  return{page,ui,button,clickText,edit,typeInline,editing,exportBundle,inject,tab};
  }
  async function test(name,run){let env;try{env=await setup();await run(env);checks++;console.log('PASS',name);}catch(e){failures.push({name,error:e.stack});console.error('FAIL',name,e.message);}finally{if(env)await env.page.close({runBeforeUnload:false});}}
  await test('12 edit/revert cycles restore exact baseline and original inline DOM',async({page,ui,button,edit,exportBundle})=>{
@@ -44,7 +47,7 @@ try {
  });
  await test('multiline Unicode HTML-looking text is literal; clipboard-like paste retains exact text',async({page,ui,button,clickText,exportBundle})=>{
   const value='Line one\n日本語 café 🦆 e\u0301\n<img src=x onerror="window.siteActions=9"> & <b>literal</b>\nمرحبا';
-  await button('Aa Edit text').click();await clickText('#inline');await ui.locator('textarea').focus();await page.keyboard.press('ControlOrMeta+A');await page.keyboard.insertText(value);await page.keyboard.press('ControlOrMeta+Enter');
+  await button('Aa Edit text').click();await clickText('#inline');await page.keyboard.press('ControlOrMeta+A');await page.keyboard.insertText(value);await page.keyboard.press('ControlOrMeta+Enter');
   assert.equal(await page.locator('#inline').textContent(),value);assert.equal(await page.locator('#inline img,#inline b').count(),0);assert.equal(await page.evaluate(()=>window.siteActions),0);
   const bundle=await exportBundle();assert.equal(bundle.edits[0].after,value);assert.match(bundle.snapshots.editedHtml,/&lt;img/);
  });
@@ -118,18 +121,51 @@ try {
   await dragBy(ui.locator('.header'),900,10);await button('Snap to nearest corner').click();b=await panel.boundingBox();assert.ok(Math.abs(b.x+b.width-(vw-18))<1&&Math.abs(b.y-18)<1,`top-right ${JSON.stringify(b)}`);
   assert.equal(await page.evaluate(()=>window.siteActions),0);assert.equal(await page.evaluate(()=>getSelection().toString()),'');
  });
+ await test('text is edited in place: caret typing keeps nested markup, undo/redo, Enter saves, Esc cancels, clicking away commits',async({page,ui,button,clickText,editing,exportBundle})=>{
+  await page.evaluate(()=>{window.siteKeys=0;for(const type of ['keydown','keyup','beforeinput','input'])document.addEventListener(type,()=>window.siteKeys++);});
+  const headline=()=>page.locator('#headline').textContent();
+  await button('Aa Edit text').click();await clickText('#headline');
+  assert.equal(await ui.locator('textarea').count(),0,'no overlay textarea');assert.equal(await page.locator('#headline').getAttribute('contenteditable'),'plaintext-only');
+  assert.equal(await ui.locator('.hover').textContent(),'Editing text');
+  await page.keyboard.press('ControlOrMeta+A');await page.keyboard.press('ArrowLeft');await page.keyboard.type('A ');
+  assert.equal(await headline(),'A Simple nested heading');assert.equal(await page.locator('#headline em').textContent(),'nested');
+  await page.keyboard.press('Backspace');assert.equal(await headline(),'ASimple nested heading');
+  await page.keyboard.press('ControlOrMeta+Z');assert.equal(await headline(),'A Simple nested heading');
+  await page.keyboard.press('ControlOrMeta+Z');assert.equal(await headline(),'Simple nested heading');
+  await page.keyboard.press('ControlOrMeta+Shift+Z');assert.equal(await headline(),'A Simple nested heading');
+  // Select-all and delete stay inside the clicked text node.
+  await page.keyboard.press('ControlOrMeta+A');await page.keyboard.press('Delete');assert.equal(await headline(),'nested heading');assert.equal(await page.locator('#headline em').count(),1);
+  await page.keyboard.press('ControlOrMeta+Z');await page.keyboard.press('Enter');
+  assert.equal(await editing(),0);assert.equal(await page.locator('#headline').getAttribute('contenteditable'),null);assert.equal(await headline(),'A Simple nested heading');
+  assert.equal(await button('Aa Edit text').getAttribute('aria-pressed'),'true','stays in edit mode');
+  await clickText('#headline em');await page.keyboard.press('ControlOrMeta+A');await page.keyboard.insertText('deeply nested');assert.equal(await page.locator('#headline em').textContent(),'deeply nested');
+  await page.keyboard.press('Escape');assert.equal(await page.locator('#headline em').textContent(),'nested');assert.equal(await editing(),0);assert.equal(await page.locator('#headline em').getAttribute('contenteditable'),null);
+  await clickText('#plain');await page.keyboard.press('ControlOrMeta+A');await page.keyboard.insertText('Committed by clicking away');
+  await clickText('#pin1');assert.equal(await page.locator('#plain').getAttribute('contenteditable'),null);assert.equal(await page.locator('#pin1').getAttribute('contenteditable'),'plaintext-only');
+  await page.keyboard.press('Escape');assert.equal(await editing(),0);
+  assert.equal(await page.evaluate(()=>window.siteKeys),0,'site listeners never saw review typing');
+  const bundle=await exportBundle();assert.deepEqual(bundle.edits.map(e=>[e.before,e.after]),[['Simple ','A Simple '],['Original paragraph for edit cycles.','Committed by clicking away']]);
+  assert.ok(!bundle.snapshots.editedHtml.includes('contenteditable'));
+ });
+ await test('editing a button or link label in place never activates it',async({page,ui,button,clickText,editing})=>{
+  const url=page.url();await button('Aa Edit text').click();
+  await clickText('#button');assert.equal(await editing(),1);await page.keyboard.press('ControlOrMeta+A');await page.keyboard.type('Go now please');await page.keyboard.press('Enter');
+  await clickText('#link');await page.keyboard.press('ControlOrMeta+A');await page.keyboard.type('Read more');await page.keyboard.press('Shift+Enter');await page.keyboard.press('Backspace');await page.keyboard.press('Enter');
+  assert.equal(await page.locator('#button').textContent(),'Go now please');assert.equal(await page.locator('#link').textContent(),'Read more');
+  assert.equal(page.url(),url);assert.equal(await page.evaluate(()=>window.siteActions),0);assert.equal(await editing(),0);
+ });
  await test('blank comment rejected, cancel does not create a phantom note',async({ui,button,clickText,exportBundle})=>{
   await button('⊕ Pin').click();await clickText('#pin1');await ui.locator('textarea').fill(' \n\t ');await button('Save').click();assert.match(await ui.getByRole('status').textContent(),/Add a note/);await button('Cancel').click();assert.equal((await exportBundle()).comments.length,0);
  });
- await test('Escape, switching mode, minimize all restore pending preview and keep saved edit',async({page,ui,button,clickText,edit,exportBundle})=>{
+ await test('Escape, switching mode, minimize all restore pending preview and keep saved edit',async({page,ui,button,clickText,edit,typeInline,editing,exportBundle})=>{
   await edit('#plain','Saved value');
-  for(const action of ['escape','mode','minimize']){await button('Aa Edit text').click();await clickText('#plain');await ui.locator('textarea').fill(`Pending ${action}`);assert.equal(await button('Done · Download review').isEnabled(),false);
+  for(const action of ['escape','mode','minimize']){await button('Aa Edit text').click();await clickText('#plain');await typeInline(`Pending ${action}`);assert.equal(await page.locator('#plain').textContent(),`Pending ${action}`);assert.equal(await button('Done · Download review').isEnabled(),false);
    if(action==='escape')await page.keyboard.press('Escape');if(action==='mode')await button('⊕ Pin').click();if(action==='minimize'){await button('Minimize').click();await ui.getByRole('button',{name:/Page Notes ·/}).click();}
-   assert.equal(await page.locator('#plain').textContent(),'Saved value');assert.equal(await ui.locator('textarea').count(),0);
+   assert.equal(await page.locator('#plain').textContent(),'Saved value');assert.equal(await editing(),0);assert.equal(await page.locator('#plain').getAttribute('contenteditable'),null);
   }assert.equal((await exportBundle()).edits[0].after,'Saved value');
  });
- await test('framework replacement while typing prevents save and cancel does not overwrite replacement',async({page,ui,button,clickText,exportBundle})=>{
-  await button('Aa Edit text').click();await clickText('#framework');await ui.locator('textarea').fill('User preview');await page.locator('#framework').evaluate(el=>el.textContent='New server content');await ui.locator('textarea').fill('Final proposed text');await button('Save').click();assert.match(await ui.getByRole('status').textContent(),/replaced or changed/);assert.equal(await page.locator('#framework').textContent(),'New server content');await button('Cancel').click();assert.equal((await exportBundle()).edits.length,0);
+ await test('framework replacement while typing prevents save and cancel does not overwrite replacement',async({page,ui,button,clickText,typeInline,exportBundle})=>{
+  await button('Aa Edit text').click();await clickText('#framework');await typeInline('User preview');await page.locator('#framework').evaluate(el=>el.textContent='New server content');await page.keyboard.insertText('Final proposed text');assert.equal(await page.locator('#framework').textContent(),'New server content');await button('Save').click();assert.match(await ui.getByRole('status').textContent(),/replaced or changed/);assert.equal(await page.locator('#framework').textContent(),'New server content');await button('Cancel').click();assert.equal((await exportBundle()).edits.length,0);
  });
  await test('framework replacement after save retains requested edit; revert leaves new live content',async({page,ui,edit,exportBundle})=>{
   await edit('#framework','Desired change');await page.locator('#framework').evaluate(el=>el.outerHTML='<p id="framework">Replacement element</p>');const bundle=await exportBundle();assert.equal(bundle.edits[0].previewState,'page-changed');assert.equal(bundle.edits[0].before,'Framework initial value');assert.equal(bundle.edits[0].after,'Desired change');await ui.locator('article').getByRole('button',{name:'Revert',exact:true}).click();assert.equal(await page.locator('#framework').textContent(),'Replacement element');assert.equal((await exportBundle()).edits.length,0);
@@ -137,14 +173,14 @@ try {
  await test('edit mode blocks links and button actions, browse restores normal interaction',async({page,ui,button,clickText,edit})=>{
   const url=page.url();await edit('#link','Changed link label');await edit('#button','Changed action label');assert.equal(page.url(),url);assert.equal(await page.evaluate(()=>window.siteActions),0);await button('Browse').click();await page.locator('#button').click();assert.equal(await page.evaluate(()=>window.siteActions),1);
  });
- await test('form controls and site contenteditable cannot be rewritten',async({page,ui,button})=>{
-  await button('Aa Edit text').click();for(const selector of ['#disabled','#input','#textarea','#editable']){await page.locator(selector).scrollIntoViewIfNeeded();const b=await page.locator(selector).boundingBox();await page.mouse.click(b.x+10,b.y+b.height/2);assert.equal(await ui.locator('textarea').count(),0,selector);}
+ await test('form controls and site contenteditable cannot be rewritten',async({page,ui,button,editing})=>{
+  await button('Aa Edit text').click();for(const selector of ['#disabled','#input','#textarea','#editable']){await page.locator(selector).scrollIntoViewIfNeeded();const b=await page.locator(selector).boundingBox();await page.mouse.click(b.x+10,b.y+b.height/2);assert.equal(await editing(),0,selector);await page.keyboard.insertText('typed');}
   assert.equal(await page.locator('#input').inputValue(),'editable original');assert.equal(await page.locator('#textarea').inputValue(),'Form original');assert.equal(await page.locator('#editable').textContent(),'Site editor original');
  });
  await test('SPA route change warns; discard and restart captures new route as baseline',async({page,ui,button,edit,exportBundle,inject})=>{
   const initial=page.url();await edit('#plain','Old route requested value');await page.evaluate(()=>{history.pushState({},'','/new-route');document.title='New route title';document.querySelector('#plain').textContent='New route paragraph';});await ui.getByRole('status').filter({hasText:'navigated within'}).waitFor();const bundle=await exportBundle();assert.equal(bundle.page.url,initial);assert.ok(bundle.warnings.some(w=>w.includes('URL changed')));assert.equal(bundle.edits[0].previewState,'page-changed');await button('Close review').click();await button('Discard & close').click();await inject();const fresh=await exportBundle();assert.equal(fresh.page.url,new URL('/new-route',initial).href);assert.equal(fresh.page.title,'New route title');assert.equal(fresh.edits.length,0);assert.match(fresh.snapshots.originalHtml,/New route paragraph/);
  });
- await test('small viewport controls remain reachable when textarea and review list are tall',async({page,ui,button,clickText})=>{
+ await test('small viewport controls remain reachable when the note editor and review list are tall',async({page,ui,button,clickText})=>{
   await page.setViewportSize({width:390,height:500});const h=await ui.locator('.header').boundingBox();await page.mouse.move(h.x+40,h.y+15);await page.mouse.down();await page.mouse.move(h.x-60,h.y+120,{steps:5});await page.mouse.up();await button('Snap to nearest corner').click();await button('Minimize').click();await page.locator('#deep').scrollIntoViewIfNeeded();await ui.getByRole('button',{name:/Page Notes ·/}).click();
   for(const name of ['Aa Edit text','⊕ Pin','Browse','Done · Download review','Close review']){assert.equal(await button(name).isVisible(),true,name);const b=await button(name).boundingBox();assert.ok(b.x>=0&&b.x+b.width<=391&&b.y>=0&&b.y+b.height<=501,`${name}: ${JSON.stringify(b)}`);}
   await button('⊕ Pin').click();await page.mouse.click(370,300);await ui.locator('textarea').fill('Long note\n'.repeat(80));await button('Save').click();assert.match(await ui.locator('article').textContent(),/Long note/);const footer=await button('Done · Download review').boundingBox();assert.ok(footer.y+footer.height<=501);
@@ -156,19 +192,19 @@ try {
   await ui.locator('article').filter({hasText:'Leading replacement'}).getByRole('button',{name:'Revert',exact:true}).click();assert.equal(await page.locator('#headline').textContent(),'Simple emphasized final words');
  });
  await test('empty replacement remains editable through review and cancel restores it as empty',async({page,ui,button,edit,exportBundle})=>{
-  await edit('#plain','');const row=ui.locator('article').filter({hasText:'Original paragraph for edit cycles.'});await row.getByRole('button',{name:'Edit',exact:true}).click();await ui.locator('textarea').fill('Uncommitted restoration');await button('Cancel').click();assert.equal(await page.locator('#plain').textContent(),'');assert.equal((await exportBundle()).edits[0].after,'');await row.getByRole('button',{name:'Revert',exact:true}).click();assert.equal(await page.locator('#plain').textContent(),'Original paragraph for edit cycles.');
+  await edit('#plain','');assert.equal(await page.locator('#plain').evaluate(el=>el.childNodes.length),1,'emptied text node is kept');const row=ui.locator('article').filter({hasText:'Original paragraph for edit cycles.'});await row.getByRole('button',{name:'Edit',exact:true}).click();await page.keyboard.insertText('Uncommitted restoration');assert.equal(await page.locator('#plain').textContent(),'Uncommitted restoration');await button('Cancel').click();assert.equal(await page.locator('#plain').textContent(),'');assert.equal((await exportBundle()).edits[0].after,'');await row.getByRole('button',{name:'Revert',exact:true}).click();assert.equal(await page.locator('#plain').textContent(),'Original paragraph for edit cycles.');
  });
- await test('page-script clicks, input events and export actions cannot drive review UI',async({page,ui,button,clickText,exportBundle})=>{
+ await test('page-script clicks, input events and export actions cannot drive review UI',async({page,ui,button,clickText,typeInline,editing,exportBundle})=>{
   await button('Aa Edit text').evaluate(el=>el.click());assert.equal(await button('Browse').getAttribute('aria-pressed'),'true');
-  await button('Aa Edit text').click();await clickText('#plain');await ui.locator('textarea').fill('Actual trusted edit');await ui.locator('textarea').evaluate(el=>{el.value='Forged untrusted edit';el.dispatchEvent(new InputEvent('input',{bubbles:true,composed:true,data:'Forged'}));});await button('Save').evaluate(el=>el.click());assert.equal(await ui.locator('textarea').count(),1);await button('Save').click();assert.equal(await page.locator('#plain').textContent(),'Actual trusted edit');
+  await button('Aa Edit text').click();await clickText('#plain');await typeInline('Actual trusted edit');await page.locator('#plain').evaluate(el=>{for(const type of ['beforeinput','input'])el.dispatchEvent(new InputEvent(type,{bubbles:true,cancelable:true,composed:true,inputType:'insertText',data:'Forged'}));el.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));});assert.equal(await page.locator('#plain').textContent(),'Actual trusted edit');await button('Save').evaluate(el=>el.click());assert.equal(await editing(),1);await button('Save').click();assert.equal(await page.locator('#plain').textContent(),'Actual trusted edit');
   const before=await worker.evaluate(async()=>(await chrome.downloads.search({})).length);await button('Done · Download review').evaluate(el=>el.click());await page.waitForTimeout(100);assert.equal(await worker.evaluate(async()=>(await chrome.downloads.search({})).length),before);assert.equal((await exportBundle()).edits[0].after,'Actual trusted edit');
  });
  await test('actual clipboard paste remains plain text and preserves literal HTML',async({page,ui,button,clickText,exportBundle})=>{
-  const pasted='Clipboard 🦆\n<strong>not markup</strong>\n"quotes" & apostrophe\'s';await context.grantPermissions(['clipboard-read','clipboard-write'],{origin:base});await page.evaluate(text=>navigator.clipboard.writeText(text),pasted);await button('Aa Edit text').click();await clickText('#inline');await ui.locator('textarea').focus();await page.keyboard.press('ControlOrMeta+A');await page.keyboard.press('ControlOrMeta+V');assert.equal(await ui.locator('textarea').inputValue(),pasted);await button('Save').click();assert.equal(await page.locator('#inline').textContent(),pasted);assert.equal(await page.locator('#inline strong').count(),0);assert.equal((await exportBundle()).edits[0].after,pasted);
+  const pasted='Clipboard 🦆\n<strong>not markup</strong>\n"quotes" & apostrophe\'s';await context.grantPermissions(['clipboard-read','clipboard-write'],{origin:base});await page.evaluate(text=>navigator.clipboard.writeText(text),pasted);await button('Aa Edit text').click();await clickText('#inline');await page.keyboard.press('ControlOrMeta+A');await page.keyboard.press('ControlOrMeta+V');assert.equal(await page.locator('#inline').textContent(),pasted);await button('Save').click();assert.equal(await page.locator('#inline').textContent(),pasted);assert.equal(await page.locator('#inline strong').count(),0);assert.equal((await exportBundle()).edits[0].after,pasted);
  });
 
- await test('moving panel and canceling close preserves unsaved draft text',async({page,ui,button,clickText,exportBundle})=>{
-  await button('Aa Edit text').click();await clickText('#plain');await ui.locator('textarea').fill('Keep this pending text');const h=await ui.locator('.header').boundingBox();await page.mouse.move(h.x+40,h.y+15);await page.mouse.down();await page.mouse.move(h.x-300,h.y+200,{steps:5});await page.mouse.up();assert.equal(await ui.locator('textarea').inputValue(),'Keep this pending text');await button('Snap to nearest corner').click();assert.equal(await ui.locator('textarea').inputValue(),'Keep this pending text');await button('Close review').click();await button('Keep reviewing').click();assert.equal(await ui.locator('textarea').inputValue(),'Keep this pending text');await button('Save').click();assert.equal((await exportBundle()).edits[0].after,'Keep this pending text');
+ await test('moving panel and canceling close preserves unsaved draft text',async({page,ui,button,clickText,typeInline,editing,exportBundle})=>{
+  await button('Aa Edit text').click();await clickText('#plain');await typeInline('Keep this pending text');const h=await ui.locator('.header').boundingBox();await page.mouse.move(h.x+40,h.y+15);await page.mouse.down();await page.mouse.move(h.x-300,h.y+200,{steps:5});await page.mouse.up();assert.equal(await page.locator('#plain').textContent(),'Keep this pending text');await button('Snap to nearest corner').click();assert.equal(await editing(),1);await button('Close review').click();await button('Keep reviewing').click();assert.equal(await editing(),1);assert.equal(await page.locator('#plain').textContent(),'Keep this pending text');await button('Save').click();assert.equal((await exportBundle()).edits[0].after,'Keep this pending text');
  });
 
  await test('site removes overlay host; reinjection restores UI and preserves saved review',async({page,ui,button,clickText,edit,exportBundle,inject})=>{

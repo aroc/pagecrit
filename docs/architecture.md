@@ -4,7 +4,7 @@ Manifest V3, vanilla JavaScript, no runtime dependencies. Capture runs in Chrome
 
 - `popup.js`: starts a review on the active HTTP(S) tab.
 - `core.js`: element/text-node locators, page/element coordinate anchors, sanitized document snapshots imported into an inert document to avoid invoking live custom-element code.
-- `content.js`: closed Shadow DOM panel, pins, live text previews, review ledger and session lifecycle. Captures a baseline before mounting its own UI. Page mutations are not treated as user changes.
+- `content.js`: closed Shadow DOM panel, pins, in-place text editing, review ledger and session lifecycle. In-place editing marks the text's parent `contenteditable="plaintext-only"` only while editing, cancels every `beforeinput` and applies the change to that single text node itself (IME composition, which cannot be canceled, is read back), and stops key/input/clipboard events from reaching site listeners. The original attribute is restored on save or cancel. Captures a baseline before mounting its own UI. Page mutations are not treated as user changes.
 - `export.js`: schema/version validation, readable summary, payload bounds, serialization.
 - `background.js`: destination adapter. Current `file` destination asks Chrome downloads to save JSON. No arbitrary URL destination, no external message listener.
 
