@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <b>Mark up any web page. Hand it to your coding agent.</b><br>
+  <b>Add feedback on any web page. Then hand it to your agent.</b><br>
   A Chrome extension for reviewing your own site: pin notes, edit text in place, strike sections,
   then copy one short Markdown review your agent can act on.
 </p>
@@ -64,8 +64,8 @@ One short Markdown file: a header with the page, timing and environment, a "How 
 # Review: Kettle: plan the week your team actually has
 
 - Page: https://kettle.example/pricing
-- Review: r-20261025-b5d9 · PageCrit 0.2.1 · digest v1
-- Started: 2026-10-25T13:48:48-04:00 · Exported: 2026-10-25T13:48:52-04:00 (0 min)
+- Review: r-20261025-22e2 · PageCrit 0.2.1 · digest v1
+- Started: 2026-10-25T13:52:19-04:00 · Exported: 2026-10-25T13:52:23-04:00 (0 min)
 - Environment: Chromium 141 · macOS · 1440×900 @2x · light
 - Summary: 3 comments, 2 text edits, 1 removal
 - Severity: 1 must fix, 4 suggested, 0 nits, 1 note

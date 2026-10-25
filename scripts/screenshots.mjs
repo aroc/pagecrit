@@ -136,12 +136,12 @@ try {
   .copy{position:absolute;left:72px;top:150px;width:400px}
   .mark{display:flex;align-items:center;gap:14px;font:700 64px/1 Hand}
   .mark svg{width:64px;height:64px}
-  h1{font-size:30px;line-height:1.2;letter-spacing:-.6px;margin:26px 0 14px;font-weight:700}
+  h1{font-size:28px;line-height:1.2;letter-spacing:-.6px;margin:26px 0 14px;font-weight:700}
   p{font-size:18px;line-height:1.5;color:#585c69;margin:0}
   .shot{position:absolute;left:500px;top:96px;width:720px;border-radius:16px;overflow:hidden;box-shadow:0 30px 70px -30px #1f243080,0 0 0 1px #1f24301a;transform:rotate(-1.5deg)}
   .shot img{display:block;width:100%}</style>
   <div class="copy"><div class="mark"><svg viewBox="0 0 100 100"><path d="M20 9C42 5.5 67 5.5 83 9.5C93 12 95.5 19 95.5 32V52C95.5 65 91 70 79 70H63L50.5 92L38 70H21.5C9.5 70 5 65 5 52V30C5 17.5 8.5 11 20 9Z" fill="#2f4be0" stroke="#2f4be0" stroke-width="4" stroke-linejoin="round"/><path d="M26 49C42 43.5 60 41.5 75 41.5" fill="none" stroke="#ffe36e" stroke-width="10" stroke-linecap="round"/></svg>PageCrit</div>
-  <h1>Mark up any web page.<br>Hand it to your coding agent.</h1><p>Pins, in-place text edits and removals, turned into one Markdown review.</p></div>
+  <h1>Add feedback on any web page.<br>Then hand it to your agent.</h1><p>Pins, in-place text edits and removals, turned into one Markdown review.</p></div>
   <div class="shot"><img src="data:image/png;base64,${heroData}"></div>`);
  await banner.waitForTimeout(300);
  await banner.screenshot({path:path.join(out,'readme-banner.png')});
