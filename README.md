@@ -4,7 +4,7 @@
 
 <p align="center">
   <b>Mark up any web page. Hand it to your coding agent.</b><br>
-  A Chrome extension for reviewing your own site: pin notes, edit text in place, strike sections,<br>
+  A Chrome extension for reviewing your own site: pin notes, edit text in place, strike sections,
   then copy one short Markdown review your agent can act on.
 </p>
 
@@ -31,8 +31,8 @@ When you're done, **Copy Markdown** and paste it into Claude Code, Cursor, an is
 
 ## Install
 
-1. Clone this repo, or download the `page-notes-chrome` zip from a successful [GitHub Actions run](https://github.com/aroc/page-notes/actions) and unzip it.
-2. Open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked** and choose the **`extension`** folder (or the unzipped folder with `manifest.json`).
+1. Clone this repo, or download the `page-notes-chrome` artifact from a successful [GitHub Actions run](https://github.com/aroc/page-notes/actions). It contains `page-notes.zip`; unzip that too.
+2. Open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked** and choose the **`extension`** folder of the clone (or the unzipped folder that contains `manifest.json`).
 3. Pin **Page Notes** to the toolbar.
 4. Open the page you want to review and click the icon, or press **Alt+Shift+N**. The panel opens right away. If a page can't be reviewed, the icon shows a red **!** and its tooltip says why.
 
