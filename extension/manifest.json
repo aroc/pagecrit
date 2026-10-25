@@ -6,7 +6,8 @@
   "permissions": [
     "activeTab",
     "scripting",
-    "downloads"
+    "downloads",
+    "storage"
   ],
   "action": {
     "default_title": "Page Notes — review this page",

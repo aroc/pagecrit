@@ -297,8 +297,43 @@ try {
   await button('Aa Edit text').click();for(const selector of ['#disabled','#input','#textarea','#editable']){await page.locator(selector).scrollIntoViewIfNeeded();const b=await page.locator(selector).boundingBox();await page.mouse.click(b.x+10,b.y+b.height/2);assert.equal(await editing(),0,selector);await page.keyboard.insertText('typed');}
   assert.equal(await page.locator('#input').inputValue(),'editable original');assert.equal(await page.locator('#textarea').inputValue(),'Form original');assert.equal(await page.locator('#editable').textContent(),'Site editor original');
  });
- await test('SPA route change warns; discard and restart captures new route as baseline',async({page,ui,button,edit,exportBundle,inject})=>{
-  const initial=page.url();await edit('#plain','Old route requested value');await page.evaluate(()=>{history.pushState({},'','/new-route');document.title='New route title';document.querySelector('#plain').textContent='New route paragraph';});await ui.getByRole('status').filter({hasText:'navigated within'}).waitFor();const bundle=await exportBundle();assert.equal(bundle.page.url,initial);assert.equal(bundle.page.navigatedTo,new URL('/new-route',initial).href);assert.match(bundle.markdown,/the tab navigated to/);assert.equal(bundle.edits[0].previewState,'page-changed');await button('Close review').click();await button('Discard & close').click();await inject();const fresh=await exportBundle();assert.equal(fresh.page.url,new URL('/new-route',initial).href);assert.equal(fresh.page.title,'New route title');assert.equal(fresh.edits.length,0);
+ await test('in-app route change starts P2 in the same review; P1 items stay; discard and restart begins fresh',async({page,ui,button,edit,clickText,exportBundle,inject})=>{
+  const initial=page.url();await edit('#plain','Old route requested value');
+  await page.evaluate(()=>{history.pushState({},'','/new-route');document.title='New route title';document.querySelector('#plain').textContent='New route paragraph';});
+  await ui.locator('.pagehead').filter({hasText:'P2 · /new-route (this page)'}).waitFor();
+  assert.equal(await ui.locator('article.archived').count(),1,'P1 edit listed as another page');
+  await button('⊕ Pin').click();await clickText('#pin1');await ui.locator('textarea').fill('Route two note');await button('Save').click();
+  const bundle=await exportBundle();assert.deepEqual(bundle.pages.map(p=>[p.id,p.url]),[['P1',initial],['P2',new URL('/new-route',initial).href]]);
+  assert.deepEqual([bundle.edits[0].pageId,bundle.comments[0].pageId],['P1','P2']);assert.equal(bundle.edits[0].previewState,undefined,'other-page items are not judged against this DOM');
+  assert.match(bundle.markdown,/## P1 — [^\n]+\n\n### 1\. Text edit[\s\S]*## P2 — \/new-route\n\n### 2\. Comment · pin 1/);
+  await button('Close review').click();await button('Discard & close').click();await inject();
+  const fresh=await exportBundle();assert.equal(fresh.page.url,new URL('/new-route',initial).href);assert.equal(fresh.page.title,'New route title');assert.equal(fresh.edits.length,0);assert.equal(fresh.pages.length,1);
+ });
+ await test('review survives reload and same-tab navigation: pins, edits, removals and severity come back; discard clears the draft',async({page,ui,button,clickText,edit,exportBundle})=>{
+  const first=page.url();
+  await edit('#plain','Persisted edit');
+  await button('⊕ Pin').click();await clickText('#pin1');await ui.locator('textarea').fill('Persisted note');await button('Save').click();
+  await ui.locator('article').filter({hasText:'Persisted note'}).getByRole('button',{name:'Must',exact:true}).click();
+  await button('⊖ Remove').click();const r=await page.locator('#pin3').boundingBox();await page.mouse.click(r.x+5,r.y+5);
+  await page.waitForTimeout(300);
+  await page.reload();
+  await ui.getByRole('status').filter({hasText:'Continuing your review on P1'}).waitFor();
+  assert.equal(await page.locator('#plain').textContent(),'Persisted edit','edit re-applied');assert.equal(await page.locator('#pin3').isVisible(),false,'removal re-applied');
+  const pin=ui.getByRole('button',{name:'Note 1: Persisted note'});await pin.waitFor();assert.equal(await pin.evaluate(el=>el.classList.contains('sev1')),true);
+  const p1=await page.locator('#pin1').boundingBox(),pinBox=await pin.boundingBox();assert.ok(Math.abs(pinBox.y+pinBox.height-(p1.y+p1.height*0.5))<30,'pin re-anchored to its element');
+  assert.equal(await ui.locator('article').count(),3);
+  await page.goto(new URL('/second-page',first).href);
+  await ui.getByRole('status').filter({hasText:'Continuing your review on P2'}).waitFor();
+  assert.equal(await ui.getByRole('button',{name:/^Note 1:/}).count(),0,'P1 pins hidden on P2');assert.equal(await page.locator('#plain').textContent(),'Original paragraph for edit cycles.','P1 edit not applied to P2');
+  await button('⊕ Pin').click();await clickText('#pin2');await ui.locator('textarea').fill('Second page note');await button('Save').click();
+  const bundle=await exportBundle();
+  assert.deepEqual(bundle.pages.map(p=>p.id),['P1','P2']);assert.equal(bundle.comments.length,2);assert.equal(bundle.edits.length,1);assert.equal(bundle.removals.length,1);
+  assert.match(bundle.markdown,/Summary: 2 comments, 1 text edit, 1 removal across 2 pages/);assert.match(bundle.markdown,/### 1\. Comment · pin 1 · must fix\n- Note: Persisted note/);assert.match(bundle.markdown,/## P2 — \/second-page\n\n### 4\. Comment · pin 2 · should fix\n- Note: Second page note/);
+  // Back to P1: its items reattach again.
+  await page.goto(first);await ui.getByRole('status').filter({hasText:'Continuing your review on P1'}).waitFor();assert.equal(await page.locator('#plain').textContent(),'Persisted edit');
+  await button('Close review').click();await button('Discard & close').click();
+  assert.equal(await page.locator('#plain').textContent(),'Original paragraph for edit cycles.');
+  await page.reload();await page.waitForTimeout(1200);assert.equal(await page.locator('[data-page-notes-root]').count(),0,'discarded review does not come back');
  });
  await test('small viewport controls remain reachable when the note editor and review list are tall',async({page,ui,button,clickText})=>{
   await page.setViewportSize({width:390,height:500});const h=await ui.locator('.header').boundingBox();await page.mouse.move(h.x+40,h.y+15);await page.mouse.down();await page.mouse.move(h.x-60,h.y+120,{steps:5});await page.mouse.up();await button('Snap to nearest corner').click();await button('Minimize').click();await page.locator('#deep').scrollIntoViewIfNeeded();await ui.getByRole('button',{name:/Open Page Notes/}).click();

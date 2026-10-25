@@ -35,7 +35,7 @@ Give the file to your agent along with the source project:
 
 ## Scope and limitations
 
-- Reviews are temporary, in memory in the current tab. Export before refreshing, navigating away, or closing it. There is no automatic recovery after a browser crash.
+- A review belongs to its tab. It survives reloads and navigation in that tab: each URL becomes a page (P1, P2…), pins re-attach by their locator, text edits re-apply where the original text is still there, and removed sections are hidden again. Anything that can't be found is kept and flagged. The draft is held in Chrome's session storage, so it's gone when you close the tab, discard the review or quit the browser. If Chrome withholds access after you move to another site, click the toolbar button to continue.
 - Text edits preview changes in the current DOM. They do not save to the website or source code. A framework can replace edited nodes; review conflicts before using the export.
 - Page pins are fixed document CSS-pixel positions. Element pins also store selectors, text context and relative offsets. Neither guarantees correct placement on a different viewport, a redesigned page, or an element the site replaces.
 - Main document only: iframe content, Shadow DOM content, PDFs, browser internal pages and the Chrome Web Store are not supported. Pin around unsupported content instead.

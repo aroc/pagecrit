@@ -15,14 +15,14 @@
   const id = () => crypto.randomUUID();
   const now = () => new Date().toISOString();
   const startUrl = location.href;
-  const startTitle = document.title;
   const initialViewport = { width: innerWidth, height: innerHeight, devicePixelRatio };
   const initialScroll = { x: scrollX, y: scrollY };
   const state = {
     sessionId: id(), startedAt: now(),
     mode: 'browse', anchorKind: 'element', comments: [], edits: [], removals: [],
     pending: null, notice: '', noticeType: '', busy: false, confirmingClose: false,
-    collapsed: false, dock: 'tr', pos: null, closed: false, frame: 0, routeChanged: false,
+    collapsed: false, dock: 'tr', pos: null, closed: false, frame: 0,
+    pages: [], pageId: null, restored: false,
     sent: '', hoverPoint: null, selectedId: null, revealSelected: false,
   };
   // References never enter the exported review. Keeping them avoids matching a different
@@ -66,6 +66,7 @@
     .itemtext{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;max-height:120px;overflow:auto}.struck{text-decoration:line-through;text-decoration-color:var(--red);text-decoration-thickness:1.5px;color:var(--pencil)}
     .diff{font-size:14px;margin:2px 0;white-space:pre-wrap;overflow-wrap:anywhere;max-height:96px;overflow:auto}.before{color:var(--faint);text-decoration:line-through;text-decoration-color:var(--red);text-decoration-thickness:1.5px}.after{color:var(--ink)}.after .mark{background:linear-gradient(transparent 58%,var(--green-mark) 58%,var(--green-mark) 92%,transparent 92%);-webkit-box-decoration-break:clone;box-decoration-break:clone}
     .warning{color:#a8322a;font-size:12px;margin:6px 0 0}.itemactions{display:flex;justify-content:flex-end;gap:2px;margin-top:4px}.link{font-size:12px;font-weight:600;background:none;border:0;color:var(--pencil);padding:3px 7px;border-radius:8px}.link:hover{color:var(--cobalt);background:var(--cobalt-soft)}
+    .pagehead{margin:14px 0 2px;font-size:12px;font-weight:600;color:var(--pencil);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.item.archived .itemtext{color:var(--pencil)}
     .item.reveal{cursor:pointer;margin:0 -18px;padding:12px 18px}.item.reveal:hover{background:#fafbfc}.item.reveal:focus-visible{outline-offset:-2px}
     .item.selected{background:var(--marker-soft)}.item.selected:hover{background:var(--marker-soft)}.item.pulse{animation:pulse 1s ease-out}@keyframes pulse{from{background:var(--marker)}to{background:var(--marker-soft)}}
     .footer{border-top:1px solid var(--line);padding:14px 18px 16px}.footrow{display:flex;gap:8px}.done{flex:1;padding:12px;font-size:14px;border-radius:14px}.copy{border-radius:14px;padding:12px 16px;font-size:14px}.privacy{font-size:12px;color:var(--faint);text-align:center;margin:8px 0 0}
@@ -264,9 +265,22 @@
     heading.append(element('span', 'title', 'This review'), element('span', 'count', counts.join(', ')));
     body.append(heading);
     if (!itemCount()) body.append(element('div', 'empty', 'Nothing marked up yet. Pick a tool and click the page.'));
-    state.comments.forEach((comment, index) => body.append(renderComment(comment, index)));
-    state.edits.forEach(edit => body.append(renderEdit(edit)));
-    state.removals.forEach(removal => body.append(renderRemoval(removal)));
+    const multi = state.pages.length > 1;
+    for (const page of [currentPage(), ...state.pages.filter(page => page.id !== state.pageId)].filter(Boolean)) {
+      const here = page.id === state.pageId;
+      const comments = state.comments.map((comment, index) => [comment, index]).filter(([comment]) => onPage(comment, page.id));
+      const edits = state.edits.filter(edit => onPage(edit, page.id)), removals = state.removals.filter(removal => onPage(removal, page.id));
+      if (multi && (here || comments.length + edits.length + removals.length)) body.append(element('div', 'pagehead', `${page.id} · ${pagePath(page.url)}${here ? ' (this page)' : ''}`));
+      if (here) {
+        comments.forEach(([comment, index]) => body.append(renderComment(comment, index)));
+        edits.forEach(edit => body.append(renderEdit(edit)));
+        removals.forEach(removal => body.append(renderRemoval(removal)));
+      } else {
+        comments.forEach(([comment, index]) => body.append(renderArchived(comment, String(index + 1), comment.text, () => removeComment(comment))));
+        edits.forEach(edit => body.append(renderArchived(edit, 'Aa', `${edit.before} → ${edit.after}`, () => dropItem('edits', edit))));
+        removals.forEach(removal => body.append(renderArchived(removal, '⊖', `Remove ${removal.label}`, () => dropItem('removals', removal))));
+      }
+    }
     const footer = element('footer', 'footer');
     const done = button(state.busy ? 'Preparing download…' : state.sent === 'full' ? '✓ Download started' : 'Download review', () => exportReview(), 'button primary done');
     done.setAttribute('aria-label', 'Download review');
@@ -277,6 +291,7 @@
     row.append(done, copy);
     footer.append(row);
     panel.append(header, body, footer);
+    persistSoon();
     if (from) {
       const to = (state.collapsed ? pill : panel).getBoundingClientRect();
       state.pos = { x: from.left + from.width / 2 > innerWidth / 2 ? from.right - to.width : from.left, y: from.top + from.height / 2 > innerHeight / 2 ? from.bottom - to.height : from.top };
@@ -388,7 +403,7 @@
     if (!removableTarget(el)) { tell('Pick a section inside the page body.', true); return; }
     if (state.removals.length >= MAX_ITEMS) { tell('This review has reached 500 removals. Download it and start a new review.', true); return; }
     // Rendered text (with line breaks between blocks) reads better than raw textContent.
-    const removal = { id: id(), createdAt: now(), severity: 2, label: tagLabel(el), text: String(el.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 500), element: core.describeElement(el), context: core.captureContext(el) };
+    const removal = { id: id(), pageId: state.pageId, createdAt: now(), severity: 2, label: tagLabel(el), text: String(el.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 500), element: core.describeElement(el), context: core.captureContext(el) };
     const style = el.getAttribute('style');
     el.style.setProperty('display', 'none', 'important');
     removedElements.set(removal.id, { el, style, applied: el.getAttribute('style') });
@@ -415,6 +430,17 @@
     if (anchor) { anchor.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' }); flash(anchor); }
     else tell('The page replaced this section. The removal request is still in the review.', true);
   }
+  // Items from another page in this tab: their elements aren't here, so only severity and delete.
+  function renderArchived(item, badge, text, drop) {
+    const row = element('article', 'item archived');
+    const top = element('div', 'itemtop');
+    top.append(element('span', 'badge', badge), element('span', 'itemlabel', 'On another page'), severityPicker(item));
+    const actions = element('div', 'itemactions');
+    actions.append(button('Delete', drop, 'link'));
+    row.append(top, element('p', 'itemtext', text), actions);
+    return row;
+  }
+  function dropItem(kind, item) { state[kind] = state[kind].filter(other => other.id !== item.id); render(); }
   function renderFormatted(model, cls) {
     const box = element('div', cls);
     if (!model.text) { box.textContent = '(empty)'; return box; }
@@ -457,7 +483,7 @@
         const comment = state.comments.find(c => c.id === p.commentId);
         if (comment && text !== comment.text) { comment.text = text; comment.updatedAt = now(); }
       } else {
-        const comment = { id: id(), createdAt: now(), severity: 2, text, anchor: p.anchor, context: p.context };
+        const comment = { id: id(), pageId: state.pageId, createdAt: now(), severity: 2, text, anchor: p.anchor, context: p.context };
         state.comments.push(comment); pinElements.set(comment.id, p.element); pinContainers.set(comment.id, p.container);
       }
     } else {
@@ -473,7 +499,7 @@
         if (original) { state.edits = state.edits.filter(e => e.id !== edit.id); editSegments.delete(edit.id); }
         else { setEditResult(edit, p.model, p.seg); edit.updatedAt = now(); }
       } else if (!original) {
-        edit = { id: p.newId, createdAt: now(), updatedAt: now(), severity: 2, locator: p.locator, context: p.context, before: p.before, after: '' };
+        edit = { id: p.newId, pageId: state.pageId, createdAt: now(), updatedAt: now(), severity: 2, locator: p.locator, context: p.context, before: p.before, after: '' };
         setEditResult(edit, p.model, p.seg);
         state.edits.push(edit); editSegments.set(edit.id, p.seg);
       }
@@ -709,6 +735,7 @@
   function renderPins() {
     pinsLayer.replaceChildren();
     state.comments.forEach((comment, index) => {
+      if (!onPage(comment, state.pageId)) return;
       const b = button(String(index + 1), () => selectComment(comment), `pin sev${comment.severity || 2}${state.selectedId === comment.id ? ' selected' : ''}`, comment.text);
       b.setAttribute('aria-label', `Note ${index + 1}: ${comment.text.slice(0, 100)}`);
       b.dataset.id = comment.id; pinsLayer.append(b);
@@ -844,9 +871,6 @@
       if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopImmediatePropagation(); }
     }
   }
-  function beforeUnload(event) {
-    if (dirty()) { event.preventDefault(); event.returnValue = ''; }
-  }
   function requestClose() {
     if (state.busy) return;
     if (dirty()) { state.confirmingClose = true; state.collapsed = false; render(); }
@@ -860,6 +884,8 @@
     }
     for (const removal of state.removals) unhide(removal);
     state.closed = true;
+    clearTimeout(persistTimer);
+    chrome.runtime.sendMessage({ type: 'PAGE_NOTES_DRAFT', action: 'clear' }).catch(() => {});
     observer.disconnect(); resizeObserver.disconnect(); clearInterval(routeTimer);
     if (state.frame) cancelAnimationFrame(state.frame);
     window.removeEventListener('click', onClick, true);
@@ -867,7 +893,6 @@
     window.removeEventListener('keydown', onKey, true);
     window.removeEventListener('beforeinput', onBeforeInput, true);
     for (const name of isolatedEvents) window.removeEventListener(name, isolateEditing, true);
-    window.removeEventListener('beforeunload', beforeUnload);
     window.removeEventListener('scroll', queuePosition, true);
     window.removeEventListener('resize', onResize);
     window.removeEventListener('pointermove', onHover, true);
@@ -897,6 +922,7 @@
   function reviewModel() {
     const build = document.querySelector('meta[name="build-sha"]')?.getAttribute('content') || '';
     const comments = state.comments.map((comment, index) => {
+      if (!onPage(comment, state.pageId)) return { ...comment, pin: index + 1 };
       const position = core.resolveAnchor(comment.anchor, pinElements.get(comment.id), pinContainers.get(comment.id));
       return { ...comment, pin: index + 1, anchorState: position.resolved ? 'resolved' : 'element-missing' };
     });
@@ -904,15 +930,15 @@
       format: 'page-notes-review', version: 1, tool: { name: 'Page Notes', version: VERSION },
       session: { id: state.sessionId, startedAt: state.startedAt, exportedAt: now(), timezoneOffset: -new Date().getTimezoneOffset() },
       page: {
-        url: cleanPageUrl(startUrl), title: startTitle, viewport: { width: innerWidth, height: innerHeight }, devicePixelRatio,
+        url: state.pages[0].url, title: state.pages[0].title, viewport: { width: innerWidth, height: innerHeight }, devicePixelRatio,
         colorScheme: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
         ...(/^[\w.+-]{1,64}$/.test(build) ? { build } : {}),
-        ...(location.href !== startUrl ? { navigatedTo: cleanPageUrl(location.href) } : {}),
       },
+      pages: state.pages.map(page => ({ id: page.id, url: page.url, title: page.title, viewport: page.viewport })),
       environment: environment(),
       comments,
-      edits: state.edits.map(edit => ({ ...edit, previewState: core.segmentCurrent(editSegments.get(edit.id)) ? 'applied' : 'page-changed' })),
-      removals: state.removals.map(removal => ({ ...removal, previewState: removedElements.get(removal.id)?.el.isConnected ? 'applied' : 'page-changed' })),
+      edits: state.edits.map(edit => onPage(edit, state.pageId) ? { ...edit, previewState: core.segmentCurrent(editSegments.get(edit.id)) ? 'applied' : 'page-changed' } : edit),
+      removals: state.removals.map(removal => onPage(removal, state.pageId) ? { ...removal, previewState: removedElements.get(removal.id)?.el.isConnected ? 'applied' : 'page-changed' } : removal),
     };
   }
   async function copyMarkdown() {
@@ -964,7 +990,6 @@
   const isolatedEvents = ['keyup', 'keypress', 'input', 'compositionstart', 'compositionupdate', 'compositionend', 'paste', 'cut', 'copy'];
   window.addEventListener('beforeinput', onBeforeInput, true);
   for (const name of isolatedEvents) window.addEventListener(name, isolateEditing, true);
-  window.addEventListener('beforeunload', beforeUnload);
   window.addEventListener('scroll', queuePosition, true);
   function onResize() { placeFloating(); queuePosition(); }
   window.addEventListener('resize', onResize);
@@ -977,12 +1002,86 @@
   observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true, attributes: true });
   const resizeObserver = new ResizeObserver(queuePosition);
   resizeObserver.observe(document.documentElement);
+  // In-app navigation (pushState etc.) starts or returns to a page within the same review.
   const routeTimer = setInterval(() => {
-    if (location.href !== startUrl && !state.routeChanged) {
-      state.routeChanged = true; state.mode = 'browse';
-      tell('The page navigated within this tab. Download this review, then close it and start a new one for the new page.', true);
-    }
+    const page = currentPage();
+    if (page && cleanPageUrl(location.href) !== page.url) { cancelPending(false); enterPage(location.href); render(); }
+    else if (page && !page.title && document.title) page.title = document.title.slice(0, 300);
   }, 1000);
+  // ---- Pages and the draft. One review spans every page visited in this tab. The draft lives in
+  // the worker's chrome.storage.session (cleared when the browser closes, unreadable by pages).
+  function onPage(item, pageId) { return (item.pageId || state.pages[0]?.id) === pageId; }
+  function currentPage() { return state.pages.find(page => page.id === state.pageId); }
+  function pagePath(url) { try { return new URL(url).pathname; } catch (_) { return url; } }
+  function enterPage(href) {
+    const url = cleanPageUrl(href);
+    let page = state.pages.find(p => p.url === url);
+    if (!page) {
+      page = { id: `P${state.pages.length + 1}`, url, title: document.title.slice(0, 300), startedAt: now(), viewport: { width: innerWidth, height: innerHeight } };
+      state.pages.push(page);
+    }
+    state.pageId = page.id;
+    state.selectedId = null;
+  }
+  let persistTimer = 0;
+  function persistSoon() {
+    if (!state.restored || state.closed) return;
+    clearTimeout(persistTimer);
+    persistTimer = setTimeout(() => {
+      const draft = { version: 1, sessionId: state.sessionId, startedAt: state.startedAt, pages: state.pages, comments: state.comments, edits: state.edits, removals: state.removals };
+      chrome.runtime.sendMessage({ type: 'PAGE_NOTES_DRAFT', action: 'save', draft }).catch(() => {});
+    }, 120);
+  }
+  // Best effort: re-find each item on this page by its locator. Edits re-apply only where the
+  // original text is still there; anything not found shows as changed rather than guessed.
+  function reattach() {
+    for (const comment of state.comments) {
+      if (!onPage(comment, state.pageId) || pinElements.has(comment.id)) continue;
+      const el = core.findElement(comment.anchor.element);
+      if (el) pinElements.set(comment.id, el);
+      if (comment.anchor.container) { const container = core.findElement(comment.anchor.container.element); if (container) pinContainers.set(comment.id, container); }
+    }
+    for (const edit of state.edits) {
+      if (!onPage(edit, state.pageId) || editSegments.has(edit.id)) continue;
+      const node = core.resolveTextNode(edit.locator);
+      if (node?.data === edit.before && core.isEditableTextNode(node)) {
+        const segment = core.createSegment(node);
+        core.renderSegment(segment, core.modelFrom(edit.after, edit.formatting));
+        editSegments.set(edit.id, segment);
+      }
+    }
+    for (const removal of state.removals) {
+      if (!onPage(removal, state.pageId) || removedElements.has(removal.id)) continue;
+      const el = core.findElement(removal.element);
+      if (el && removableTarget(el)) {
+        const style = el.getAttribute('style');
+        el.style.setProperty('display', 'none', 'important');
+        removedElements.set(removal.id, { el, style, applied: el.getAttribute('style') });
+      }
+    }
+  }
+  async function restoreDraft() {
+    let draft = null;
+    try { draft = (await chrome.runtime.sendMessage({ type: 'PAGE_NOTES_DRAFT', action: 'load' }))?.draft; } catch (_) { /* Start fresh. */ }
+    if (state.closed) return;
+    if (draft?.version === 1 && Array.isArray(draft.pages) && draft.pages.length) {
+      const fresh = { comments: state.comments, edits: state.edits, removals: state.removals };
+      Object.assign(state, { sessionId: draft.sessionId, startedAt: draft.startedAt, pages: draft.pages, comments: draft.comments || [], edits: draft.edits || [], removals: draft.removals || [] });
+      enterPage(location.href);
+      // Keep anything made in the moment before the draft arrived.
+      for (const kind of ['comments', 'edits', 'removals']) for (const item of fresh[kind]) state[kind].push({ ...item, pageId: state.pageId });
+      reattach();
+      const missing = [...state.edits, ...state.removals].filter(item => onPage(item, state.pageId) && !editSegments.has(item.id) && !removedElements.has(item.id)).length;
+      state.notice = `Continuing your review on ${state.pageId}.${missing ? ` ${missing} ${missing === 1 ? 'change could' : 'changes could'} not be re-applied; they stay in the review.` : ''}`;
+      state.noticeType = '';
+      clearTimeout(noticeTimer); noticeTimer = setTimeout(() => { if (state.notice.startsWith('Continuing')) { state.notice = ''; render(); } }, 4000);
+    }
+    state.restored = true;
+    render();
+  }
+  let noticeTimer = 0;
+  enterPage(startUrl);
+  restoreDraft();
   globalThis.__pageNotesSession = { show() {
     if (!host.isConnected) document.documentElement.appendChild(host);
     state.collapsed = false; render();

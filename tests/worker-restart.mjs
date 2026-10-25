@@ -62,6 +62,8 @@ try {
   });
   await cdp.send('ServiceWorker.enable');
   await eventually(() => lastWorkerState === 'running', 'Worker was not observed running before restart');
+  // Let the review finish loading/saving its draft so nothing but the export wakes the worker.
+  await page.waitForTimeout(800);
   await cdp.send('ServiceWorker.stopAllWorkers');
   await eventually(() => lastWorkerState === 'stopped', 'Worker did not stop');
 
