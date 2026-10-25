@@ -31,6 +31,7 @@
   // References never enter the exported bundle. Keeping them avoids matching a different
   // repeated element when a framework replaces DOM nodes during a review.
   const pinElements = new Map();
+  const pinContainers = new Map();
   const editNodes = new Map();
 
   const host = document.createElement('div');
@@ -254,7 +255,7 @@
         }
       } else {
         const comment = { id: id(), createdAt: now(), text, anchor: p.anchor };
-        state.comments.push(comment); pinElements.set(comment.id, p.element);
+        state.comments.push(comment); pinElements.set(comment.id, p.element); pinContainers.set(comment.id, p.container);
         record('comment_added', { commentId: comment.id, text, anchor: p.anchor });
       }
     } else {
@@ -290,12 +291,12 @@
   }
   function editComment(comment) {
     cancelPending(false);
-    state.pending = { type: 'comment', commentId: comment.id, value: comment.text, anchor: comment.anchor, element: pinElements.get(comment.id) };
+    state.pending = { type: 'comment', commentId: comment.id, value: comment.text, anchor: comment.anchor, element: pinElements.get(comment.id), container: pinContainers.get(comment.id) };
     state.collapsed = false; render(); focusEditor();
   }
   function removeComment(comment) {
     if (state.pending?.commentId === comment.id) cancelPending(false);
-    state.comments = state.comments.filter(c => c.id !== comment.id); pinElements.delete(comment.id);
+    state.comments = state.comments.filter(c => c.id !== comment.id); pinElements.delete(comment.id); pinContainers.delete(comment.id);
     record('comment_removed', { commentId: comment.id, text: comment.text }); render();
   }
   function revertEdit(edit) {
@@ -310,8 +311,13 @@
   }
   function showComment(comment) {
     const target = pinElements.get(comment.id);
+    const container = pinContainers.get(comment.id);
     if (comment.anchor.kind === 'element' && target?.isConnected) target.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
-    else window.scrollTo({ left: Math.max(0, comment.anchor.document.x - innerWidth / 2), top: Math.max(0, comment.anchor.document.y - innerHeight / 2), behavior: 'smooth' });
+    else if (comment.anchor.container && container?.isConnected) {
+      container.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+      const { x, y } = comment.anchor.container.offset;
+      container.scrollTo({ left: Math.max(0, x - container.clientWidth / 2), top: Math.max(0, y - container.clientHeight / 2), behavior: 'smooth' });
+    } else window.scrollTo({ left: Math.max(0, comment.anchor.document.x - innerWidth / 2), top: Math.max(0, comment.anchor.document.y - innerHeight / 2), behavior: 'smooth' });
     state.collapsed = false; render();
   }
   function showEdit(edit) {
@@ -342,11 +348,12 @@
       const comment = pin.dataset.pending ? state.pending : state.comments.find(c => c.id === pin.dataset.id);
       if (!comment?.anchor) continue;
       const originalElement = pin.dataset.pending ? comment.element : pinElements.get(comment.id);
-      const p = core.resolveAnchor(comment.anchor, originalElement);
+      const originalContainer = pin.dataset.pending ? comment.container : pinContainers.get(comment.id);
+      const p = core.resolveAnchor(comment.anchor, originalElement, originalContainer);
       // Do not leave offscreen pins pinned to the viewport's edge.
       pin.style.display = p.visible === false || p.x < -20 || p.x > innerWidth + 20 || p.y < -20 || p.y > innerHeight + 35 ? 'none' : 'grid';
       pin.style.left = `${p.x}px`; pin.style.top = `${p.y}px`;
-      pin.classList.toggle('lost', comment.anchor.kind === 'element' && !p.resolved);
+      pin.classList.toggle('lost', !p.resolved);
     }
     positionHover();
   }
@@ -396,7 +403,8 @@
       if (state.comments.length >= MAX_ITEMS) { tell('This review has reached 500 notes. Download it and start a new review.', true); return; }
       const target = event.target instanceof Element ? event.target : event.target.parentElement;
       const anchor = core.createAnchor(target, event.clientX, event.clientY, state.anchorKind);
-      state.pending = { type: 'comment', anchor, element: target, value: '' };
+      const container = anchor.container ? core.scrollContainerFor(target) : null;
+      state.pending = { type: 'comment', anchor, element: target, container, value: '' };
       state.notice = ''; render(); focusEditor();
     } else {
       const node = core.locateTextNodeAtPoint(event.clientX, event.clientY);
@@ -454,7 +462,7 @@
     state.busy = true; state.notice = ''; render();
     try {
       const comments = state.comments.map(comment => {
-        const position = core.resolveAnchor(comment.anchor, pinElements.get(comment.id));
+        const position = core.resolveAnchor(comment.anchor, pinElements.get(comment.id), pinContainers.get(comment.id));
         return { ...comment, anchorState: position.resolved ? 'resolved' : 'element-missing', exportPosition: { x: position.x, y: position.y, visible: position.visible } };
       });
       const bundle = {

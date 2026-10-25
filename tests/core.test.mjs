@@ -154,3 +154,28 @@ test('detached original anchor never silently attaches to a same-selector replac
   assert.equal(core.resolveAnchor(anchor, el).resolved, false);
   assert.equal(core.findElement(anchor.element, doc), replacement);
 });
+
+test('page anchors inside a scrolling container follow that container, not the window', () => {
+  const { el, win, doc } = fixture({ left: 20, top: 130, width: 100, height: 50 });
+  const scroller = {
+    nodeType: 1, localName: 'main', id: 'shell', ownerDocument: doc, textContent: '', parentElement: null, isConnected: true,
+    getAttribute: () => null, closest: () => null, getRootNode: () => doc, childNodes: [],
+    offsetWidth: 800, offsetHeight: 500, clientLeft: 0, clientTop: 0, clientWidth: 800, clientHeight: 500,
+    scrollWidth: 800, scrollHeight: 3000, scrollLeft: 0, scrollTop: 200,
+    getBoundingClientRect: () => ({ left: 0, top: 100, width: 800, height: 500 })
+  };
+  el.parentElement = scroller;
+  doc.scrollingElement = {};
+  win.getComputedStyle = node => node === scroller ? { overflowX: 'hidden', overflowY: 'auto', position: 'static' } : { overflowX: 'visible', overflowY: 'visible', position: 'static', display: 'block', visibility: 'visible', opacity: '1' };
+  assert.equal(core.scrollContainerFor(el), scroller);
+  const anchor = core.createAnchor(el, 70, 155, 'page');
+  assert.deepEqual(anchor.container.offset, { x: 70, y: 255 });
+  assert.equal(anchor.container.element.id, 'shell');
+  scroller.scrollTop = 250;
+  assert.deepEqual(core.resolveAnchor(anchor, el, scroller), { x: 70, y: 105, resolved: true, visible: true });
+  scroller.scrollTop = 1000;
+  assert.equal(core.resolveAnchor(anchor, el, scroller).visible, false);
+  scroller.isConnected = false;
+  assert.equal(core.resolveAnchor(anchor, el, scroller).resolved, false);
+  assert.equal(core.createAnchor(el, 70, 155, 'element').container, undefined);
+});

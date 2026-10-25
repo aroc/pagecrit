@@ -75,6 +75,20 @@ try {
   await button('Pin to page').click();assert.equal(await button('Pin to page').getAttribute('aria-pressed'),'true');await page.mouse.move(next.x+12,next.y+next.height/2);await page.waitForTimeout(50);assert.equal((await hover()).display,'none','page pins do not outline elements');
   await button('Browse').click();await page.mouse.move(before.x+10,before.y+before.height/2);await page.waitForTimeout(50);assert.equal((await hover()).display,'none');
  });
+ await test('pin to page follows the page content when the site scrolls a container instead of the window',async({page,ui,button,clickText,exportBundle})=>{
+  // App-shell layout: the window never scrolls; body does.
+  await page.evaluate(()=>{document.documentElement.style.cssText='height:100%;overflow:hidden';document.body.style.cssText='height:100%;overflow:auto';});
+  await button('⊕ Pin').click();await button('Pin to page').click();await clickText('#pin2');await ui.locator('textarea').fill('Shell page pin');await button('Save').click();
+  const pin=ui.getByRole('button',{name:'Note 1: Shell page pin',includeHidden:true});const top=()=>pin.evaluate(el=>parseFloat(el.style.top));
+  const start=await top();assert.equal(await page.evaluate(()=>scrollY),0);
+  await page.evaluate(()=>document.body.scrollTop+=120);await page.waitForTimeout(80);
+  assert.ok(Math.abs(await top()-(start-120))<1.5,`moved with body scroll: ${start} -> ${await top()}`);
+  await page.mouse.move(400,300);await page.mouse.wheel(0,60);await page.waitForTimeout(150);
+  const scrolled=await page.evaluate(()=>document.body.scrollTop);assert.ok(Math.abs(await top()-(start-scrolled))<1.5,'moved with wheel scroll');
+  await page.evaluate(()=>document.body.scrollTop=5000);await page.waitForTimeout(80);assert.equal(await pin.evaluate(el=>getComputedStyle(el).display),'none','hidden once scrolled out of the container');
+  const bundle=await exportBundle();const anchor=bundle.comments[0].anchor;assert.equal(anchor.kind,'page');assert.equal(anchor.container.element.tag,'body');assert.equal(bundle.comments[0].anchorState,'resolved');
+  const expected=await page.locator('#pin2').evaluate(el=>el.getBoundingClientRect().top+document.body.scrollTop);assert.ok(Math.abs(anchor.container.offset.y-expected)<30,JSON.stringify(anchor.container));
+ });
  await test('blank comment rejected, cancel does not create a phantom note',async({ui,button,clickText,exportBundle})=>{
   await button('⊕ Pin').click();await clickText('#pin1');await ui.locator('textarea').fill(' \n\t ');await button('Save').click();assert.match(await ui.getByRole('status').textContent(),/Add a note/);await button('Cancel').click();assert.equal((await exportBundle()).comments.length,0);
  });

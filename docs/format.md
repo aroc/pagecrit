@@ -15,7 +15,7 @@ One UTF-8 JSON file (`*.page-notes.json`), maximum 20 MB including the generated
 
 ## Anchors
 
-Page anchor: `kind: "page"`, `document: {x,y}`. Coordinates use CSS pixels from the document's top-left, including the scroll offset at placement.
+Page anchor: `kind: "page"`, `document: {x,y}`. Coordinates use CSS pixels from the document's top-left, including the scroll offset at placement. When the click lands inside a scrolling container (including a scrolling `body` in app-shell layouts where the window never scrolls), the anchor also has `container: {element, offset: {x,y}}`: a locator for that scroller and the point in its content coordinates, including its scroll offset. The UI follows that container; if it disappears, `anchorState` is `element-missing` and the document position is the fallback.
 
 Element anchor: `kind: "element"`, same document fallback, an `element` locator, and `offset: {x,y,xRatio,yRatio}` within the element's viewport bounding rectangle. The UI uses ratios when the element resizes. Rectangles follow nested scrolling; if the original element disappears, mark the anchor unresolved rather than claiming a new element is the same one.
 

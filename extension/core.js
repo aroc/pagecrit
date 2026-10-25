@@ -45,6 +45,33 @@
     };
   }
 
+  // Many apps scroll a container (or body) instead of the window. A page position
+  // belongs to whichever scroller moves the content under the click.
+  function scrollContainerFor(el) {
+    const win = winFor(el);
+    if (!win.getComputedStyle) return null;
+    const scrolling = docFor(el).scrollingElement;
+    for (let current = el; current && current.nodeType === 1; current = current.parentElement) {
+      if (current === scrolling) return null;
+      const style = win.getComputedStyle(current);
+      const scrollsX = /^(auto|scroll|overlay)$/.test(style.overflowX) && current.scrollWidth > current.clientWidth;
+      const scrollsY = /^(auto|scroll|overlay)$/.test(style.overflowY) && current.scrollHeight > current.clientHeight;
+      if (scrollsX || scrollsY) return current;
+      // Fixed content does not move with any scrolling ancestor.
+      if (style.position === 'fixed') return null;
+    }
+    return null;
+  }
+
+  function contentBox(container) {
+    const rect = container.getBoundingClientRect();
+    const scaleX = container.offsetWidth ? rect.width / container.offsetWidth : 1;
+    const scaleY = container.offsetHeight ? rect.height / container.offsetHeight : 1;
+    const left = rect.left + finite(container.clientLeft) * scaleX;
+    const top = rect.top + finite(container.clientTop) * scaleY;
+    return { left, top, right: left + finite(container.clientWidth, rect.width) * scaleX, bottom: top + finite(container.clientHeight, rect.height) * scaleY, scaleX, scaleY };
+  }
+
   function createAnchor(el, clientX, clientY, kind = 'page') {
     if (!['page', 'element'].includes(kind)) throw new TypeError('Unknown anchor kind');
     if (!Number.isFinite(clientX) || !Number.isFinite(clientY)) throw new TypeError('Anchor coordinates must be finite');
@@ -52,11 +79,19 @@
     const rect = el?.getBoundingClientRect();
     const x = clientX - finite(rect?.left);
     const y = clientY - finite(rect?.top);
+    const scroller = kind === 'page' && el ? scrollContainerFor(el) : null;
+    let container = null;
+    if (scroller) {
+      const box = contentBox(scroller);
+      // Unscaled CSS pixels from the scroller's content origin, including its scroll offset.
+      container = { element: describeElement(scroller), offset: { x: (clientX - box.left) / box.scaleX + finite(scroller.scrollLeft), y: (clientY - box.top) / box.scaleY + finite(scroller.scrollTop) } };
+    }
     return {
       kind,
       document: { x: clientX + finite(win.scrollX), y: clientY + finite(win.scrollY) },
       element: describeElement(el),
       offset: rect ? { x, y, xRatio: rect.width ? x / rect.width : 0, yRatio: rect.height ? y / rect.height : 0 } : null,
+      ...(container ? { container } : {}),
       viewport: { width: finite(win.innerWidth), height: finite(win.innerHeight) },
       scroll: { x: finite(win.scrollX), y: finite(win.scrollY) }
     };
@@ -121,10 +156,19 @@
     return true;
   }
 
-  function resolveAnchor(anchor, originalElement) {
+  function resolveAnchor(anchor, originalElement, originalContainer) {
     const win = originalElement ? winFor(originalElement) : root;
     const fallback = { x: finite(anchor?.document?.x) - finite(win.scrollX), y: finite(anchor?.document?.y) - finite(win.scrollY), resolved: anchor?.kind === 'page' };
     fallback.visible = pointVisible(fallback.x, fallback.y, win);
+    if (anchor?.kind === 'page' && anchor.container) {
+      const container = originalContainer !== undefined ? (originalContainer?.isConnected ? originalContainer : null) : findElement(anchor.container.element);
+      if (!container) return { ...fallback, resolved: false };
+      const box = contentBox(container);
+      const x = box.left + (finite(anchor.container.offset?.x) - finite(container.scrollLeft)) * box.scaleX;
+      const y = box.top + (finite(anchor.container.offset?.y) - finite(container.scrollTop)) * box.scaleY;
+      const inside = x >= box.left && x <= box.right && y >= box.top && y <= box.bottom;
+      return { x, y, resolved: true, visible: inside && pointVisible(x, y, win, container) };
+    }
     if (anchor?.kind !== 'element') return fallback;
     // When an original DOM reference was provided, never silently attach to a replacement.
     const el = originalElement ? (originalElement.isConnected ? originalElement : null) : findElement(anchor.element);
@@ -224,7 +268,7 @@
     return '<!DOCTYPE html>\n' + clone.outerHTML;
   }
 
-  const api = { describeElement, createAnchor, resolveAnchor, findElement, snapshotDocument, locateTextNodeAtPoint, describeTextNode, resolveTextNode, isEditableTextNode, applyTextEdit };
+  const api = { describeElement, scrollContainerFor, createAnchor, resolveAnchor, findElement, snapshotDocument, locateTextNodeAtPoint, describeTextNode, resolveTextNode, isEditableTextNode, applyTextEdit };
   root.PageNotesCore = Object.freeze(api);
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof globalThis !== 'undefined' ? globalThis : window);
