@@ -1,5 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
   <!-- Canonical PageCrit mark. The same shapes are inlined in content.js, site/index.html and scripts/screenshots.mjs; npm run icons renders the PNGs from this file. -->
+  <g transform="rotate(-4 50 50)">
   <path d="M20 9C42 5.5 67 5.5 83 9.5C93 12 95.5 19 95.5 32V52C95.5 65 91 70 79 70H63L50.5 92L38 70H21.5C9.5 70 5 65 5 52V30C5 17.5 8.5 11 20 9Z" fill="#2f4be0" stroke="#2f4be0" stroke-width="4" stroke-linejoin="round"/>
-  <path d="M24 29H76" fill="none" stroke="#ff9a1f" stroke-width="10" stroke-linecap="round"/><path d="M24 49H52" fill="none" stroke="#ff9a1f" stroke-width="10" stroke-linecap="round"/><circle cx="68" cy="49" r="5" fill="#ff9a1f"/>
+  <path d="M24 29Q37 26.5 50 29T76 29" fill="none" stroke="#ff9a1f" stroke-width="10" stroke-linecap="round"/>
+  <path d="M24 49Q31 46.5 38 49T52 49" fill="none" stroke="#ff9a1f" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="68" cy="49" r="5" fill="#ff9a1f"/>
+  </g>
 </svg>

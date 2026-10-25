@@ -81,8 +81,8 @@
     .closebox{padding:14px;background:var(--red-soft);border-radius:16px;margin:8px 0 12px;font-size:13px}.closebox p{margin:0}
     .pill{pointer-events:auto;position:fixed;right:18px;top:18px;display:flex;align-items:center;gap:8px;border:1px solid #e3e4eb;border-radius:999px;padding:7px 9px 7px 13px;background:var(--paper);box-shadow:0 1px 0 #1f24300a,0 14px 34px -14px #1f243066;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}.pill .brand{font-size:23px;flex:none}.pill .count{min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:var(--cobalt);color:white;font:700 12px/22px var(--sans);text-align:center}
     .pin{pointer-events:auto;position:fixed;min-width:32px;height:24px;padding:0 8px;display:grid;place-items:center;border:2px solid white;border-radius:8px 9px 7px 9px/9px 7px 9px 8px;transform:translate(-50%,calc(-100% - 9px)) rotate(-3deg);transform-origin:50% calc(100% + 9px);box-shadow:0 3px 10px #1f243055;background:var(--cobalt);color:white;font:700 12px/1 var(--sans);font-variant-numeric:tabular-nums}
-    /* The tail: a white triangle (the outline) under one in the pin's color, which also covers the body's bottom border so the two join cleanly. */
-    .pin::before,.pin::after,.badge.bubble::after{content:'';position:absolute;left:50%;top:calc(100% - 1px);transform:translateX(-50%);clip-path:polygon(0 0,100% 0,50% 100%)}.pin::before{width:17px;height:12.5px;background:white}.pin::after{width:12px;height:9px;background:inherit}
+    /* The tail: a white triangle (the outline) under one in the pin's color, inset by the border width. The colored one starts inside the body, so it hides the body's bottom border where they meet; z-index:-1 keeps both under the number but over the border and selection ring. */
+    .pin::before,.pin::after,.badge.bubble::after{content:'';position:absolute;left:50%;top:calc(100% - 1px);transform:translateX(-50%);clip-path:polygon(0 0,100% 0,50% 100%)}.pin::before,.pin::after{z-index:-1}.pin::before{top:100%;width:16px;height:11.5px;background:white}.pin::after{top:calc(100% - 3px);width:15.3px;height:11px;background:inherit}
     .pin:hover{filter:brightness(.92)}.pin.lost{background:#8d8f9a}.pin.pending{background:var(--marker);color:var(--ink)}.pin.selected{z-index:1;box-shadow:0 0 0 4px var(--marker),0 3px 12px #1f243066}
     .badge.bubble{position:relative;min-width:27px;height:20px;padding:0 7px;margin-bottom:4px;border-radius:6px 7px 6px 7px/7px 6px 7px 6px;transform:rotate(-3deg)}.badge.bubble::after{width:9px;height:5.5px;background:inherit}
     .highlight,.hover{pointer-events:none;position:fixed;border:2px dashed var(--cobalt);border-radius:6px;background:#2f4be00a;display:none}.highlight{border-style:solid;background:#ffe36e33;border-color:#e8c534}
@@ -178,12 +178,13 @@
     svg.setAttribute('viewBox', '0 0 100 100'); svg.setAttribute('class', 'logo'); svg.setAttribute('aria-hidden', 'true');
     for (const [tag, attrs] of [
       ['path', { d: 'M20 9C42 5.5 67 5.5 83 9.5C93 12 95.5 19 95.5 32V52C95.5 65 91 70 79 70H63L50.5 92L38 70H21.5C9.5 70 5 65 5 52V30C5 17.5 8.5 11 20 9Z', fill: '#2f4be0', stroke: '#2f4be0', 'stroke-width': 4, 'stroke-linejoin': 'round' }],
-      ['path', { d: 'M24 29H76', fill: 'none', stroke: '#ff9a1f', 'stroke-width': 10, 'stroke-linecap': 'round' }],
-      ['path', { d: 'M24 49H52', fill: 'none', stroke: '#ff9a1f', 'stroke-width': 10, 'stroke-linecap': 'round' }],
+      ['path', { d: 'M24 29Q37 26.5 50 29T76 29', fill: 'none', stroke: '#ff9a1f', 'stroke-width': 10, 'stroke-linecap': 'round' }],
+      ['path', { d: 'M24 49Q31 46.5 38 49T52 49', fill: 'none', stroke: '#ff9a1f', 'stroke-width': 10, 'stroke-linecap': 'round' }],
       ['circle', { cx: 68, cy: 49, r: 5, fill: '#ff9a1f' }],
     ]) {
       const child = document.createElementNS(ns, tag);
       for (const [key, value] of Object.entries(attrs)) child.setAttribute(key, String(value));
+      child.setAttribute('transform', 'rotate(-4 50 50)'); // The bubble leans slightly left.
       svg.append(child);
     }
     return svg;

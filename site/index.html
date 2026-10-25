@@ -37,16 +37,18 @@
   .wrap{max-width:1160px;margin:0 auto;padding:0 28px}
 
   /* Top bar */
-  .bar{display:flex;align-items:center;gap:24px;padding:22px 0}
-  .mark{display:flex;align-items:center;gap:10px;text-decoration:none;font:700 32px/1 var(--hand)}
-  .mark svg{width:34px;height:34px}
+  html{scroll-padding-top:96px}
+  /* Top bar: a pill that stays put while the page scrolls under its blurred backdrop. */
+  .bar{position:sticky;top:14px;z-index:10;display:flex;align-items:center;gap:24px;margin:14px 0 8px;padding:8px 8px 8px 18px;border-radius:999px;background:#ffffffd6;border:1px solid #1f243012;box-shadow:0 10px 30px -18px #1f243055;-webkit-backdrop-filter:blur(18px) saturate(1.4);backdrop-filter:blur(18px) saturate(1.4)}
+  .mark{display:flex;align-items:center;gap:9px;text-decoration:none;font:700 28px/1 var(--hand)}
+  .mark svg{width:30px;height:30px}
   .bar nav{margin-left:auto;display:flex;gap:22px;align-items:center;font-size:15px;color:var(--pencil)}
   .bar nav a{text-decoration:none}.bar nav a:hover{color:var(--ink)}
 
   .button{display:inline-flex;align-items:center;gap:10px;text-decoration:none;font:600 16px/1 var(--sans);padding:15px 22px;border-radius:14px;border:1px solid transparent}
   .button.primary{background:var(--cobalt);color:#fff}.button.primary:hover{background:var(--cobalt-deep)}
   .button.quiet{background:var(--paper);border-color:var(--line)}.button.quiet:hover{border-color:#c9ccd6}
-  .bar .button{padding:11px 16px;font-size:15px}
+  .bar .button{padding:10px 16px;font-size:15px;border-radius:999px}
 
   /* Hero */
   .hero{display:grid;grid-template-columns:minmax(0,4.6fr) minmax(0,7.4fr);gap:56px;align-items:center;padding:48px 0 120px}
@@ -115,9 +117,11 @@
   @media (max-width:640px){
     .wrap{padding:0 16px}
     /* GitHub stays beside the logo; the section links drop to their own row instead of disappearing. */
-    .bar{flex-wrap:wrap;gap:12px 16px;padding:16px 0 4px}
-    .bar .button{margin-left:auto;padding:9px 13px;font-size:14px}
-    .bar nav{order:1;margin-left:0;width:100%;gap:20px;font-size:15px}
+    html{scroll-padding-top:120px}
+    .bar{top:10px;flex-wrap:wrap;gap:6px 12px;margin-top:10px;padding:8px 8px 10px 14px;border-radius:22px}
+    .mark{font-size:24px}.mark svg{width:26px;height:26px}
+    .bar .button{margin-left:auto;padding:8px 13px;font-size:14px}
+    .bar nav{order:1;margin-left:0;width:100%;gap:18px;font-size:14px}
     .bento{grid-template-columns:1fr}
     .s2,.s3,.s4{grid-column:auto}
     .note,.arrows{display:none}
@@ -130,7 +134,7 @@
 <div class="wrap">
   <header class="bar">
     <a class="mark" href="#" aria-label="PageCrit home">
-      <svg viewBox="0 0 100 100" aria-hidden="true"><path d="M20 9C42 5.5 67 5.5 83 9.5C93 12 95.5 19 95.5 32V52C95.5 65 91 70 79 70H63L50.5 92L38 70H21.5C9.5 70 5 65 5 52V30C5 17.5 8.5 11 20 9Z" fill="#2f4be0" stroke="#2f4be0" stroke-width="4" stroke-linejoin="round"/><path d="M24 29H76" fill="none" stroke="#ff9a1f" stroke-width="10" stroke-linecap="round"/><path d="M24 49H52" fill="none" stroke="#ff9a1f" stroke-width="10" stroke-linecap="round"/><circle cx="68" cy="49" r="5" fill="#ff9a1f"/></svg>
+      <svg viewBox="0 0 100 100" aria-hidden="true"><g transform="rotate(-4 50 50)"><path d="M20 9C42 5.5 67 5.5 83 9.5C93 12 95.5 19 95.5 32V52C95.5 65 91 70 79 70H63L50.5 92L38 70H21.5C9.5 70 5 65 5 52V30C5 17.5 8.5 11 20 9Z" fill="#2f4be0" stroke="#2f4be0" stroke-width="4" stroke-linejoin="round"/><path d="M24 29Q37 26.5 50 29T76 29" fill="none" stroke="#ff9a1f" stroke-width="10" stroke-linecap="round"/><path d="M24 49Q31 46.5 38 49T52 49" fill="none" stroke="#ff9a1f" stroke-width="10" stroke-linecap="round"/><circle cx="68" cy="49" r="5" fill="#ff9a1f"/></g></svg>
       PageCrit
     </a>
     <nav aria-label="Main">
@@ -138,7 +142,7 @@
       <a href="#sample">Sample review</a>
       <a href="#install">Install</a>
     </nav>
-    <a class="button quiet" href="https://github.com/aroc/pagecrit">GitHub</a>
+    <a class="button quiet" href="https://github.com/aroc/pagecrit" target="_blank" rel="noopener">GitHub</a>
   </header>
 
   <main>
@@ -261,7 +265,7 @@
         <p>PageCrit loads straight from its folder: no store listing, no build step.</p>
       </div>
       <ol class="steps">
-        <li><b>Get the extension</b><span><a href="https://github.com/aroc/pagecrit/releases/latest/download/pagecrit.zip">Download pagecrit.zip</a> from the latest release and unzip it. Or clone it from <a href="https://github.com/aroc/pagecrit">GitHub</a>: it's open source.</span></li>
+        <li><b>Get the extension</b><span><a href="https://github.com/aroc/pagecrit/releases/latest/download/pagecrit.zip">Download pagecrit.zip</a> from the latest release and unzip it. Or clone it from <a href="https://github.com/aroc/pagecrit" target="_blank" rel="noopener">GitHub</a>: it's open source.</span></li>
         <li><b>Load it in Chrome</b><span>Open <code>chrome://extensions</code>, turn on Developer mode, click Load unpacked and pick the unzipped <code>pagecrit</code> folder (or <code>extension</code> in your clone).</span></li>
         <li><b>Start reviewing</b><span>Pin PageCrit to the toolbar, open any page and click its icon, or press <code>Alt+Shift+N</code>.</span></li>
       </ol>
@@ -270,7 +274,7 @@
 
   <footer>
     <span>PageCrit: a small Chrome extension for reviewing your own sites.</span>
-    <a href="https://github.com/aroc/pagecrit">Source on GitHub</a>
+    <a href="https://github.com/aroc/pagecrit" target="_blank" rel="noopener">Source on GitHub</a>
   </footer>
 </div>
 <script>

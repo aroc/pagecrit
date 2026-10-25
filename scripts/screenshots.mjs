@@ -140,7 +140,7 @@ try {
   p{font-size:18px;line-height:1.5;color:#585c69;margin:0}
   .shot{position:absolute;left:500px;top:96px;width:720px;border-radius:16px;overflow:hidden;box-shadow:0 30px 70px -30px #1f243080,0 0 0 1px #1f24301a;transform:rotate(-1.5deg)}
   .shot img{display:block;width:100%}</style>
-  <div class="copy"><div class="mark"><svg viewBox="0 0 100 100"><path d="M20 9C42 5.5 67 5.5 83 9.5C93 12 95.5 19 95.5 32V52C95.5 65 91 70 79 70H63L50.5 92L38 70H21.5C9.5 70 5 65 5 52V30C5 17.5 8.5 11 20 9Z" fill="#2f4be0" stroke="#2f4be0" stroke-width="4" stroke-linejoin="round"/><path d="M24 29H76" fill="none" stroke="#ff9a1f" stroke-width="10" stroke-linecap="round"/><path d="M24 49H52" fill="none" stroke="#ff9a1f" stroke-width="10" stroke-linecap="round"/><circle cx="68" cy="49" r="5" fill="#ff9a1f"/></svg>PageCrit</div>
+  <div class="copy"><div class="mark"><svg viewBox="0 0 100 100"><g transform="rotate(-4 50 50)"><path d="M20 9C42 5.5 67 5.5 83 9.5C93 12 95.5 19 95.5 32V52C95.5 65 91 70 79 70H63L50.5 92L38 70H21.5C9.5 70 5 65 5 52V30C5 17.5 8.5 11 20 9Z" fill="#2f4be0" stroke="#2f4be0" stroke-width="4" stroke-linejoin="round"/><path d="M24 29Q37 26.5 50 29T76 29" fill="none" stroke="#ff9a1f" stroke-width="10" stroke-linecap="round"/><path d="M24 49Q31 46.5 38 49T52 49" fill="none" stroke="#ff9a1f" stroke-width="10" stroke-linecap="round"/><circle cx="68" cy="49" r="5" fill="#ff9a1f"/></g></svg>PageCrit</div>
   <h1>Add feedback on any web page.<br>Then hand it to your agent.</h1><p>Pins, in-place text edits and removals, turned into one Markdown review.</p></div>
   <div class="shot"><img src="data:image/png;base64,${heroData}"></div>`);
  await banner.waitForTimeout(300);
