@@ -126,6 +126,28 @@ test('render message returns the digest for Copy Markdown, only to our top-frame
  const result=await ask({id:'ext',tab:{id:1},frameId:0,url:'https://example.com'});
  assert.equal(result.ok,true);assert.match(result.markdown,/^# Review: Pricing/);
 });
+test('copied and downloaded reviews are remembered locally: newest first, last 10 only, one entry per review',async()=>{
+ let callback,store={},download;
+ const local={async get(key){return {[key]:store[key]}},async set(obj){Object.assign(store,JSON.parse(JSON.stringify(obj)))},async remove(key){delete store[key]}};
+ vm.runInNewContext(readFileSync(new URL('../extension/background.js',import.meta.url),'utf8'),{importScripts(){},PageNotesExport:api,encodeURIComponent,chrome:{runtime:{id:'ext',onMessage:{addListener(fn){callback=fn}}},storage:{local},downloads:{async download(opts){download=opts;return 5}}}});
+ const ours={id:'ext',tab:{id:1},frameId:0,url:'https://example.com'};
+ const send=(message,sender=ours)=>new Promise(resolve=>callback(message,sender,resolve));
+ const review=(n,title=`Page ${n}`)=>{const r=sample();r.session.id=`s${n}`;r.page.title=title;return r;};
+ for(let n=1;n<=12;n++)assert.equal((await send({type:n%2?'PAGE_NOTES_RENDER':'PAGE_NOTES_EXPORT',review:review(n)})).ok,true);
+ let list=(await send({type:'PAGE_NOTES_RECENT',action:'list'})).reviews;
+ assert.deepEqual(list.map(r=>r.id),['s12','s11','s10','s9','s8','s7','s6','s5','s4','s3']);
+ assert.equal(list[0].markdown,undefined,'the list carries no review text');assert.equal(list[0].title,'Page 12');assert.equal(list[0].items,sample().comments.length+sample().edits.length+sample().removals.length);
+ // Copying the same review again replaces its entry and moves it to the top.
+ await send({type:'PAGE_NOTES_RENDER',review:review(5,'Page 5 again')});
+ list=(await send({type:'PAGE_NOTES_RECENT',action:'list'})).reviews;
+ assert.equal(list.length,10);assert.equal(list[0].id,'s5');assert.equal(list[0].title,'Page 5 again');assert.equal(list.filter(r=>r.id==='s5').length,1);
+ const md=await send({type:'PAGE_NOTES_RECENT',action:'markdown',id:'s5'});assert.match(md.markdown,/^# Review: Page 5 again/);
+ download=undefined;assert.equal((await send({type:'PAGE_NOTES_RECENT',action:'download',id:'s12'})).downloadId,5);assert.match(download.filename,/ Page 12\.md$/);assert.match(decodeURIComponent(download.url),/# Review: Page 12/);
+ assert.equal((await send({type:'PAGE_NOTES_RECENT',action:'markdown',id:'s1'})).ok,false,'dropped after 10');
+ assert.equal((await send({type:'PAGE_NOTES_RECENT',action:'list'},{id:'other',tab:{id:1},frameId:0,url:'https://example.com'})).ok,false);
+ assert.equal((await send({type:'PAGE_NOTES_RECENT',action:'list'},{...ours,frameId:2})).ok,false);
+ await send({type:'PAGE_NOTES_RECENT',action:'clear'});assert.equal((await send({type:'PAGE_NOTES_RECENT',action:'list'})).reviews.length,0);
+});
 test('start-review keyboard command injects into http(s) HTML pages only, never past a modal dialog',async()=>{
  let onCommand;const calls=[];let inspection={modal:false,contentType:'text/html'};
  vm.runInNewContext(readFileSync(new URL('../extension/background.js',import.meta.url),'utf8'),{importScripts(){},PageNotesExport:api,encodeURIComponent,chrome:{runtime:{id:'ext',onMessage:{addListener(){}}},downloads:{},commands:{onCommand:{addListener(fn){onCommand=fn}}},scripting:{async executeScript(opts){calls.push(opts);return opts.func?[{result:inspection}]:[]}}}});

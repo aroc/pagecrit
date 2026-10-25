@@ -6,15 +6,51 @@ importScripts('export.js');
 const destinations = {
   async file(review) {
     const markdown = PageNotesExport.renderDigest(review);
-    const id = await chrome.downloads.download({
-      url: 'data:text/markdown;charset=utf-8,' + encodeURIComponent(markdown),
-      filename: PageNotesExport.filename(review),
-      saveAs: true,
-      conflictAction: 'uniquify'
-    });
+    const filename = PageNotesExport.filename(review);
+    const id = await saveMarkdown(markdown, filename);
+    await remember(review, markdown, filename);
     return {ok: true, downloadId: id};
   }
 };
+function saveMarkdown(markdown, filename) {
+  return chrome.downloads.download({
+    url: 'data:text/markdown;charset=utf-8,' + encodeURIComponent(markdown),
+    filename,
+    saveAs: true,
+    conflictAction: 'uniquify'
+  });
+}
+// The last reviews you copied or downloaded, so one closed with Done can still be fetched.
+// Kept as finished Markdown in chrome.storage.local (this browser profile only, never synced
+// or uploaded); a review copied again replaces its older copy. Clear removes them all.
+const RECENT_KEY = 'recent';
+const MAX_RECENT = 10;
+async function recentList() {
+  const list = (await chrome.storage.local.get(RECENT_KEY))[RECENT_KEY];
+  return Array.isArray(list) ? list : [];
+}
+async function remember(review, markdown, filename) {
+  try {
+    if (!chrome.storage?.local) return;
+    const entry = {
+      id: String(review.session.id), title: String(review.page.title || '').slice(0, 300), url: review.page.url,
+      pages: review.pages?.length || 1, items: review.comments.length + review.edits.length + review.removals.length,
+      savedAt: new Date().toISOString(), filename, markdown
+    };
+    const list = (await recentList()).filter(other => other.id !== entry.id);
+    await chrome.storage.local.set({[RECENT_KEY]: [entry, ...list].slice(0, MAX_RECENT)});
+  } catch (_) { /* Remembering is a convenience; delivery already happened. */ }
+}
+async function handleRecent(message) {
+  const list = await recentList();
+  if (message.action === 'list') return {ok: true, reviews: list.map(({markdown, ...meta}) => meta)};
+  if (message.action === 'clear') { await chrome.storage.local.remove(RECENT_KEY); return {ok: true}; }
+  const entry = list.find(other => other.id === message.id);
+  if (!entry) return {ok: false, error: 'That review is no longer saved.'};
+  if (message.action === 'markdown') return {ok: true, markdown: entry.markdown};
+  if (message.action === 'download') return {ok: true, downloadId: await saveMarkdown(entry.markdown, entry.filename)};
+  return {ok: false};
+}
 // The overlay's handwriting face ships inside the extension. Handing the bytes over here
 // avoids web_accessible_resources, so pages cannot probe for the extension.
 let fontData = null;
@@ -47,6 +83,11 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     handleDraft(message, sender.tab.id).then(respond).catch(() => respond({ok: false}));
     return true;
   }
+  if (message?.type === 'PAGE_NOTES_RECENT') {
+    if (sender.id !== chrome.runtime.id || !sender.tab || sender.frameId !== 0 || !/^https?:\/\//i.test(sender.url || '')) { respond({ok: false}); return; }
+    handleRecent(message).then(respond).catch(error => respond({ok: false, error: error.message}));
+    return true;
+  }
   if (message?.type === 'PAGE_NOTES_FONT') {
     if (sender.id !== chrome.runtime.id || !sender.tab) return;
     handFont().then(respond).catch(() => respond({ok: false}));
@@ -59,8 +100,10 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     return;
   }
   if (message.type === 'PAGE_NOTES_RENDER') {
-    try { respond({ok: true, markdown: PageNotesExport.renderDigest(message.review)}); } catch (error) { respond({ok: false, error: error.message}); }
-    return;
+    let markdown;
+    try { markdown = PageNotesExport.renderDigest(message.review); } catch (error) { respond({ok: false, error: error.message}); return; }
+    remember(message.review, markdown, PageNotesExport.filename(message.review)).then(() => respond({ok: true, markdown}));
+    return true;
   }
   destinations.file(message.review).then(respond).catch(error => respond({ok: false, code: error.code, error: error.message || 'Download failed. Your draft is still open.'}));
   return true;

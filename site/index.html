@@ -50,9 +50,10 @@
   .shot{position:relative}
   .shot>img{border-radius:18px;box-shadow:0 1px 0 #1f24300d,0 30px 70px -34px #1f243088;outline:1px solid #1f243014}
   /* Hand-written review notes on the screenshots: the page is marked up like the product does. */
-  .notes{position:absolute;left:0;top:0;width:100%;height:auto;overflow:visible;pointer-events:none}
-  .notes text{font:600 66px var(--hand);fill:var(--cobalt)}
-  .notes path{fill:none;stroke:var(--cobalt);stroke-width:7;stroke-linecap:round;stroke-linejoin:round}
+  .note{position:absolute;top:calc(100% + 22px);font:600 25px/1 var(--hand);color:var(--cobalt);white-space:nowrap;pointer-events:none}
+  .note.pin{left:14%}.note.copy{right:0}
+  .arrows{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+  .arrows path{fill:none;stroke:var(--cobalt);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
 
   /* Bento */
   .section-head{max-width:640px;margin:0 0 28px}
@@ -101,7 +102,7 @@
     .bar nav a:not(.button){display:none}
     .bento{grid-template-columns:1fr}
     .s2,.s3,.s4{grid-column:auto}
-    .notes{display:none}
+    .note,.arrows{display:none}
     .hero{gap:32px;padding-bottom:64px}
     .lede{font-size:18px}
   }
@@ -135,13 +136,11 @@
       </div>
       <figure class="shot">
         <img src="assets/hero.png" width="1800" height="1125" alt="A pricing page being reviewed: numbered comment pins on the Pro plan and the Business button, and the Page Notes panel listing comments, text edits and a removal with severity chips.">
-        <!-- Drawn in the screenshot's own pixel space so labels and arrows scale with it. -->
-        <svg class="notes" viewBox="0 0 1800 1300" aria-hidden="true">
-          <text x="250" y="1236">pin anywhere</text>
-          <path d="M480 1178C520 1010 640 850 722 724"/><path d="M688 742L724 720L728 762"/>
-          <text x="1790" y="1236" text-anchor="end">one click, ready to paste</text>
-          <path d="M1470 1178C1466 1150 1474 1122 1484 1096"/><path d="M1462 1112L1486 1092L1504 1116"/>
-        </svg>
+        <!-- Each arrow runs from its label to a point in the screenshot (fractions of the image,
+             written by npm run screenshots) and is redrawn whenever the layout changes. -->
+        <span class="note pin" data-anchor="pin" data-at="0.413,0.631">pin anywhere</span>
+        <span class="note copy" data-anchor="copy" data-at="0.826,0.961">one click, ready to paste</span>
+        <svg class="arrows" aria-hidden="true"></svg>
       </figure>
     </section>
 
@@ -202,7 +201,7 @@
         </article>
         <article class="card s2">
           <h3>Nothing leaves your browser</h3>
-          <p>No account and no server. The review stays in your tab until you copy or download it, and form fields are never read.</p>
+          <p>No account and no server. Your last 10 reviews stay in this browser so you can grab one again, and form fields are never read.</p>
           <p class="hand">your review, your machine</p>
         </article>
 
@@ -213,7 +212,7 @@
         </article>
         <article class="card s2">
           <h3>Done when you are</h3>
-          <p>Copy, paste into Claude Code, Cursor or an issue, then click Done. The page goes back to exactly how it was.</p>
+          <p>Copy, paste into Claude Code, Cursor or an issue, then click Done. The page goes back to how it was, and the review waits under Recent reviews if you need it again.</p>
           <div class="keys"><kbd>C</kbd><kbd>Done</kbd></div>
         </article>
         <article class="card s2">
@@ -242,5 +241,39 @@
     <a href="https://github.com/aroc/page-notes">Source on GitHub</a>
   </footer>
 </div>
+<script>
+  // Hand-drawn arrows: start at the top of each label, end just short of its target, with a
+  // gentle bow. Redrawn on resize and once the handwriting font has loaded.
+  (() => {
+    const shot = document.querySelector('.shot'), svg = shot.querySelector('.arrows'), img = shot.querySelector('img');
+    const ns = 'http://www.w3.org/2000/svg';
+    function draw() {
+      svg.replaceChildren();
+      const box = shot.getBoundingClientRect(), pic = img.getBoundingClientRect();
+      for (const note of shot.querySelectorAll('.note[data-at]')) {
+        const label = note.getBoundingClientRect();
+        if (!label.width) continue;
+        const [fx, fy] = note.dataset.at.split(',').map(Number);
+        const tx = pic.left - box.left + fx * pic.width, ty = pic.top - box.top + fy * pic.height;
+        // Leave the label from the side of its top edge nearest the target.
+        const sx = Math.min(Math.max(tx, label.left - box.left + 14), label.right - box.left - 14), sy = label.top - box.top - 6;
+        const dx = tx - sx, dy = ty - sy, length = Math.hypot(dx, dy);
+        if (length < 20) continue;
+        const ux = dx / length, uy = dy / length;
+        const ex = tx - ux * 7, ey = ty - uy * 7;
+        const bow = Math.min(40, length * 0.18) * (dx > 0 ? 1 : -1);
+        const cx = (sx + ex) / 2 + uy * bow, cy = (sy + ey) / 2 - ux * bow;
+        const angle = Math.atan2(ey - cy, ex - cx), head = 13;
+        const wing = side => [ex - head * Math.cos(angle + side * 0.5), ey - head * Math.sin(angle + side * 0.5)].map(n => n.toFixed(1)).join(' ');
+        for (const d of [`M${sx.toFixed(1)} ${sy.toFixed(1)}Q${cx.toFixed(1)} ${cy.toFixed(1)} ${ex.toFixed(1)} ${ey.toFixed(1)}`, `M${wing(1)}L${ex.toFixed(1)} ${ey.toFixed(1)}L${wing(-1)}`]) {
+          const path = document.createElementNS(ns, 'path'); path.setAttribute('d', d); svg.append(path);
+        }
+      }
+    }
+    new ResizeObserver(draw).observe(shot);
+    document.fonts?.ready.then(draw);
+    img.complete ? draw() : img.addEventListener('load', draw);
+  })();
+</script>
 </body>
 </html>

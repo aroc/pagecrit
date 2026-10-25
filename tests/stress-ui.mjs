@@ -420,6 +420,27 @@ try {
   } finally {await worker.evaluate(async tab=>chrome.tabs.setZoom(tab,1),tab);}
   assert.equal(await worker.evaluate(tab=>chrome.tabs.getZoom(tab),tab),1);await assertGeometry();
  });
+ await test('recent reviews: a review closed with Done can be copied or downloaded again, then cleared',async({page,ui,button,edit,inject})=>{
+  await page.context().grantPermissions(['clipboard-read','clipboard-write'],{origin:new URL(page.url()).origin});
+  await sw().evaluate(()=>chrome.storage.local.clear());
+  await edit('#plain','Remember me');await button('Copy Markdown').click();
+  const copied=await page.evaluate(()=>navigator.clipboard.readText());
+  await ui.getByRole('button',{name:'Close the review',exact:true}).click();
+  await page.evaluate(()=>navigator.clipboard.writeText('something else'));
+  await inject();const recent=ui.getByRole('region',{name:'Recent reviews'});await recent.waitFor();
+  assert.match(await recent.textContent(),/Stress fixture.*127\.0\.0\.1 · 1 item · just now/);
+  await recent.getByRole('button',{name:'Copy Markdown for Stress fixture'}).click();await recent.getByText('✓ Copied').waitFor();
+  assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),copied,'exactly the review that was copied');
+  const before=await sw().evaluate(async()=>(await chrome.downloads.search({})).map(d=>d.id));
+  await instrument();await recent.getByRole('button',{name:'Download Stress fixture'}).click();
+  let d;for(let i=0;i<40;i++){d=await sw().evaluate(async before=>(await chrome.downloads.search({})).find(d=>!before.includes(d.id)),before);if(d?.state==='complete')break;await page.waitForTimeout(75);}
+  assert.equal(await readFile(d.filename,'utf8'),copied);
+  // New feedback takes over the panel; the list returns when the review is empty again.
+  await edit('#plain','Second pass');assert.equal(await recent.count(),0);
+  await ui.locator('article').getByRole('button',{name:'Revert',exact:true}).click();await recent.waitFor();
+  await recent.getByRole('button',{name:'Clear recent reviews',exact:true}).click();await recent.getByRole('button',{name:'Confirm clearing recent reviews',exact:true}).click();
+  await recent.waitFor({state:'detached'});assert.equal(JSON.stringify(await sw().evaluate(()=>chrome.storage.local.get(null))),'{}');
+ });
  await test('two simultaneous tabs keep session IDs, comments, edits and closing independent',async(first)=>{
   let second;
   try {

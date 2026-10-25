@@ -23,7 +23,7 @@
     pending: null, notice: '', noticeType: '', busy: false, confirmingClose: false,
     collapsed: false, dock: 'tr', pos: null, closed: false, frame: 0,
     pages: [], pageId: null, restored: false,
-    sent: '', deliveredSignature: null, hoverPoint: null, selectedId: null, revealSelected: false,
+    sent: '', deliveredSignature: null, recent: [], recentCopied: null, clearingRecent: false, hoverPoint: null, selectedId: null, revealSelected: false,
   };
   // References never enter the exported review. Keeping them avoids matching a different
   // repeated element when a framework replaces DOM nodes during a review.
@@ -68,6 +68,9 @@
     .itemtext{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;max-height:120px;overflow:auto}.struck{text-decoration:line-through;text-decoration-color:var(--red);text-decoration-thickness:1.5px;color:var(--pencil)}
     .diff{font-size:14px;margin:2px 0;white-space:pre-wrap;overflow-wrap:anywhere;max-height:96px;overflow:auto}.before{color:var(--faint);text-decoration:line-through;text-decoration-color:var(--red);text-decoration-thickness:1.5px}.after{color:var(--ink)}.after .mark{background:linear-gradient(transparent 58%,var(--green-mark) 58%,var(--green-mark) 92%,transparent 92%);-webkit-box-decoration-break:clone;box-decoration-break:clone}
     .warning{color:#a8322a;font-size:12px;margin:6px 0 0}.itemactions{display:flex;justify-content:flex-end;gap:2px;margin-top:4px}.link{font-size:12px;font-weight:600;background:none;border:0;color:var(--pencil);padding:3px 7px;border-radius:8px}.link:hover{color:var(--cobalt);background:var(--cobalt-soft)}
+    .recent{margin-top:10px}.recent .sectionhead{align-items:center}.recent .link{margin-right:-7px}.link.confirm{color:#a8322a;background:var(--red-soft)}
+    .recentitem{display:flex;align-items:center;gap:10px;padding:10px 0}.recentinfo{flex:1;min-width:0}.recentinfo p{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .recenttitle{font-size:14px;font-weight:600}.recentmeta{font-size:12px;color:var(--faint)}.recentactions{display:flex;gap:2px;flex:none}
     .pagehead{margin:14px 0 2px;font-size:12px;font-weight:600;color:var(--pencil);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.item.archived .itemtext{color:var(--pencil)}
     .item.reveal{cursor:pointer;margin:0 -18px;padding:12px 18px}.item.reveal:hover{background:#fafbfc}.item.reveal:focus-visible{outline-offset:-2px}
     .item.selected{background:var(--marker-soft)}.item.selected:hover{background:var(--marker-soft)}.item.pulse{animation:pulse 1s ease-out}@keyframes pulse{from{background:var(--marker)}to{background:var(--marker-soft)}}
@@ -291,6 +294,7 @@
     heading.append(element('span', 'title', 'This review'), element('span', 'count', counts.join(', ')));
     body.append(heading);
     if (!itemCount()) body.append(element('div', 'empty', 'Nothing marked up yet. Pick a tool and click the page.'));
+    if (!itemCount() && state.recent.length) body.append(renderRecent());
     const multi = state.pages.length > 1;
     for (const page of [currentPage(), ...state.pages.filter(page => page.id !== state.pageId)].filter(Boolean)) {
       const here = page.id === state.pageId;
@@ -399,6 +403,82 @@
       group.append(b);
     }
     return group;
+  }
+  // Reviews you copied or downloaded lately, newest first, so one closed with Done isn't lost.
+  function renderRecent() {
+    const box = element('section', 'recent');
+    box.setAttribute('aria-label', 'Recent reviews');
+    const head = element('div', 'sectionhead');
+    const clear = button(state.clearingRecent ? 'Clear all?' : 'Clear', clearRecent, `link${state.clearingRecent ? ' confirm' : ''}`);
+    clear.setAttribute('aria-label', state.clearingRecent ? 'Confirm clearing recent reviews' : 'Clear recent reviews');
+    head.append(element('span', 'title', 'Recent reviews'), clear);
+    box.append(head);
+    for (const review of state.recent) {
+      const row = element('div', 'item recentitem');
+      const info = element('div', 'recentinfo');
+      let host = '';
+      try { host = new URL(review.url).hostname; } catch (_) { /* Shown without a host. */ }
+      info.append(element('p', 'recenttitle', review.title || host || 'Untitled page'));
+      const meta = [host, `${review.items} ${review.items === 1 ? 'item' : 'items'}`, review.pages > 1 ? `${review.pages} pages` : '', ago(review.savedAt)].filter(Boolean).join(' · ');
+      info.append(element('p', 'recentmeta', meta));
+      const actions = element('div', 'recentactions');
+      const copy = button(state.recentCopied === review.id ? '✓ Copied' : 'Copy', () => copyRecent(review), 'link');
+      copy.setAttribute('aria-label', `Copy Markdown for ${review.title || host}`);
+      const save = button('Download', () => downloadRecent(review), 'link');
+      save.setAttribute('aria-label', `Download ${review.title || host}`);
+      actions.append(copy, save);
+      row.append(info, actions);
+      box.append(row);
+    }
+    return box;
+  }
+  function ago(iso) {
+    const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+    if (!(minutes >= 1)) return 'just now';
+    if (minutes < 60) return `${minutes} min ago`;
+    const hours = Math.round(minutes / 60);
+    if (hours < 24) return `${hours} h ago`;
+    const days = Math.round(hours / 24);
+    return days === 1 ? 'yesterday' : days < 7 ? `${days} days ago` : new Date(iso).toLocaleDateString();
+  }
+  async function loadRecent() {
+    try {
+      const result = await chrome.runtime.sendMessage({ type: 'PAGE_NOTES_RECENT', action: 'list' });
+      if (result?.ok && !state.closed) { state.recent = result.reviews; render(); }
+    } catch (_) { /* Nothing to show. */ }
+  }
+  async function copyRecent(review) {
+    try {
+      const result = await chrome.runtime.sendMessage({ type: 'PAGE_NOTES_RECENT', action: 'markdown', id: review.id });
+      if (!result?.ok) throw new Error(result?.error || 'That review could not be loaded.');
+      // Only the async clipboard: an earlier review never passes through this page's DOM.
+      await navigator.clipboard.writeText(result.markdown);
+      announce('Markdown copied.');
+      state.recentCopied = review.id;
+      clearTimeout(sentTimer); sentTimer = setTimeout(() => { state.recentCopied = null; render(); }, 2500);
+      render();
+    } catch (error) {
+      tell(/clipboard|focus|permission|denied/i.test(error.message || '') || error.name === 'NotAllowedError' ? 'This page blocks copying. Use Download instead.' : error.message, true);
+    }
+  }
+  async function downloadRecent(review) {
+    try {
+      const result = await chrome.runtime.sendMessage({ type: 'PAGE_NOTES_RECENT', action: 'download', id: review.id });
+      if (!result?.ok) throw new Error(result?.error || 'The download could not be started.');
+      announce('Download started.');
+    } catch (error) { tell(error.message || 'Download failed.', true); }
+  }
+  let clearTimer = 0;
+  async function clearRecent() {
+    clearTimeout(clearTimer);
+    if (!state.clearingRecent) {
+      state.clearingRecent = true; render();
+      clearTimer = setTimeout(() => { state.clearingRecent = false; render(); }, 3000);
+      return;
+    }
+    state.clearingRecent = false;
+    try { await chrome.runtime.sendMessage({ type: 'PAGE_NOTES_RECENT', action: 'clear' }); state.recent = []; } catch (_) { /* Keep showing them. */ }
+    render();
   }
   function renderComment(comment, index) {
     const item = element('article', `item${state.selectedId === comment.id ? ` selected${state.revealSelected ? ' pulse' : ''}` : ''}`);
@@ -999,7 +1079,7 @@
       if (!result?.ok) throw new Error(result?.error || 'The review could not be rendered.');
       await writeClipboard(result.markdown);
       announce('Markdown copied.');
-      state.sent = 'copied'; state.deliveredSignature = reviewSignature();
+      state.sent = 'copied'; state.deliveredSignature = reviewSignature(); loadRecent();
       clearTimeout(sentTimer); sentTimer = setTimeout(() => { state.sent = ''; render(); }, 2500);
     } catch (error) {
       state.notice = error.message || 'Copy failed. Use Download review instead.'; state.noticeType = 'error';
@@ -1022,7 +1102,7 @@
       if (!result?.ok) throw new Error(result?.error || 'The download could not be started.');
       // Confirm briefly on the button itself; the draft simply stays open.
       announce('Download started.');
-      state.sent = 'full'; state.deliveredSignature = reviewSignature();
+      state.sent = 'full'; state.deliveredSignature = reviewSignature(); loadRecent();
       clearTimeout(sentTimer); sentTimer = setTimeout(() => { state.sent = ''; render(); }, 2500);
     } catch (error) {
       state.notice = error.message || 'Download failed. Your notes are still here; try again.'; state.noticeType = 'error';
@@ -1132,6 +1212,7 @@
   let noticeTimer = 0;
   enterPage(startUrl);
   restoreDraft();
+  loadRecent();
   globalThis.__pageNotesSession = { show() {
     if (!host.isConnected) document.documentElement.appendChild(host);
     state.collapsed = false; render();

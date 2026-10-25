@@ -17,7 +17,7 @@ const demo=await readFile(path.join(root,'scripts/demo/index.html'));
 const server=http.createServer((_req,res)=>{res.setHeader('content-type','text/html');res.end(demo);});
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const url=`http://127.0.0.1:${server.address().port}/`;
-let context;
+let context, anchors;
 try {
  const ext=path.join(temp,'extension');await cp(path.join(root,'extension'),ext,{recursive:true});
  const manifest=JSON.parse(await readFile(path.join(ext,'manifest.json'),'utf8'));manifest.host_permissions=['http://127.0.0.1/*'];
@@ -53,6 +53,10 @@ try {
  await page.keyboard.press('Escape');
  await ui.getByRole('button',{name:/^Note 1:/}).click();await page.waitForTimeout(1100);
  await shot('hero.png');
+ // Where the landing page's hand-drawn arrows land: pin 1's tail and the Copy Markdown button.
+ const vp=page.viewportSize(), at=(x,y)=>`${(x/vp.width).toFixed(3)},${(y/vp.height).toFixed(3)}`;
+ const pinBox=await box(ui.locator('.pin').filter({hasText:/^1$/})), copyBox=await box(button('Copy Markdown'));
+ anchors={pin:at(pinBox.x+pinBox.width/2,pinBox.y+pinBox.height+8),copy:at(copyBox.x+copyBox.width/2,copyBox.y+copyBox.height)};
  await shot('panel.png',pad(await box(ui.getByRole('region',{name:'Page Notes review'})),12));
  await shot('row-severity.png',pad(await box(ui.locator('article').first()),6));
 
@@ -113,6 +117,12 @@ try {
  if(context)await context.close();
  await new Promise(resolve=>server.close(resolve));
  await rm(temp,{recursive:true,force:true});
+}
+// Point the landing page's arrows at where things actually are in the new hero.png.
+if (anchors) {
+ const site=path.join(root,'site/index.html');let html=await readFile(site,'utf8');
+ for(const [name,value] of Object.entries(anchors))html=html.replace(new RegExp(`data-anchor="${name}" data-at="[^"]*"`),`data-anchor="${name}" data-at="${value}"`);
+ await writeFile(site,html);
 }
 // Keep the repository light: shrink the full-viewport hero for the web.
 try { execFileSync('magick',[path.join(out,'hero.png'),'-resize','1800x','-strip',path.join(out,'hero.png')]); } catch (_) { /* ImageMagick optional. */ }
