@@ -15,7 +15,7 @@ One UTF-8 Markdown file named `YYYY-MM-DD HH-MM <page title>.md`, rendered by `e
 
 ## Items
 
-Each page with items gets a `## Pn — <path>` section. Numbers run across pages. Within a page, items are sorted by severity (`must fix`, `should fix`, `nit`; default `should fix`) and then by the order they were made, numbered in that order. The header adds a `Severity:` count line. Each heading ends with ` · <severity>`. Each starts with `### N. <type>`:
+Each page with items gets a `## Pn — <path>` section. Numbers run across pages. Within a page, items are sorted by severity (`must fix`, `suggested`, `nit`, then `note` for praise or observations that request no change; default `suggested`) and then by the order they were made, numbered in that order. The header adds a `Severity:` count line. Each heading ends with ` · <severity>`. Each starts with `### N. <type>`:
 
 - `Comment · pin N` (N matches the pin on the page): `Note`, context fields, then `Pin` (relative position inside the element, or a page position and its scrolling container).
 - `Text edit`: `Original` and `Replace` (whitespace-normalized code spans; multi-line text in a fenced block), the occurrence count, `Replace with formatting` (HTML with only `<strong>`, `<em>`, `<u>`, `<s>`) when the reviewer formatted it, and `Element after the change` with the element's inline markup (links, bold…) so it isn't flattened.
