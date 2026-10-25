@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy policy · PageCrit</title>
+<meta name="description" content="PageCrit collects no data. Your reviews stay in your browser until you copy or download them.">
+<link rel="canonical" href="https://pagecrit.dev/privacy">
+<link rel="icon" href="assets/icon-128.png">
+<style>
+  @font-face{font-family:"Bricolage";src:url(fonts/bricolage-latin.woff2) format("woff2");font-weight:400 800;font-display:swap}
+  @font-face{font-family:"Hand";src:url(fonts/caveat-latin.woff2) format("woff2");font-weight:400 700;font-display:swap}
+  :root{--ink:#1f2430;--pencil:#5d6170;--faint:#8b8f9c;--line:#e4e6ed;--page:#f3f4f7;--paper:#fff;--cobalt:#2f4be0;--sans:"Bricolage",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;--hand:"Hand",ui-rounded,cursive;color-scheme:light}
+  *,*::before,*::after{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--page);color:var(--ink);font:400 17px/1.6 var(--sans)}
+  a{color:var(--cobalt)}
+  a:focus-visible{outline:3px solid var(--cobalt);outline-offset:3px;border-radius:6px}
+  .wrap{max-width:720px;margin:0 auto;padding:0 20px}
+  .mark{display:inline-flex;align-items:center;gap:9px;margin:32px 0 40px;color:var(--ink);text-decoration:none;font:700 28px/1 var(--hand)}
+  .mark svg{width:30px;height:30px}
+  main{background:var(--paper);border:1px solid var(--line);border-radius:24px;padding:40px 44px}
+  h1{font-size:40px;line-height:1.1;letter-spacing:-.8px;margin:0 0 8px}
+  h2{font-size:21px;margin:34px 0 8px}
+  p,li{color:var(--pencil)}p{margin:0 0 12px}ul{margin:0 0 12px;padding-left:22px}li{margin:4px 0}
+  b{color:var(--ink)}code{font-size:.9em}
+  .updated{color:var(--faint);font-size:15px;margin-bottom:24px}
+  .summary{background:#eef1fe;border-radius:16px;padding:16px 20px;color:var(--ink);margin:0}
+  footer{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;padding:28px 0 40px;color:var(--faint);font-size:14px}
+  footer a{color:inherit}
+  @media (max-width:640px){main{padding:28px 22px;border-radius:20px}h1{font-size:32px}.mark{margin:24px 0 28px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="mark" href="/" aria-label="PageCrit home">
+    <svg viewBox="0 0 100 100" aria-hidden="true"><g transform="rotate(-4 50 50)"><path d="M20 9C42 5.5 67 5.5 83 9.5C93 12 95.5 19 95.5 32V52C95.5 65 91 70 79 70H63L50.5 92L38 70H21.5C9.5 70 5 65 5 52V30C5 17.5 8.5 11 20 9Z" fill="#2f4be0" stroke="#2f4be0" stroke-width="4" stroke-linejoin="round"/><path d="M24 29Q37 26.5 50 29T76 29" fill="none" stroke="#ff9a1f" stroke-width="10" stroke-linecap="round"/><path d="M24 49Q31 46.5 38 49T52 49" fill="none" stroke="#ff9a1f" stroke-width="10" stroke-linecap="round"/><circle cx="68" cy="49" r="5" fill="#ff9a1f"/></g></svg>
+    PageCrit
+  </a>
+  <main>
+    <h1>Privacy policy</h1>
+    <p class="updated">Last updated October 25, 2026</p>
+    <p class="summary"><b>PageCrit collects no data.</b> It has no servers, accounts, analytics, ads or tracking, and the extension makes no network requests. Your reviews stay in your browser until you copy or download them.</p>
+
+    <h2>What the extension reads</h2>
+    <p>PageCrit only runs on a tab when you click its toolbar button. On that page it reads what it needs to build your review: the text and position of the elements you pin, edit or remove, and a short excerpt of the surrounding page. This happens entirely in your browser.</p>
+    <p>It leaves password and form fields alone and never includes form values in a review.</p>
+
+    <h2>What it stores, and where</h2>
+    <ul>
+      <li><b>Your review in progress</b> is kept in Chrome's session storage so it survives a reload. It is held in memory and cleared when you close the tab or the browser, or finish the review.</li>
+      <li><b>Your last 10 copied or downloaded reviews</b> are kept in Chrome's local storage on your device, so you can get one back after closing it. You can delete any of them, or clear them all, from the Recent reviews list. They are removed if you uninstall PageCrit.</li>
+    </ul>
+    <p>None of this is synced to other devices or sent anywhere.</p>
+
+    <h2>What leaves your browser</h2>
+    <p>Only what you choose to export. <b>Copy Markdown</b> puts the review on your clipboard; <b>Download</b> saves it as a <code>.md</code> file where you choose. What you do with it after that, such as pasting it into a coding agent, is up to you and covered by that tool's own policy.</p>
+
+    <h2>Permissions</h2>
+    <ul>
+      <li><b>activeTab</b> and <b>scripting</b>: to open the review panel on the tab you clicked PageCrit on, and nowhere else. PageCrit has no access to other sites.</li>
+      <li><b>downloads</b>: to save your review as a file when you click Download.</li>
+      <li><b>storage</b>: for the review in progress and your recent reviews, described above.</li>
+    </ul>
+
+    <h2>This website</h2>
+    <p>pagecrit.dev is a static site. It uses no cookies or analytics. It is hosted on Cloudflare, which processes basic request data (such as IP addresses) to serve and protect the site.</p>
+
+    <h2>No selling or sharing</h2>
+    <p>Because PageCrit collects nothing, there is nothing to sell, share or use for advertising.</p>
+
+    <h2>Changes and contact</h2>
+    <p>If this policy changes, the new version will be posted here with a new date. PageCrit is <a href="https://github.com/aroc/pagecrit" target="_blank" rel="noopener">open source</a>, so you can check exactly what it does. Questions? <a href="https://github.com/aroc/pagecrit/issues" target="_blank" rel="noopener">Open an issue on GitHub</a>.</p>
+  </main>
+  <footer>
+    <span>PageCrit: a small Chrome extension for reviewing your own sites.</span>
+    <a href="/">pagecrit.dev</a>
+  </footer>
+</div>
+</body>
+</html>
