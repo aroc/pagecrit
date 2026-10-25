@@ -25,7 +25,7 @@
     sessionId: id(), startedAt: now(), originalHtml,
     mode: 'browse', anchorKind: 'element', comments: [], edits: [], history: [],
     pending: null, notice: '', noticeType: '', busy: false, confirmingClose: false,
-    collapsed: false, left: false, closed: false, frame: 0, routeChanged: false,
+    collapsed: false, dock: 'tr', pos: null, closed: false, frame: 0, routeChanged: false,
     historyBytes: 0, historyOmitted: 0, offerLightExport: false, hoverPoint: null, selectedId: null, revealSelected: false,
   };
   // References never enter the exported bundle. Keeping them avoids matching a different
@@ -45,7 +45,7 @@
     button,input,textarea,select{font:inherit} button{cursor:pointer} button:disabled{cursor:wait;opacity:.5}
     button:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid #9e91ee;outline-offset:2px}
     .panel{font:14px/1.45 ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#25242b;pointer-events:auto;position:fixed;right:18px;top:18px;width:336px;max-width:calc(100vw - 32px);max-height:calc(100vh - 36px);display:flex;flex-direction:column;background:#fffefb;border:1px solid #e4e0da;border-radius:18px;box-shadow:0 12px 50px #231b3930;overflow:hidden}
-    .header{padding:17px 18px 12px;display:flex;gap:9px;align-items:center}.brand{font-size:16px;font-weight:750;letter-spacing:-.4px;flex:1}.logo{background:#6250b8;color:white;border-radius:7px;padding:2px 7px;font-weight:800}.smallbutton{border:0;background:transparent;border-radius:6px;color:#736d7f;padding:4px 7px;font-size:17px}
+    .header{padding:17px 18px 12px;display:flex;gap:9px;align-items:center;cursor:grab;user-select:none;-webkit-user-select:none;touch-action:none}.dragging,.dragging .header{cursor:grabbing}.snap{display:grid;place-items:center;padding:5px 7px}.brand{font-size:16px;font-weight:750;letter-spacing:-.4px;flex:1}.logo{background:#6250b8;color:white;border-radius:7px;padding:2px 7px;font-weight:800}.smallbutton{border:0;background:transparent;border-radius:6px;color:#736d7f;padding:4px 7px;font-size:17px}
     .body{overflow:auto;padding:0 16px 14px}.muted{color:#77717d;font-size:12px}.intro{margin:0 0 13px;color:#736b7b;font-size:12px}
     .modes{display:flex;border:1px solid #e3dfeb;background:#f0edf4;border-radius:10px;padding:3px;gap:3px;margin-bottom:10px}.mode{flex:1;border:0;color:#6e657d;background:transparent;font-size:12px;padding:8px 4px;border-radius:7px;white-space:nowrap}.mode.active{background:white;color:#4d3396;box-shadow:0 1px 4px #24193c15;font-weight:700}
     .instructions{font-size:12px;line-height:1.5;color:#686271;margin:8px 0 13px}.anchor{display:flex;gap:6px;margin:8px 0}.anchoropt{flex:1;font-size:12px;border:1px solid #ddd7e5;border-radius:7px;background:white;color:#6e657d;padding:6px 4px}.anchoropt.active{border-color:#8e77d6;background:#f4f0fd;color:#4d3396;font-weight:700}
@@ -53,7 +53,7 @@
     .editor{padding:12px;border:1px solid #cbbfe8;border-radius:10px;background:#f8f5fe;margin:12px 0}.editor h3{font-size:13px;margin:0 0 7px}.editor textarea{resize:vertical;width:100%;min-height:105px;max-height:300px;background:white;border:1px solid #cfc6de;border-radius:7px;padding:9px;color:#26222d;font-size:13px;line-height:1.5}.editor label{display:block;font-size:12px;margin-bottom:7px}.actions{display:flex;gap:7px;justify-content:flex-end;margin-top:9px}
     .button{border:1px solid #dad4e3;border-radius:8px;padding:7px 11px;background:white;color:#534762;font-size:12px;font-weight:600}.primary{background:#6250b8;color:white;border-color:#6250b8}.danger{color:#a03f33;border-color:#e4b6af}
     .sectionhead{display:flex;align-items:center;justify-content:space-between;margin:17px 0 8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#82798c}.empty{padding:20px 14px;text-align:center;border:1px dashed #ddd6e5;border-radius:10px;color:#8b8293;font-size:12px}.item{padding:11px 0;border-bottom:1px solid #ece7ef}.itemtop{display:flex;gap:8px;align-items:center;margin-bottom:5px}.badge{background:#ede7f9;color:#6249a5;font-size:11px;font-weight:750;min-width:23px;height:23px;border-radius:8px;display:grid;place-items:center}.itemlabel{flex:1;font-size:11px;color:#81758b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.link{font-size:11px;background:none;border:0;color:#786295;padding:3px}.itemtext{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;color:#4c4258;max-height:108px;overflow:auto}.diff{font-size:12px;margin:4px 0;padding:6px 8px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:90px;overflow:auto;border-radius:5px}.before{background:#f8ecea;color:#8f514b;text-decoration:line-through}.after{background:#edf4eb;color:#486640}.warning{color:#aa533b;font-size:11px;margin:6px 0 0}.itemactions{display:flex;justify-content:flex-end;gap:5px;margin-top:5px}.item.selected{margin:0 -16px;padding:11px 16px 11px 13px;border-left:3px solid #6250b8;background:#f5f1fe}.item.pulse{animation:pulse .9s ease-out}.item.selected .badge{background:#6250b8;color:white}@keyframes pulse{from{background:#e2d9fb}to{background:#f5f1fe}}
-    .footer{border-top:1px solid #e9e3ed;padding:13px 16px;background:#faf8fd}.done{width:100%;padding:11px;font-size:13px}.privacy{font-size:10px;color:#8a8292;text-align:center;margin:8px 0 0}.pill{pointer-events:auto;position:fixed;right:18px;top:18px;border:1px solid #dcd4e8;border-radius:999px;padding:10px 15px;background:#fffefb;color:#4e3d73;box-shadow:0 6px 25px #231b3925;font:600 13px ui-sans-serif,system-ui}
+    .footer{border-top:1px solid #e9e3ed;padding:13px 16px;background:#faf8fd}.done{width:100%;padding:11px;font-size:13px}.privacy{font-size:10px;color:#8a8292;text-align:center;margin:8px 0 0}.pill{pointer-events:auto;position:fixed;right:18px;top:18px;border:1px solid #dcd4e8;border-radius:999px;padding:10px 15px;background:#fffefb;color:#4e3d73;box-shadow:0 6px 25px #231b3925;font:600 13px ui-sans-serif,system-ui;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
     .pin{pointer-events:auto;position:fixed;width:27px;height:27px;display:grid;place-items:center;border:2px solid white;border-radius:50% 50% 50% 4px;transform:translate(-50%,-100%) rotate(-5deg);box-shadow:0 2px 8px #231b3945;background:#6650bb;color:white;font-size:11px;font-weight:750}.pin.lost{background:#9b7c46}.pin.selected{background:#43298f;z-index:1;box-shadow:0 0 0 3px #c9bcf3,0 2px 10px #231b3960}.pin.pending{background:#a68cd6}
     .highlight,.hover{pointer-events:none;position:fixed;border:2px solid #8e77d6;border-radius:3px;background:#a995e912;display:none}.hover{background:#a995e90d;border-width:1.5px}.hovertag{position:absolute;left:-1.5px;bottom:100%;margin-bottom:2px;background:#6250b8;color:white;font:600 10px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;padding:1px 5px;border-radius:4px;white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis}.hover.inside .hovertag{bottom:auto;top:0;margin:2px}.closebox{padding:11px;border:1px solid #e4c9bd;background:#fff7ed;border-radius:9px;margin-bottom:12px;font-size:12px}.closebox p{margin:0 0 10px}
     @media(max-width:500px){.panel{right:8px;top:8px;max-height:calc(100vh - 16px);width:310px}.pill{right:8px;top:8px}}
@@ -73,7 +73,78 @@
   const pill = document.createElement('button');
   pill.className = 'pill';
   pill.hidden = true;
-  pill.addEventListener('click', event => { if (!event.isTrusted) return; state.collapsed = false; render(); });
+  pill.addEventListener('click', event => {
+    if (!event.isTrusted) return;
+    state.collapsed = false; render();
+  });
+  // The panel and pill float freely: drag the header (or the pill) anywhere, even
+  // partly off screen. A corner dock keeps them attached to that corner on resize.
+  let drag = null;
+  let suppressClick = false;
+  let shownCollapsed = false;
+  const KEEP_VISIBLE = 48;
+  function startDrag(event) {
+    if (!event.isTrusted || event.button !== 0 || state.closed) return;
+    const el = event.currentTarget;
+    // The whole header is a handle (buttons too), so a mostly off-screen panel can still be grabbed.
+    if (el === panel && !event.target.closest('.header')) return;
+    const rect = el.getBoundingClientRect();
+    drag = { el, id: event.pointerId, dx: event.clientX - rect.left, dy: event.clientY - rect.top, x0: event.clientX, y0: event.clientY, moved: false };
+    // Capturing immediately would retarget a plain button click; buttons capture once a drag starts.
+    if (el === pill || !event.target.closest('button')) el.setPointerCapture(event.pointerId);
+  }
+  function moveDrag(event) {
+    if (!event.isTrusted || !drag || event.pointerId !== drag.id) return;
+    if (!drag.moved && Math.hypot(event.clientX - drag.x0, event.clientY - drag.y0) < 4) return;
+    if (!drag.moved) { drag.moved = true; drag.el.classList.add('dragging'); if (!drag.el.hasPointerCapture(drag.id)) drag.el.setPointerCapture(drag.id); }
+    state.dock = null; state.pos = { x: event.clientX - drag.dx, y: event.clientY - drag.dy };
+    placeFloating();
+  }
+  function endDrag(event) {
+    if (!drag || event.pointerId !== drag.id) return;
+    // A drag that ends over a header button or the pill must not also activate it.
+    if (drag.moved) { suppressClick = true; setTimeout(() => { suppressClick = false; }, 0); }
+    drag.el.classList.remove('dragging');
+    if (drag.el.hasPointerCapture(drag.id)) drag.el.releasePointerCapture(drag.id);
+    drag = null;
+  }
+  for (const el of [panel, pill]) {
+    el.addEventListener('pointerdown', startDrag);
+    el.addEventListener('pointermove', moveDrag);
+    el.addEventListener('pointerup', endDrag);
+    el.addEventListener('pointercancel', endDrag);
+    el.addEventListener('click', event => { if (suppressClick) { suppressClick = false; event.preventDefault(); event.stopImmediatePropagation(); } }, true);
+  }
+  function edgeMargin() { return innerWidth <= 500 ? 8 : 18; }
+  function placeFloating() {
+    const el = state.collapsed ? pill : panel;
+    for (const target of [panel, pill]) Object.assign(target.style, { left: 'auto', right: 'auto', top: 'auto', bottom: 'auto' });
+    if (state.dock || !state.pos) {
+      const m = `${edgeMargin()}px`, dock = state.dock || 'tr';
+      Object.assign(el.style, { [dock[0] === 't' ? 'top' : 'bottom']: m, [dock[1] === 'l' ? 'left' : 'right']: m });
+      return;
+    }
+    const { width, height } = el.getBoundingClientRect();
+    // Keep enough of the header or pill on screen to grab it again.
+    const x = Math.min(Math.max(state.pos.x, KEEP_VISIBLE - width), innerWidth - KEEP_VISIBLE);
+    const y = Math.min(Math.max(state.pos.y, 0), innerHeight - Math.min(height, 44));
+    Object.assign(el.style, { left: `${x}px`, top: `${y}px` });
+  }
+  function snapToCorner() {
+    const rect = (state.collapsed ? pill : panel).getBoundingClientRect();
+    state.dock = (rect.top + rect.height / 2 > innerHeight / 2 ? 'b' : 't') + (rect.left + rect.width / 2 > innerWidth / 2 ? 'r' : 'l');
+    state.pos = null; render();
+  }
+  function snapIcon() {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 16 16'); svg.setAttribute('width', '15'); svg.setAttribute('height', '15'); svg.setAttribute('aria-hidden', 'true');
+    for (const [tag, attrs] of [['rect', { x: 1.5, y: 1.5, width: 13, height: 13, rx: 2.5, fill: 'none', stroke: 'currentColor', 'stroke-width': 1.4 }], ['rect', { x: 8.5, y: 3.5, width: 4, height: 4, rx: 1, fill: 'currentColor' }]]) {
+      const child = document.createElementNS('http://www.w3.org/2000/svg', tag);
+      for (const [key, value] of Object.entries(attrs)) child.setAttribute(key, String(value));
+      svg.append(child);
+    }
+    return svg;
+  }
   shadow.append(style, pinsLayer, hoverBox, highlight, panel, pill);
   document.documentElement.appendChild(host);
 
@@ -120,17 +191,17 @@
   }
   function render() {
     if (state.closed) return;
+    // Collapsing or expanding a free-floating panel keeps the edge nearest the screen edge in place.
+    const from = state.collapsed !== shownCollapsed && !state.dock && state.pos ? (shownCollapsed ? pill : panel).getBoundingClientRect() : null;
     panel.hidden = state.collapsed;
-    panel.style.left = state.left ? '18px' : '';
-    panel.style.right = state.left ? 'auto' : '';
-    pill.style.left = state.left ? '18px' : '';
-    pill.style.right = state.left ? 'auto' : '';
     pill.hidden = !state.collapsed;
+    shownCollapsed = state.collapsed;
     pill.textContent = `✦ Page Notes · ${state.comments.length + state.edits.length}`;
     panel.replaceChildren();
     const header = element('header', 'header');
     header.append(element('span', 'logo', '✦'), element('span', 'brand', 'Page Notes'));
-    header.append(button('↔', () => { state.left = !state.left; render(); }, 'smallbutton', 'Move panel to other side'));
+    const snap = button('', snapToCorner, 'smallbutton snap', 'Snap to nearest corner');
+    snap.append(snapIcon()); header.append(snap);
     header.append(button('−', () => { cancelPending(false); state.collapsed = true; state.mode = 'browse'; highlight.style.display = 'none'; render(); }, 'smallbutton', 'Minimize'));
     header.append(button('×', requestClose, 'smallbutton', 'Close review'));
     const body = element('div', 'body');
@@ -176,6 +247,11 @@
       footer.append(light, element('p', 'privacy', 'Keeps all current notes and edits. Omits HTML and action history.'));
     }
     panel.append(header, body, footer);
+    if (from) {
+      const to = (state.collapsed ? pill : panel).getBoundingClientRect();
+      state.pos = { x: from.left + from.width / 2 > innerWidth / 2 ? from.right - to.width : from.left, y: from.top + from.height / 2 > innerHeight / 2 ? from.bottom - to.height : from.top };
+    }
+    placeFloating();
     if (state.revealSelected) {
       state.revealSelected = false;
       const item = body.querySelector('.item.selected');
@@ -461,7 +537,7 @@
     window.removeEventListener('keydown', onKey, true);
     window.removeEventListener('beforeunload', beforeUnload);
     window.removeEventListener('scroll', queuePosition, true);
-    window.removeEventListener('resize', queuePosition);
+    window.removeEventListener('resize', onResize);
     window.removeEventListener('pointermove', onHover, true);
     window.removeEventListener('pointerout', onHover, true);
     chrome.runtime.onMessage.removeListener(runtimeMessage);
@@ -517,7 +593,8 @@
   window.addEventListener('keydown', onKey, true);
   window.addEventListener('beforeunload', beforeUnload);
   window.addEventListener('scroll', queuePosition, true);
-  window.addEventListener('resize', queuePosition);
+  function onResize() { placeFloating(); queuePosition(); }
+  window.addEventListener('resize', onResize);
   window.addEventListener('pointermove', onHover, { capture: true, passive: true });
   window.addEventListener('pointerout', onHover, { capture: true, passive: true });
   chrome.runtime.onMessage.addListener(runtimeMessage);

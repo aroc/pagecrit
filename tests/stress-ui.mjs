@@ -99,6 +99,25 @@ try {
   await ui.getByRole('button',{name:'Note 3: Comment 3'}).click();assert.match(await ui.locator('article[aria-current="true"]').textContent(),/Comment 3/);
   await selected.getByRole('button',{name:'Edit',exact:true}).click();assert.equal(await ui.locator('textarea').inputValue(),'Comment 3');
  });
+ await test('panel and collapsed pill drag anywhere, may sit partly off screen, and snap to the nearest corner',async({page,ui,button})=>{
+  const panel=ui.getByRole('region',{name:'Page Notes review'});const vw=1280,vh=1000;
+  const dragBy=async(locator,dx,dy)=>{const b=await locator.boundingBox();const left=Math.max(b.x,0),right=Math.min(b.x+b.width,vw);const x=left+Math.min(20,(right-left)/2),y=b.y+Math.min(15,b.height/2);await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+3,y+3);await page.mouse.move(x+dx/2,y+dy/2,{steps:3});await page.mouse.move(x+dx,y+dy,{steps:3});await page.mouse.up();};
+  const start=await panel.boundingBox();assert.ok(Math.abs(start.x+start.width-(vw-18))<1&&Math.abs(start.y-18)<1,'starts docked top-right');
+  await dragBy(ui.locator('.header'),-500,240);let b=await panel.boundingBox();assert.ok(Math.abs(b.x-(start.x-500))<1&&Math.abs(b.y-(start.y+240))<1,JSON.stringify(b));
+  // Partly off the right edge is allowed.
+  await dragBy(ui.locator('.header'),600,0);b=await panel.boundingBox();assert.ok(b.x+b.width>vw+50&&b.x<vw-40,`clipped right ${JSON.stringify(b)}`);
+  // Never lost entirely: enough remains to grab.
+  await dragBy(ui.locator('.header'),2000,0);b=await panel.boundingBox();assert.ok(b.x<=vw-48+1,`still grabbable ${JSON.stringify(b)}`);
+  await dragBy(ui.locator('.header'),-2000,-2000);b=await panel.boundingBox();assert.ok(b.y>=0&&b.x+b.width>=47,`top-left clamp ${JSON.stringify(b)}`);
+  // Only the header buttons remain visible here; they still work as a drag handle without being clicked.
+  await dragBy(ui.locator('.header'),300,600);await button('Snap to nearest corner').click();b=await panel.boundingBox();assert.ok(Math.abs(b.x-18)<1&&Math.abs(b.y+b.height-(vh-18))<1,`bottom-left ${JSON.stringify(b)}`);
+  await button('Minimize').click();const pill=ui.getByRole('button',{name:/Page Notes ·/});let p=await pill.boundingBox();assert.ok(Math.abs(p.x-18)<1&&Math.abs(p.y+p.height-(vh-18))<1,'pill docked bottom-left');
+  await dragBy(pill,400,-500);p=await pill.boundingBox();assert.ok(Math.abs(p.x-418)<1.5,`pill dragged ${JSON.stringify(p)}`);assert.equal(await panel.isVisible(),false,'dragging the pill does not expand it');
+  await pill.click();assert.equal(await panel.isVisible(),true,'plain click expands');b=await panel.boundingBox();assert.ok(Math.abs(b.x-p.x)<1.5&&Math.abs(b.y-p.y)<1.5,'expands where the pill was');
+  await dragBy(ui.locator('.header'),20,-400);await button('Snap to nearest corner').click();b=await panel.boundingBox();assert.ok(Math.abs(b.x-18)<1&&Math.abs(b.y-18)<1,`top-left ${JSON.stringify(b)}`);
+  await dragBy(ui.locator('.header'),900,10);await button('Snap to nearest corner').click();b=await panel.boundingBox();assert.ok(Math.abs(b.x+b.width-(vw-18))<1&&Math.abs(b.y-18)<1,`top-right ${JSON.stringify(b)}`);
+  assert.equal(await page.evaluate(()=>window.siteActions),0);assert.equal(await page.evaluate(()=>getSelection().toString()),'');
+ });
  await test('blank comment rejected, cancel does not create a phantom note',async({ui,button,clickText,exportBundle})=>{
   await button('⊕ Pin').click();await clickText('#pin1');await ui.locator('textarea').fill(' \n\t ');await button('Save').click();assert.match(await ui.getByRole('status').textContent(),/Add a note/);await button('Cancel').click();assert.equal((await exportBundle()).comments.length,0);
  });
@@ -126,7 +145,7 @@ try {
   const initial=page.url();await edit('#plain','Old route requested value');await page.evaluate(()=>{history.pushState({},'','/new-route');document.title='New route title';document.querySelector('#plain').textContent='New route paragraph';});await ui.getByRole('status').filter({hasText:'navigated within'}).waitFor();const bundle=await exportBundle();assert.equal(bundle.page.url,initial);assert.ok(bundle.warnings.some(w=>w.includes('URL changed')));assert.equal(bundle.edits[0].previewState,'page-changed');await button('Close review').click();await button('Discard & close').click();await inject();const fresh=await exportBundle();assert.equal(fresh.page.url,new URL('/new-route',initial).href);assert.equal(fresh.page.title,'New route title');assert.equal(fresh.edits.length,0);assert.match(fresh.snapshots.originalHtml,/New route paragraph/);
  });
  await test('small viewport controls remain reachable when textarea and review list are tall',async({page,ui,button,clickText})=>{
-  await page.setViewportSize({width:390,height:500});await button('Move panel to other side').click();await button('Minimize').click();await page.locator('#deep').scrollIntoViewIfNeeded();await ui.getByRole('button',{name:/Page Notes ·/}).click();
+  await page.setViewportSize({width:390,height:500});const h=await ui.locator('.header').boundingBox();await page.mouse.move(h.x+40,h.y+15);await page.mouse.down();await page.mouse.move(h.x-60,h.y+120,{steps:5});await page.mouse.up();await button('Snap to nearest corner').click();await button('Minimize').click();await page.locator('#deep').scrollIntoViewIfNeeded();await ui.getByRole('button',{name:/Page Notes ·/}).click();
   for(const name of ['Aa Edit text','⊕ Pin','Browse','Done · Download review','Close review']){assert.equal(await button(name).isVisible(),true,name);const b=await button(name).boundingBox();assert.ok(b.x>=0&&b.x+b.width<=391&&b.y>=0&&b.y+b.height<=501,`${name}: ${JSON.stringify(b)}`);}
   await button('⊕ Pin').click();await page.mouse.click(370,300);await ui.locator('textarea').fill('Long note\n'.repeat(80));await button('Save').click();assert.match(await ui.locator('article').textContent(),/Long note/);const footer=await button('Done · Download review').boundingBox();assert.ok(footer.y+footer.height<=501);
  });
@@ -149,7 +168,7 @@ try {
  });
 
  await test('moving panel and canceling close preserves unsaved draft text',async({page,ui,button,clickText,exportBundle})=>{
-  await button('Aa Edit text').click();await clickText('#plain');await ui.locator('textarea').fill('Keep this pending text');await button('Move panel to other side').click();assert.equal(await ui.locator('textarea').inputValue(),'Keep this pending text');await button('Close review').click();await button('Keep reviewing').click();assert.equal(await ui.locator('textarea').inputValue(),'Keep this pending text');await button('Save').click();assert.equal((await exportBundle()).edits[0].after,'Keep this pending text');
+  await button('Aa Edit text').click();await clickText('#plain');await ui.locator('textarea').fill('Keep this pending text');const h=await ui.locator('.header').boundingBox();await page.mouse.move(h.x+40,h.y+15);await page.mouse.down();await page.mouse.move(h.x-300,h.y+200,{steps:5});await page.mouse.up();assert.equal(await ui.locator('textarea').inputValue(),'Keep this pending text');await button('Snap to nearest corner').click();assert.equal(await ui.locator('textarea').inputValue(),'Keep this pending text');await button('Close review').click();await button('Keep reviewing').click();assert.equal(await ui.locator('textarea').inputValue(),'Keep this pending text');await button('Save').click();assert.equal((await exportBundle()).edits[0].after,'Keep this pending text');
  });
 
  await test('site removes overlay host; reinjection restores UI and preserves saved review',async({page,ui,button,clickText,edit,exportBundle,inject})=>{

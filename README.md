@@ -20,6 +20,7 @@ After updating the repo, click **Reload** on the extension card in `chrome://ext
 - **Pin:** choose **Pin to element** (hover outlines the element you'll pin; the note follows it as you scroll or resize) or **Pin to page** (the note stays at that spot in the page content), then click and write feedback.
 - **Edit text:** click visible text, type your replacement in the editor, and see it update on the page. Inline formatting and neighboring elements stay intact. Save the change or cancel it.
 - Review and remove feedback or revert a text edit in the panel.
+- **Move the panel:** drag its header, or the minimized pill, anywhere — partly off screen is fine. The corner button snaps it to the nearest corner. Clicking a pin highlights its note in the panel; use **Edit** there to change it.
 - **Done:** choose where to save a single `.page-notes.json` file. Chrome's Save As dialog lets you choose Desktop or another folder.
 
 The file includes the page URL/title, viewport size, sanitized HTML before and after the review, pin locations and element context, explicit before/after text edits, action history, and a readable Markdown summary. It is evidence for implementing changes, not a patch against your source repository.
