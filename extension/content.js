@@ -1,12 +1,12 @@
-/* Page Notes: an explicit, local-only review session. No automatic page access. */
+/* PageCrit: an explicit, local-only review session. No automatic page access. */
 (() => {
   'use strict';
-  if (globalThis.__pageNotesSession) {
-    globalThis.__pageNotesSession.show();
+  if (globalThis.__pageCritSession) {
+    globalThis.__pageCritSession.show();
     return;
   }
-  const core = globalThis.PageNotesCore;
-  if (!core) throw new Error('Page Notes core did not load. Reload the extension and try again.');
+  const core = globalThis.PageCritCore;
+  if (!core) throw new Error('PageCrit core did not load. Reload the extension and try again.');
 
   const MAX_TEXT = 20000;
   const MAX_COMMENT = 10000;
@@ -33,13 +33,13 @@
   const removedElements = new Map();
 
   const host = document.createElement('div');
-  host.setAttribute('data-page-notes-root', '');
+  host.setAttribute('data-pagecrit-root', '');
   host.style.cssText = 'all:initial!important;position:fixed!important;inset:0!important;width:100%!important;height:100%!important;z-index:2147483647!important;pointer-events:none!important;display:block!important;';
   const shadow = host.attachShadow({ mode: 'closed' });
   const style = document.createElement('style');
   // Pen-on-printout: cobalt ink pins, a highlighter for what's active, red pen for removals.
   style.textContent = `
-    :host{--ink:#1f2430;--pencil:#676b79;--faint:#9a9daa;--line:#ebecf1;--paper:#fff;--wash:#f6f7fa;--cobalt:#2f4be0;--cobalt-deep:#2238b8;--cobalt-soft:#eef1fe;--marker:#ffe36e;--marker-soft:#fff5c4;--red:#d9443a;--must:#dc3b30;--suggested:#ef7d1a;--nit:#f5c518;--red-soft:#fdeeec;--green:#1d7f4c;--green-mark:#c9efd6;--hand:"Page Notes Hand",ui-rounded,system-ui,sans-serif;--sans:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font:14px/1.5 var(--sans);color:var(--ink);color-scheme:light}
+    :host{--ink:#1f2430;--pencil:#676b79;--faint:#9a9daa;--line:#ebecf1;--paper:#fff;--wash:#f6f7fa;--cobalt:#2f4be0;--cobalt-deep:#2238b8;--cobalt-soft:#eef1fe;--marker:#ffe36e;--marker-soft:#fff5c4;--red:#d9443a;--must:#dc3b30;--suggested:#ef7d1a;--nit:#f5c518;--red-soft:#fdeeec;--green:#1d7f4c;--green-mark:#c9efd6;--hand:"PageCrit Hand",ui-rounded,system-ui,sans-serif;--sans:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font:14px/1.5 var(--sans);color:var(--ink);color-scheme:light}
     *,*::before,*::after{box-sizing:border-box} [hidden]{display:none!important}.sr{position:fixed;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
     button,input,textarea,select{font:inherit;color:inherit} button{cursor:pointer} button:disabled{cursor:wait;opacity:.5}
     button:focus-visible,textarea:focus-visible,select:focus-visible,.item:focus-visible{outline:2px solid var(--cobalt);outline-offset:2px}
@@ -102,7 +102,7 @@
   hoverBox.append(hoverTag);
   const panel = document.createElement('section');
   panel.className = 'panel';
-  panel.setAttribute('aria-label', 'Page Notes review');
+  panel.setAttribute('aria-label', 'PageCrit review');
   // Screen-reader-only confirmation for actions that need no visible callout.
   const liveRegion = document.createElement('div');
   liveRegion.className = 'sr'; liveRegion.setAttribute('role', 'status');
@@ -202,11 +202,11 @@
 
   async function loadHandFont() {
     try {
-      if ([...document.fonts].some(face => face.family.replace(/"/g, '') === 'Page Notes Hand')) return;
-      const result = await chrome.runtime.sendMessage({ type: 'PAGE_NOTES_FONT' });
+      if ([...document.fonts].some(face => face.family.replace(/"/g, '') === 'PageCrit Hand')) return;
+      const result = await chrome.runtime.sendMessage({ type: 'PAGECRIT_FONT' });
       if (!result?.ok || state.closed) return;
       const bytes = Uint8Array.from(atob(result.data), ch => ch.charCodeAt(0));
-      const face = new FontFace('Page Notes Hand', bytes.buffer, { weight: '400 700' });
+      const face = new FontFace('PageCrit Hand', bytes.buffer, { weight: '400 700' });
       document.fonts.add(await face.load());
     } catch (_) { /* The fallback face is fine. */ }
   }
@@ -253,11 +253,11 @@
     panel.hidden = state.collapsed;
     pill.hidden = !state.collapsed;
     shownCollapsed = state.collapsed;
-    pill.replaceChildren(logoMark(), element('span', 'brand', 'Page Notes'), element('span', 'count', String(itemCount())));
-    pill.setAttribute('aria-label', `Open Page Notes, ${itemCount()} ${itemCount() === 1 ? 'item' : 'items'}`);
+    pill.replaceChildren(logoMark(), element('span', 'brand', 'PageCrit'), element('span', 'count', String(itemCount())));
+    pill.setAttribute('aria-label', `Open PageCrit, ${itemCount()} ${itemCount() === 1 ? 'item' : 'items'}`);
     panel.replaceChildren();
     const header = element('header', 'header');
-    header.append(logoMark(), element('span', 'brand', 'Page Notes'));
+    header.append(logoMark(), element('span', 'brand', 'PageCrit'));
     const snap = button('', snapToCorner, 'smallbutton snap', 'Snap to nearest corner');
     snap.append(snapIcon()); header.append(snap);
     header.append(button('−', () => { cancelPending(false); state.collapsed = true; state.mode = 'browse'; highlight.style.display = 'none'; render(); }, 'smallbutton', 'Minimize'));
@@ -375,9 +375,9 @@
     }
     box.append(element('h3', '', pending.commentId ? 'Edit note' : 'New note'));
     const label = element('label', '', 'What should change here?');
-    label.htmlFor = 'page-notes-input'; box.append(label);
+    label.htmlFor = 'pagecrit-input'; box.append(label);
     const input = element('textarea');
-    input.id = 'page-notes-input';
+    input.id = 'pagecrit-input';
     input.maxLength = MAX_COMMENT;
     input.value = pending.value;
     input.placeholder = 'E.g. Make this headline more specific.';
@@ -488,7 +488,7 @@
     render();
     if (!review) { loadRecent(); return; }
     try {
-      const result = await chrome.runtime.sendMessage({ type: 'PAGE_NOTES_RECENT', action: 'markdown', id: review.id });
+      const result = await chrome.runtime.sendMessage({ type: 'PAGECRIT_RECENT', action: 'markdown', id: review.id });
       if (state.recentOpen?.id === review.id) { state.recentOpen.markdown = result?.ok ? result.markdown : (result?.error || 'That review could not be loaded.'); render(); }
     } catch (_) { /* Stays on Loading. */ }
   }
@@ -574,7 +574,7 @@
     }
     state.confirmDelete = null;
     try {
-      const result = await chrome.runtime.sendMessage({ type: 'PAGE_NOTES_RECENT', action: 'delete', id: review.id });
+      const result = await chrome.runtime.sendMessage({ type: 'PAGECRIT_RECENT', action: 'delete', id: review.id });
       if (!result?.ok) throw new Error('That review could not be deleted.');
       state.recent = state.recent.filter(other => other.id !== review.id);
       announce('Review deleted.');
@@ -593,13 +593,13 @@
   }
   async function loadRecent() {
     try {
-      const result = await chrome.runtime.sendMessage({ type: 'PAGE_NOTES_RECENT', action: 'list' });
+      const result = await chrome.runtime.sendMessage({ type: 'PAGECRIT_RECENT', action: 'list' });
       if (result?.ok && !state.closed) { state.recent = result.reviews; render(); }
     } catch (_) { /* Nothing to show. */ }
   }
   async function copyRecent(review) {
     try {
-      const result = await chrome.runtime.sendMessage({ type: 'PAGE_NOTES_RECENT', action: 'markdown', id: review.id });
+      const result = await chrome.runtime.sendMessage({ type: 'PAGECRIT_RECENT', action: 'markdown', id: review.id });
       if (!result?.ok) throw new Error(result?.error || 'That review could not be loaded.');
       // Only the async clipboard: an earlier review never passes through this page's DOM.
       await navigator.clipboard.writeText(result.markdown);
@@ -613,7 +613,7 @@
   }
   async function downloadRecent(review) {
     try {
-      const result = await chrome.runtime.sendMessage({ type: 'PAGE_NOTES_RECENT', action: 'download', id: review.id });
+      const result = await chrome.runtime.sendMessage({ type: 'PAGECRIT_RECENT', action: 'download', id: review.id });
       if (!result?.ok) throw new Error(result?.error || 'The download could not be started.');
       announce('Download started.');
     } catch (error) { tell(error.message || 'Download failed.', true); }
@@ -627,7 +627,7 @@
       return;
     }
     state.clearingRecent = false;
-    try { await chrome.runtime.sendMessage({ type: 'PAGE_NOTES_RECENT', action: 'clear' }); state.recent = []; state.recentOpen = null; } catch (_) { /* Keep showing them. */ }
+    try { await chrome.runtime.sendMessage({ type: 'PAGECRIT_RECENT', action: 'clear' }); state.recent = []; state.recentOpen = null; } catch (_) { /* Keep showing them. */ }
     render();
   }
   function renderComment(comment, index) {
@@ -725,7 +725,7 @@
     return box;
   }
   // Focus right away so fast typing after the click isn't lost; retry after layout just in case.
-  function focusEditor() { const focus = () => shadow.getElementById('page-notes-input')?.focus(); focus(); requestAnimationFrame(focus); }
+  function focusEditor() { const focus = () => shadow.getElementById('pagecrit-input')?.focus(); focus(); requestAnimationFrame(focus); }
   function cancelPending(rerender = true) {
     const p = state.pending;
     if (p?.type === 'text') {
@@ -1161,7 +1161,7 @@
     for (const removal of state.removals) unhide(removal);
     state.closed = true;
     clearTimeout(persistTimer);
-    chrome.runtime.sendMessage({ type: 'PAGE_NOTES_DRAFT', action: 'clear' }).catch(() => {});
+    chrome.runtime.sendMessage({ type: 'PAGECRIT_DRAFT', action: 'clear' }).catch(() => {});
     observer.disconnect(); resizeObserver.disconnect(); clearInterval(routeTimer);
     if (state.frame) cancelAnimationFrame(state.frame);
     window.removeEventListener('click', onClick, true);
@@ -1174,7 +1174,7 @@
     window.removeEventListener('pointermove', onHover, true);
     window.removeEventListener('pointerout', onHover, true);
     chrome.runtime.onMessage.removeListener(runtimeMessage);
-    host.remove(); delete globalThis.__pageNotesSession;
+    host.remove(); delete globalThis.__pageCritSession;
   }
   let sentTimer = 0, announceTimer = 0;
   function announce(message) {
@@ -1203,7 +1203,7 @@
       return { ...comment, pin: index + 1, anchorState: position.resolved ? 'resolved' : 'element-missing' };
     });
     return {
-      format: 'page-notes-review', version: 1, tool: { name: 'Page Notes', version: VERSION },
+      format: 'pagecrit-review', version: 1, tool: { name: 'PageCrit', version: VERSION },
       session: { id: state.sessionId, startedAt: state.startedAt, exportedAt: now(), timezoneOffset: -new Date().getTimezoneOffset() },
       page: {
         url: state.pages[0].url, title: state.pages[0].title, viewport: { width: innerWidth, height: innerHeight }, devicePixelRatio,
@@ -1230,7 +1230,7 @@
     if (state.busy || state.pending || !itemCount()) return;
     state.busy = true; state.notice = ''; render();
     try {
-      const result = await chrome.runtime.sendMessage({ type: 'PAGE_NOTES_RENDER', review: reviewModel() });
+      const result = await chrome.runtime.sendMessage({ type: 'PAGECRIT_RENDER', review: reviewModel() });
       if (!result?.ok) throw new Error(result?.error || 'The review could not be rendered.');
       await writeClipboard(result.markdown);
       announce('Markdown copied.');
@@ -1253,7 +1253,7 @@
     if (state.busy || state.pending || !itemCount()) return;
     state.busy = true; state.notice = ''; render();
     try {
-      const result = await chrome.runtime.sendMessage({ type: 'PAGE_NOTES_EXPORT', review: reviewModel() });
+      const result = await chrome.runtime.sendMessage({ type: 'PAGECRIT_EXPORT', review: reviewModel() });
       if (!result?.ok) throw new Error(result?.error || 'The download could not be started.');
       // Confirm briefly on the button itself; the draft simply stays open.
       announce('Download started.');
@@ -1264,7 +1264,7 @@
     } finally { state.busy = false; render(); }
   }
   function runtimeMessage(message, _sender, sendResponse) {
-    if (message?.type === 'PAGE_NOTES_TOGGLE') {
+    if (message?.type === 'PAGECRIT_TOGGLE') {
       state.collapsed = false; render(); sendResponse({ ok: true });
     }
   }
@@ -1314,7 +1314,7 @@
     clearTimeout(persistTimer);
     persistTimer = setTimeout(() => {
       const draft = { version: 1, sessionId: state.sessionId, startedAt: state.startedAt, pages: state.pages, comments: state.comments, edits: state.edits, removals: state.removals };
-      chrome.runtime.sendMessage({ type: 'PAGE_NOTES_DRAFT', action: 'save', draft }).catch(() => {});
+      chrome.runtime.sendMessage({ type: 'PAGECRIT_DRAFT', action: 'save', draft }).catch(() => {});
     }, 120);
   }
   // Best effort: re-find each item on this page by its locator. Edits re-apply only where the
@@ -1347,7 +1347,7 @@
   }
   async function restoreDraft() {
     let draft = null;
-    try { draft = (await chrome.runtime.sendMessage({ type: 'PAGE_NOTES_DRAFT', action: 'load' }))?.draft; } catch (_) { /* Start fresh. */ }
+    try { draft = (await chrome.runtime.sendMessage({ type: 'PAGECRIT_DRAFT', action: 'load' }))?.draft; } catch (_) { /* Start fresh. */ }
     if (state.closed) return;
     if (draft?.version === 1 && Array.isArray(draft.pages) && draft.pages.length) {
       const fresh = { comments: state.comments, edits: state.edits, removals: state.removals };
@@ -1368,7 +1368,7 @@
   enterPage(startUrl);
   restoreDraft();
   loadRecent();
-  globalThis.__pageNotesSession = { show() {
+  globalThis.__pageCritSession = { show() {
     if (!host.isConnected) document.documentElement.appendChild(host);
     state.collapsed = false; render(); loadRecent();
   } };

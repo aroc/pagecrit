@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Page Notes",
+  "name": "PageCrit",
   "version": "0.2.0",
   "description": "Pin feedback and edit text on a page, then download a Markdown review for your coding agent.",
   "icons": {
@@ -16,7 +16,7 @@
     "storage"
   ],
   "action": {
-    "default_title": "Page Notes: review this page",
+    "default_title": "PageCrit: review this page",
     "default_icon": {
       "16": "icons/icon-16.png",
       "32": "icons/icon-32.png",
@@ -34,7 +34,7 @@
       "suggested_key": {
         "default": "Alt+Shift+N"
       },
-      "description": "Start or show a Page Notes review of this page"
+      "description": "Start or show a PageCrit review of this page"
     }
   }
 }

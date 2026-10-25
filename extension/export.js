@@ -10,8 +10,8 @@
   const optionalContext = context => context === undefined || context === null || (typeof context === 'object' && !Array.isArray(context));
 
   function validateReview(review) {
-    assert(review && review.format === 'page-notes-review' && review.version === 1, 'Unsupported review format.');
-    assert(review.tool?.name === 'Page Notes', 'Invalid review tool.');
+    assert(review && review.format === 'pagecrit-review' && review.version === 1, 'Unsupported review format.');
+    assert(review.tool?.name === 'PageCrit', 'Invalid review tool.');
     assert(typeof review.session?.id === 'string', 'Missing session ID.');
     assert(typeof review.page?.url === 'string' && /^https?:\/\//i.test(review.page.url), 'Invalid page URL.');
     assert(review.pages === undefined || (Array.isArray(review.pages) && review.pages.length >= 1 && review.pages.length <= 50 && review.pages.every(page => /^P\d{1,3}$/.test(page.id) && typeof page.url === 'string' && /^https?:\/\//i.test(page.url))), 'Invalid pages.');
@@ -144,7 +144,7 @@
       `# Review: ${escape(pages[0].title || pathOf(pages[0].url) || 'Untitled page')}`,
       '',
       ...pageLines,
-      `- Review: r-${day}-${review.session.id.replace(/[^a-z0-9]/gi, '').slice(0, 4)} · Page Notes ${escape(review.tool.version)} · digest v${DIGEST_VERSION}`,
+      `- Review: r-${day}-${review.session.id.replace(/[^a-z0-9]/gi, '').slice(0, 4)} · PageCrit ${escape(review.tool.version)} · digest v${DIGEST_VERSION}`,
       `- Started: ${isoWithOffset(started, offset)} · Exported: ${isoWithOffset(exported, offset)} (${minutes} min)`,
       ...(page.build ? [`- Build: ${code(page.build)}`] : []),
       `- Environment: ${[env.browser, env.os, viewport, page.colorScheme].filter(Boolean).map(escape).join(' · ')}`,
@@ -180,6 +180,6 @@
     const title = clean(review.page?.title) || clean(host) || 'page';
     return `${stamp} ${title}.md`;
   }
-  root.PageNotesExport = {MAX_BYTES, DIGEST_VERSION, validateReview, renderDigest, filename};
-  if (typeof module !== 'undefined' && module.exports) module.exports = root.PageNotesExport;
+  root.PageCritExport = {MAX_BYTES, DIGEST_VERSION, validateReview, renderDigest, filename};
+  if (typeof module !== 'undefined' && module.exports) module.exports = root.PageCritExport;
 })(globalThis);

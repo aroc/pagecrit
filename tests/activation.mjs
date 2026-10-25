@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import {execFileSync} from 'node:child_process';
 const root=path.resolve(import.meta.dirname,'..');
-const temp=await mkdtemp(path.join(tmpdir(),'page-notes-activation-'));
+const temp=await mkdtemp(path.join(tmpdir(),'pagecrit-activation-'));
 const server=http.createServer((_,res)=>res.end('<!doctype html><title>Activation test</title><h1>Activate on this page</h1>'));
 await new Promise(r=>server.listen(0,'127.0.0.1',r));
 const url=`http://127.0.0.1:${server.address().port}/`;
@@ -43,12 +43,12 @@ x.XFlush(d);x.XCloseDisplay(d)
 `]);
  await page.waitForTimeout(500);
  // No popup: the action opens the review panel directly through the shipped background handler.
- await page.locator('[data-page-notes-root]').waitFor({timeout:5000});
- assert.equal(await page.locator('[data-page-notes-root]').evaluate(el=>el.shadowRoot),null);
+ await page.locator('[data-pagecrit-root]').waitFor({timeout:5000});
+ assert.equal(await page.locator('[data-pagecrit-root]').evaluate(el=>el.shadowRoot),null);
  console.log('PASS no host permissions: denied before action, native action opens the closed production panel directly');
  // Same-origin reload: report whether Chrome kept activeTab so the saved review comes back by itself.
  await page.reload();
- const restored=await page.locator('[data-page-notes-root]').waitFor({timeout:3000}).then(()=>true,()=>false);
+ const restored=await page.locator('[data-pagecrit-root]').waitFor({timeout:3000}).then(()=>true,()=>false);
  console.log(`INFO same-origin reload ${restored?'restored the review automatically':'needs a toolbar click to continue the saved review'}`);
  // Grant revoked on cross-origin navigation.
  await page.goto(url.replace('127.0.0.1','localhost'));

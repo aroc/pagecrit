@@ -8,7 +8,7 @@ import http from 'node:http';
 // Tools are toggles: turn one on only if it isn't already.
 const ensure=async tool=>{if(await tool.getAttribute('aria-pressed')!=='true')await tool.click();};
 const root=path.resolve(import.meta.dirname,'..');
-const temp=await mkdtemp(path.join(tmpdir(),'page-notes-stress-ui-'));
+const temp=await mkdtemp(path.join(tmpdir(),'pagecrit-stress-ui-'));
 const fixture=await readFile(path.join(root,'tests/stress-fixture.html'));
 const server=http.createServer((_req,res)=>{res.setHeader('content-type','text/html');res.end(fixture);});
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
@@ -27,13 +27,13 @@ try {
  // Keep the rendered review model alongside the downloaded Markdown so tests can check both.
  // Reinstalled before each export: an idle MV3 worker can restart mid-suite and drop it.
  const sw=()=>context.serviceWorkers().at(-1)||worker;
- const instrument=()=>sw().evaluate(()=>{if(globalThis.testInstrumented)return;globalThis.testInstrumented=true;const download=chrome.downloads.download.bind(chrome.downloads);chrome.downloads.download=opts=>download({...opts,saveAs:false});const render=PageNotesExport.renderDigest;PageNotesExport.renderDigest=review=>{globalThis.lastReview=review;return render(review);};});
+ const instrument=()=>sw().evaluate(()=>{if(globalThis.testInstrumented)return;globalThis.testInstrumented=true;const download=chrome.downloads.download.bind(chrome.downloads);chrome.downloads.download=opts=>download({...opts,saveAs:false});const render=PageCritExport.renderDigest;PageCritExport.renderDigest=review=>{globalThis.lastReview=review;return render(review);};});
  await instrument();
  async function setup(){
   const page=await context.newPage();await page.goto(base+crypto.randomUUID());
   const tab=await worker.evaluate(async url=>(await chrome.tabs.query({})).find(t=>t.url===url).id,page.url());
   const inject=()=>worker.evaluate(async tabId=>chrome.scripting.executeScript({target:{tabId},files:['core.js','content.js']}),tab);
-  await inject();const ui=page.locator('[data-page-notes-root]');await ui.getByRole('region',{name:'Page Notes review'}).waitFor();
+  await inject();const ui=page.locator('[data-pagecrit-root]');await ui.getByRole('region',{name:'PageCrit review'}).waitFor();
   const cdp=await context.newCDPSession(page);await cdp.send('Browser.setDownloadBehavior',{behavior:'allow',downloadPath:path.join(temp,'downloads'),eventsEnabled:true});
   const button=(name)=>ui.getByRole('button',{name,exact:true});
   const textPoint=async(selector,index=0)=>page.locator(selector).evaluate((el,index)=>{const n=[...el.childNodes].filter(n=>n.nodeType===3)[index];const r=document.createRange();r.selectNodeContents(n);const rect=r.getClientRects()[0];return{x:rect.x+Math.min(16,rect.width/2),y:rect.y+rect.height/2};},index);
@@ -105,14 +105,14 @@ try {
   for(let i=1;i<=3;i++){await ensure(button('Pin'));await clickText(`#pin${i}`);await ui.locator('textarea').fill(`Comment ${i}`);await button('Save').click();}
   await page.keyboard.press('Escape');await button('Minimize').click();
   await ui.getByRole('button',{name:'Note 2: Comment 2'}).click();
-  assert.equal(await ui.locator('textarea').count(),0,'no editor opened');assert.equal(await ui.getByRole('region',{name:'Page Notes review'}).isVisible(),true,'panel expands');
+  assert.equal(await ui.locator('textarea').count(),0,'no editor opened');assert.equal(await ui.getByRole('region',{name:'PageCrit review'}).isVisible(),true,'panel expands');
   const selected=ui.locator('article[aria-current="true"]');assert.equal(await selected.count(),1);assert.match(await selected.textContent(),/Comment 2/);
   assert.equal(await ui.getByRole('button',{name:'Note 2: Comment 2'}).evaluate(el=>el.classList.contains('selected')),true);
   await ui.getByRole('button',{name:'Note 3: Comment 3'}).click();assert.match(await ui.locator('article[aria-current="true"]').textContent(),/Comment 3/);
   await selected.getByRole('button',{name:'Edit',exact:true}).click();assert.equal(await ui.locator('textarea').inputValue(),'Comment 3');
  });
  await test('panel and collapsed pill drag anywhere, may sit partly off screen, and snap to the nearest corner',async({page,ui,button})=>{
-  const panel=ui.getByRole('region',{name:'Page Notes review'});const vw=1280,vh=1000;
+  const panel=ui.getByRole('region',{name:'PageCrit review'});const vw=1280,vh=1000;
   const dragBy=async(locator,dx,dy)=>{const b=await locator.boundingBox();const left=Math.max(b.x,0),right=Math.min(b.x+b.width,vw);const x=left+Math.min(20,(right-left)/2),y=b.y+Math.min(15,b.height/2);await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+3,y+3);await page.mouse.move(x+dx/2,y+dy/2,{steps:3});await page.mouse.move(x+dx,y+dy,{steps:3});await page.mouse.up();};
   const start=await panel.boundingBox();assert.ok(Math.abs(start.x+start.width-(vw-18))<1&&Math.abs(start.y-18)<1,'starts docked top-right');
   await dragBy(ui.locator('.header'),-500,240);let b=await panel.boundingBox();assert.ok(Math.abs(b.x-(start.x-500))<1&&Math.abs(b.y-(start.y+240))<1,JSON.stringify(b));
@@ -123,7 +123,7 @@ try {
   await dragBy(ui.locator('.header'),-2000,-2000);b=await panel.boundingBox();assert.ok(b.y>=0&&b.x+b.width>=47,`top-left clamp ${JSON.stringify(b)}`);
   // Only the header buttons remain visible here; they still work as a drag handle without being clicked.
   await dragBy(ui.locator('.header'),300,600);await button('Snap to nearest corner').click();b=await panel.boundingBox();assert.ok(Math.abs(b.x-18)<1&&Math.abs(b.y+b.height-(vh-18))<1,`bottom-left ${JSON.stringify(b)}`);
-  await button('Minimize').click();const pill=ui.getByRole('button',{name:/Open Page Notes/});let p=await pill.boundingBox();assert.ok(Math.abs(p.x-18)<1&&Math.abs(p.y+p.height-(vh-18))<1,'pill docked bottom-left');
+  await button('Minimize').click();const pill=ui.getByRole('button',{name:/Open PageCrit/});let p=await pill.boundingBox();assert.ok(Math.abs(p.x-18)<1&&Math.abs(p.y+p.height-(vh-18))<1,'pill docked bottom-left');
   await dragBy(pill,400,-500);p=await pill.boundingBox();assert.ok(Math.abs(p.x-418)<1.5,`pill dragged ${JSON.stringify(p)}`);assert.equal(await panel.isVisible(),false,'dragging the pill does not expand it');
   await pill.click();assert.equal(await panel.isVisible(),true,'plain click expands');b=await panel.boundingBox();assert.ok(Math.abs(b.x-p.x)<1.5&&Math.abs(b.y-p.y)<1.5,'expands where the pill was');
   await dragBy(ui.locator('.header'),20,-400);await button('Snap to nearest corner').click();b=await panel.boundingBox();assert.ok(Math.abs(b.x-18)<1&&Math.abs(b.y-18)<1,`top-left ${JSON.stringify(b)}`);
@@ -298,8 +298,8 @@ try {
   await ui.locator('article').filter({hasText:'Late note'}).getByRole('button',{name:'Nit',exact:true}).click();assert.equal(await done.count(),0,'severity change counts');
   await button('Copy Markdown').click();await done.waitFor();assert.match(await page.evaluate(()=>navigator.clipboard.readText()),/· nit\n- Note: Late note/);
   await done.click();
-  assert.equal(await page.locator('[data-page-notes-root]').count(),0,'closed without a discard prompt');assert.equal(await page.locator('#plain').textContent(),'Original paragraph for edit cycles.','page restored');
-  await page.reload();await page.waitForTimeout(1200);assert.equal(await page.locator('[data-page-notes-root]').count(),0,'draft cleared');
+  assert.equal(await page.locator('[data-pagecrit-root]').count(),0,'closed without a discard prompt');assert.equal(await page.locator('#plain').textContent(),'Original paragraph for edit cycles.','page restored');
+  await page.reload();await page.waitForTimeout(1200);assert.equal(await page.locator('[data-pagecrit-root]').count(),0,'draft cleared');
  });
  await test('no Copy or Download until there is feedback; deleting the last item hides them again',async({page,ui,button,clickText})=>{
   assert.equal(await ui.locator('footer').isHidden(),true);assert.equal(await button('Copy Markdown').count(),0);
@@ -314,7 +314,7 @@ try {
  await test('Escape, switching mode, minimize all restore pending preview and keep saved edit',async({page,ui,button,clickText,edit,typeInline,editing,exportBundle})=>{
   await edit('#plain','Saved value');
   for(const action of ['escape','mode','minimize']){await ensure(button('Edit text'));await clickText('#plain');await typeInline(`Pending ${action}`);assert.equal(await page.locator('#plain').textContent(),`Pending ${action}`);assert.equal(await button('Download review').isEnabled(),false);
-   if(action==='escape')await page.keyboard.press('Escape');if(action==='mode')await ensure(button('Pin'));if(action==='minimize'){await button('Minimize').click();await ui.getByRole('button',{name:/Open Page Notes/}).click();}
+   if(action==='escape')await page.keyboard.press('Escape');if(action==='mode')await ensure(button('Pin'));if(action==='minimize'){await button('Minimize').click();await ui.getByRole('button',{name:/Open PageCrit/}).click();}
    assert.equal(await page.locator('#plain').textContent(),'Saved value');assert.equal(await editing(),0);assert.equal(await page.locator('#plain').getAttribute('contenteditable'),null);
   }assert.equal((await exportBundle()).edits[0].after,'Saved value');
  });
@@ -368,10 +368,10 @@ try {
   await page.goto(first);await ui.getByRole('status').filter({hasText:'Continuing your review on P1'}).waitFor();assert.equal(await page.locator('#plain').textContent(),'Persisted edit');
   await button('Close review').click();await button('Discard & close').click();
   assert.equal(await page.locator('#plain').textContent(),'Original paragraph for edit cycles.');
-  await page.reload();await page.waitForTimeout(1200);assert.equal(await page.locator('[data-page-notes-root]').count(),0,'discarded review does not come back');
+  await page.reload();await page.waitForTimeout(1200);assert.equal(await page.locator('[data-pagecrit-root]').count(),0,'discarded review does not come back');
  });
  await test('small viewport controls remain reachable when the note editor and review list are tall',async({page,ui,button,clickText})=>{
-  await page.setViewportSize({width:390,height:500});const h=await ui.locator('.header').boundingBox();await page.mouse.move(h.x+40,h.y+15);await page.mouse.down();await page.mouse.move(h.x-60,h.y+120,{steps:5});await page.mouse.up();await button('Snap to nearest corner').click();await button('Minimize').click();await page.locator('#deep').scrollIntoViewIfNeeded();await ui.getByRole('button',{name:/Open Page Notes/}).click();
+  await page.setViewportSize({width:390,height:500});const h=await ui.locator('.header').boundingBox();await page.mouse.move(h.x+40,h.y+15);await page.mouse.down();await page.mouse.move(h.x-60,h.y+120,{steps:5});await page.mouse.up();await button('Snap to nearest corner').click();await button('Minimize').click();await page.locator('#deep').scrollIntoViewIfNeeded();await ui.getByRole('button',{name:/Open PageCrit/}).click();
   for(const name of ['Edit text','Pin','Remove section','Close review']){assert.equal(await button(name).isVisible(),true,name);const b=await button(name).boundingBox();assert.ok(b.x>=0&&b.x+b.width<=391&&b.y>=0&&b.y+b.height<=501,`${name}: ${JSON.stringify(b)}`);}
   await ensure(button('Pin'));await page.mouse.click(370,300);await ui.locator('textarea').fill('Long note\n'.repeat(80));await button('Save').click();assert.match(await ui.locator('article').textContent(),/Long note/);const footer=await button('Download review').boundingBox();assert.ok(footer.y+footer.height<=501);
  });
@@ -399,7 +399,7 @@ try {
 
  await test('site removes overlay host; reinjection restores UI and preserves saved review',async({page,ui,button,clickText,edit,exportBundle,inject})=>{
   await edit('#plain','Saved before host removal');await ensure(button('Pin'));await clickText('#pin1');await ui.locator('textarea').fill('Keep this saved note');await button('Save').click();
-  const prior=await exportBundle();await page.locator('[data-page-notes-root]').evaluate(el=>el.remove());assert.equal(await page.locator('[data-page-notes-root]').count(),0);await inject();await ui.getByRole('region',{name:'Page Notes review'}).waitFor();assert.equal(await page.locator('[data-page-notes-root]').count(),1);const after=await exportBundle();assert.equal(after.session.id,prior.session.id);assert.equal(after.comments[0].id,prior.comments[0].id);assert.equal(after.comments[0].text,'Keep this saved note');assert.equal(after.edits[0].after,'Saved before host removal');assert.equal(await page.locator('#plain').textContent(),'Saved before host removal');
+  const prior=await exportBundle();await page.locator('[data-pagecrit-root]').evaluate(el=>el.remove());assert.equal(await page.locator('[data-pagecrit-root]').count(),0);await inject();await ui.getByRole('region',{name:'PageCrit review'}).waitFor();assert.equal(await page.locator('[data-pagecrit-root]').count(),1);const after=await exportBundle();assert.equal(after.session.id,prior.session.id);assert.equal(after.comments[0].id,prior.comments[0].id);assert.equal(after.comments[0].text,'Keep this saved note');assert.equal(after.edits[0].after,'Saved before host removal');assert.equal(await page.locator('#plain').textContent(),'Saved before host removal');
  });
 
  await test('real browser zoom at 125%, 150%, 200% preserves element pin geometry and text targeting',async({page,ui,button,clickText,edit,exportBundle,tab})=>{

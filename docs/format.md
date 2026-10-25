@@ -36,4 +36,4 @@ Every page-derived value is capped (text 200, context 80 per side, headings 60, 
 
 ## Review model
 
-`content.js` sends `{format: 'page-notes-review', version: 1, tool, session, page, environment, comments, edits, removals}` to the service worker, which validates it, renders the digest and downloads it. Comments carry `anchor` and `context`; edits carry `before`, `after`, optional `formatting` (`{start, end, marks}` over `after`), `afterHtml`, `markup` and `context`; removals carry `label`, `text` and `context`. The model is internal and can change with the digest version.
+`content.js` sends `{format: 'pagecrit-review', version: 1, tool, session, page, environment, comments, edits, removals}` to the service worker, which validates it, renders the digest and downloads it. Comments carry `anchor` and `context`; edits carry `before`, `after`, optional `formatting` (`{start, end, marks}` over `after`), `afterHtml`, `markup` and `context`; removals carry `label`, `text` and `context`. The model is internal and can change with the digest version.

@@ -7,7 +7,7 @@ import path from 'node:path';
 import http from 'node:http';
 
 const root = path.resolve(import.meta.dirname, '..');
-const temp = await mkdtemp(path.join(tmpdir(), 'page-notes-worker-'));
+const temp = await mkdtemp(path.join(tmpdir(), 'pagecrit-worker-'));
 let context;
 let server;
 async function eventually(check, message) {
@@ -45,7 +45,7 @@ try {
   await page.goto(url);
   const tabId = await worker.evaluate(async url => (await chrome.tabs.query({})).find(tab => tab.url === url).id, url);
   await worker.evaluate(async tabId => chrome.scripting.executeScript({ target: { tabId }, files: ['core.js', 'content.js'] }), tabId);
-  assert.equal(await page.locator('[data-page-notes-root]').evaluate(host => host.shadowRoot), null);
+  assert.equal(await page.locator('[data-pagecrit-root]').evaluate(host => host.shadowRoot), null);
   // Real keyboard and mouse only (closed shadow root): P for the pin tool, click the heading, type, save.
   await page.waitForTimeout(300);
   await page.keyboard.press('p');

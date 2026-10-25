@@ -6,7 +6,7 @@ import vm from 'node:vm';
 const require=createRequire(import.meta.url);
 const api=require('../extension/export.js');
 const context=(over={})=>({tag:'p',locator:{selector:'div[data-testid="plan-pro"] > p:nth-of-type(2)',strategy:'path'},role:'paragraph',name:null,landmark:'main',section:['Pricing','Compare plans','Pro'],ancestors:['main','div[data-testid="plan-pro"]'],classes:'p-4 gap-6',excerpt:'<p class="p-4 gap-6">Billed annually, cancel anytime</p>',quote:{exact:'Billed annually, cancel anytime',prefix:'Pro $29/mo',suffix:'Start free trial'},occurrences:1,...over});
-const sample=()=>({format:'page-notes-review',version:1,tool:{name:'Page Notes',version:'0.2.0'},
+const sample=()=>({format:'pagecrit-review',version:1,tool:{name:'PageCrit',version:'0.2.0'},
  session:{id:'7f3a1c2e-0000-4000-8000-000000000000',startedAt:'2026-10-24T21:02:11.000Z',exportedAt:'2026-10-24T21:31:40.000Z',timezoneOffset:-420},
  page:{url:'https://staging.example.com/pricing',title:'Pricing',viewport:{width:1440,height:900},devicePixelRatio:2,colorScheme:'light',build:'a1b2c3d'},
  environment:{browser:'Google Chrome 141',os:'macOS'},
@@ -16,7 +16,7 @@ const sample=()=>({format:'page-notes-review',version:1,tool:{name:'Page Notes',
 
 test('digest header: page, identity, ISO times with offset, build, environment, summary, agent instructions',()=>{
  const md=api.renderDigest(sample());
- assert.match(md,/^# Review: Pricing\n\n- Page: https:\/\/staging\.example\.com\/pricing\n- Review: r-20261024-7f3a · Page Notes 0\.2\.0 · digest v1\n/);
+ assert.match(md,/^# Review: Pricing\n\n- Page: https:\/\/staging\.example\.com\/pricing\n- Review: r-20261024-7f3a · PageCrit 0\.2\.0 · digest v1\n/);
  assert.match(md,/- Started: 2026-10-24T14:02:11-07:00 · Exported: 2026-10-24T14:31:40-07:00 \(29 min\)/);
  assert.match(md,/- Build: `a1b2c3d`/);assert.match(md,/- Environment: Google Chrome 141 · macOS · 1440×900 @2x · light/);
  assert.match(md,/- Summary: 1 comment, 1 text edit, 1 removal/);
@@ -90,7 +90,7 @@ test('download filename has local date, time and a sanitized page title, as Mark
 test('empty reviews still render; malformed or oversized reviews are rejected',()=>{
  const empty=sample();empty.comments=[];empty.edits=[];empty.removals=[];
  assert.match(api.renderDigest(empty),/Summary: 0 comments, 0 text edits, 0 removals[\s\S]*No items/);
- assert.throws(()=>api.renderDigest({format:'page-notes-review',version:2}),/Unsupported/);
+ assert.throws(()=>api.renderDigest({format:'pagecrit-review',version:2}),/Unsupported/);
  const c=sample();c.comments[0].anchor.kind='remote';assert.throws(()=>api.renderDigest(c),/anchor/);
  const d=sample();d.edits[0].formatting=[{start:4,end:99,marks:['bold']}];assert.throws(()=>api.renderDigest(d),/formatting/);
  const e=sample();e.edits[0].formatting=[{start:0,end:2,marks:['script']}];assert.throws(()=>api.renderDigest(e),/formatting/);
@@ -100,9 +100,9 @@ test('empty reviews still render; malformed or oversized reviews are rejected',(
 });
 test('page-originated messages cannot invoke a remote destination; only extension top frame can download Markdown',async()=>{
  let callback, download;
- const ctx={importScripts(){},PageNotesExport:api,encodeURIComponent,chrome:{runtime:{id:'our-extension',onMessage:{addListener(fn){callback=fn}}},downloads:{async download(opts){download=opts;return 8}}}};
+ const ctx={importScripts(){},PageCritExport:api,encodeURIComponent,chrome:{runtime:{id:'our-extension',onMessage:{addListener(fn){callback=fn}}},downloads:{async download(opts){download=opts;return 8}}}};
  vm.runInNewContext(readFileSync(new URL('../extension/background.js',import.meta.url),'utf8'),ctx);
- const invoke=sender=>new Promise(resolve=>callback({type:'PAGE_NOTES_EXPORT',review:sample(),destination:'https://evil.invalid/'},sender,resolve));
+ const invoke=sender=>new Promise(resolve=>callback({type:'PAGECRIT_EXPORT',review:sample(),destination:'https://evil.invalid/'},sender,resolve));
  assert.equal((await invoke({id:'foreign',tab:{id:1},frameId:0,url:'https://example.com'})).ok,false);
  assert.equal(download,undefined);
  assert.equal((await invoke({id:'our-extension',tab:{id:1},frameId:1,url:'https://example.com'})).ok,false);
@@ -114,14 +114,14 @@ test('page-originated messages cannot invoke a remote destination; only extensio
 });
 test('canceled download is returned as an error for draft retention',async()=>{
  let callback;
- vm.runInNewContext(readFileSync(new URL('../extension/background.js',import.meta.url),'utf8'),{importScripts(){},PageNotesExport:api,encodeURIComponent,chrome:{runtime:{id:'ext',onMessage:{addListener(fn){callback=fn}}},downloads:{async download(){throw new Error('User canceled')}}}});
- const result=await new Promise(resolve=>callback({type:'PAGE_NOTES_EXPORT',review:sample()},{id:'ext',tab:{id:1},frameId:0,url:'https://example.com'},resolve));
+ vm.runInNewContext(readFileSync(new URL('../extension/background.js',import.meta.url),'utf8'),{importScripts(){},PageCritExport:api,encodeURIComponent,chrome:{runtime:{id:'ext',onMessage:{addListener(fn){callback=fn}}},downloads:{async download(){throw new Error('User canceled')}}}});
+ const result=await new Promise(resolve=>callback({type:'PAGECRIT_EXPORT',review:sample()},{id:'ext',tab:{id:1},frameId:0,url:'https://example.com'},resolve));
  assert.equal(result.ok,false);assert.match(result.error,/canceled/);
 });
 test('render message returns the digest for Copy Markdown, only to our top-frame page script',async()=>{
  let callback;
- vm.runInNewContext(readFileSync(new URL('../extension/background.js',import.meta.url),'utf8'),{importScripts(){},PageNotesExport:api,encodeURIComponent,chrome:{runtime:{id:'ext',onMessage:{addListener(fn){callback=fn}}},downloads:{}}});
- const ask=sender=>new Promise(resolve=>callback({type:'PAGE_NOTES_RENDER',review:sample()},sender,resolve));
+ vm.runInNewContext(readFileSync(new URL('../extension/background.js',import.meta.url),'utf8'),{importScripts(){},PageCritExport:api,encodeURIComponent,chrome:{runtime:{id:'ext',onMessage:{addListener(fn){callback=fn}}},downloads:{}}});
+ const ask=sender=>new Promise(resolve=>callback({type:'PAGECRIT_RENDER',review:sample()},sender,resolve));
  assert.equal((await ask({id:'other',tab:{id:1},frameId:0,url:'https://example.com'})).ok,false);
  const result=await ask({id:'ext',tab:{id:1},frameId:0,url:'https://example.com'});
  assert.equal(result.ok,true);assert.match(result.markdown,/^# Review: Pricing/);
@@ -129,29 +129,29 @@ test('render message returns the digest for Copy Markdown, only to our top-frame
 test('copied and downloaded reviews are remembered locally: newest first, last 10 only, one entry per review',async()=>{
  let callback,store={},download;
  const local={async get(key){return {[key]:store[key]}},async set(obj){Object.assign(store,JSON.parse(JSON.stringify(obj)))},async remove(key){delete store[key]}};
- vm.runInNewContext(readFileSync(new URL('../extension/background.js',import.meta.url),'utf8'),{importScripts(){},PageNotesExport:api,encodeURIComponent,chrome:{runtime:{id:'ext',onMessage:{addListener(fn){callback=fn}}},storage:{local},downloads:{async download(opts){download=opts;return 5}}}});
+ vm.runInNewContext(readFileSync(new URL('../extension/background.js',import.meta.url),'utf8'),{importScripts(){},PageCritExport:api,encodeURIComponent,chrome:{runtime:{id:'ext',onMessage:{addListener(fn){callback=fn}}},storage:{local},downloads:{async download(opts){download=opts;return 5}}}});
  const ours={id:'ext',tab:{id:1},frameId:0,url:'https://example.com'};
  const send=(message,sender=ours)=>new Promise(resolve=>callback(message,sender,resolve));
  const review=(n,title=`Page ${n}`)=>{const r=sample();r.session.id=`s${n}`;r.page.title=title;return r;};
- for(let n=1;n<=12;n++)assert.equal((await send({type:n%2?'PAGE_NOTES_RENDER':'PAGE_NOTES_EXPORT',review:review(n)})).ok,true);
- let list=(await send({type:'PAGE_NOTES_RECENT',action:'list'})).reviews;
+ for(let n=1;n<=12;n++)assert.equal((await send({type:n%2?'PAGECRIT_RENDER':'PAGECRIT_EXPORT',review:review(n)})).ok,true);
+ let list=(await send({type:'PAGECRIT_RECENT',action:'list'})).reviews;
  assert.deepEqual(list.map(r=>r.id),['s12','s11','s10','s9','s8','s7','s6','s5','s4','s3']);
  assert.equal(list[0].markdown,undefined,'the list carries no review text');assert.equal(list[0].title,'Page 12');assert.equal(list[0].items,sample().comments.length+sample().edits.length+sample().removals.length);
  // Copying the same review again replaces its entry and moves it to the top.
- await send({type:'PAGE_NOTES_RENDER',review:review(5,'Page 5 again')});
- list=(await send({type:'PAGE_NOTES_RECENT',action:'list'})).reviews;
+ await send({type:'PAGECRIT_RENDER',review:review(5,'Page 5 again')});
+ list=(await send({type:'PAGECRIT_RECENT',action:'list'})).reviews;
  assert.equal(list.length,10);assert.equal(list[0].id,'s5');assert.equal(list[0].title,'Page 5 again');assert.equal(list.filter(r=>r.id==='s5').length,1);
- const md=await send({type:'PAGE_NOTES_RECENT',action:'markdown',id:'s5'});assert.match(md.markdown,/^# Review: Page 5 again/);
- download=undefined;assert.equal((await send({type:'PAGE_NOTES_RECENT',action:'download',id:'s12'})).downloadId,5);assert.match(download.filename,/ Page 12\.md$/);assert.match(decodeURIComponent(download.url),/# Review: Page 12/);
- assert.equal((await send({type:'PAGE_NOTES_RECENT',action:'markdown',id:'s1'})).ok,false,'dropped after 10');
- assert.equal((await send({type:'PAGE_NOTES_RECENT',action:'list'},{id:'other',tab:{id:1},frameId:0,url:'https://example.com'})).ok,false);
- assert.equal((await send({type:'PAGE_NOTES_RECENT',action:'list'},{...ours,frameId:2})).ok,false);
- await send({type:'PAGE_NOTES_RECENT',action:'delete',id:'s12'});assert.deepEqual(JSON.parse(JSON.stringify((await send({type:'PAGE_NOTES_RECENT',action:'list'})).reviews.map(r=>r.id))),['s5','s11','s10','s9','s8','s7','s6','s4','s3']);
- await send({type:'PAGE_NOTES_RECENT',action:'clear'});assert.equal((await send({type:'PAGE_NOTES_RECENT',action:'list'})).reviews.length,0);
+ const md=await send({type:'PAGECRIT_RECENT',action:'markdown',id:'s5'});assert.match(md.markdown,/^# Review: Page 5 again/);
+ download=undefined;assert.equal((await send({type:'PAGECRIT_RECENT',action:'download',id:'s12'})).downloadId,5);assert.match(download.filename,/ Page 12\.md$/);assert.match(decodeURIComponent(download.url),/# Review: Page 12/);
+ assert.equal((await send({type:'PAGECRIT_RECENT',action:'markdown',id:'s1'})).ok,false,'dropped after 10');
+ assert.equal((await send({type:'PAGECRIT_RECENT',action:'list'},{id:'other',tab:{id:1},frameId:0,url:'https://example.com'})).ok,false);
+ assert.equal((await send({type:'PAGECRIT_RECENT',action:'list'},{...ours,frameId:2})).ok,false);
+ await send({type:'PAGECRIT_RECENT',action:'delete',id:'s12'});assert.deepEqual(JSON.parse(JSON.stringify((await send({type:'PAGECRIT_RECENT',action:'list'})).reviews.map(r=>r.id))),['s5','s11','s10','s9','s8','s7','s6','s4','s3']);
+ await send({type:'PAGECRIT_RECENT',action:'clear'});assert.equal((await send({type:'PAGECRIT_RECENT',action:'list'})).reviews.length,0);
 });
 test('start-review keyboard command injects into http(s) HTML pages only, never past a modal dialog',async()=>{
  let onCommand;const calls=[];let inspection={modal:false,contentType:'text/html'};
- vm.runInNewContext(readFileSync(new URL('../extension/background.js',import.meta.url),'utf8'),{importScripts(){},PageNotesExport:api,encodeURIComponent,chrome:{runtime:{id:'ext',onMessage:{addListener(){}}},downloads:{},commands:{onCommand:{addListener(fn){onCommand=fn}}},scripting:{async executeScript(opts){calls.push(opts);return opts.func?[{result:inspection}]:[]}}}});
+ vm.runInNewContext(readFileSync(new URL('../extension/background.js',import.meta.url),'utf8'),{importScripts(){},PageCritExport:api,encodeURIComponent,chrome:{runtime:{id:'ext',onMessage:{addListener(){}}},downloads:{},commands:{onCommand:{addListener(fn){onCommand=fn}}},scripting:{async executeScript(opts){calls.push(opts);return opts.func?[{result:inspection}]:[]}}}});
  const settle=()=>new Promise(r=>setTimeout(r,10));const seen=()=>JSON.parse(JSON.stringify(calls.map(c=>c.files||'inspect')));
  onCommand('start-review',{id:7,url:'https://example.com/a'});await settle();
  assert.deepEqual(seen(),['inspect',['core.js','content.js']]);assert.equal(calls[1].target.tabId,7);
@@ -162,7 +162,7 @@ test('start-review keyboard command injects into http(s) HTML pages only, never 
 test('toolbar click opens the panel directly; pages that cannot be reviewed explain why on the button',async()=>{
  let onClicked;const calls=[],badges=[],titles=[];let inspection={modal:false,contentType:'text/html'};
  const action={onClicked:{addListener(fn){onClicked=fn}},async setBadgeText(o){badges.push(o.text)},async setBadgeBackgroundColor(){},async setTitle(o){titles.push(o.title)}};
- vm.runInNewContext(readFileSync(new URL('../extension/background.js',import.meta.url),'utf8'),{importScripts(){},PageNotesExport:api,encodeURIComponent,setTimeout(){},chrome:{action,runtime:{id:'ext',onMessage:{addListener(){}}},downloads:{},scripting:{async executeScript(opts){calls.push(opts);return opts.func?[{result:inspection}]:[]}}}});
+ vm.runInNewContext(readFileSync(new URL('../extension/background.js',import.meta.url),'utf8'),{importScripts(){},PageCritExport:api,encodeURIComponent,setTimeout(){},chrome:{action,runtime:{id:'ext',onMessage:{addListener(){}}},downloads:{},scripting:{async executeScript(opts){calls.push(opts);return opts.func?[{result:inspection}]:[]}}}});
  const settle=()=>new Promise(r=>setTimeout(r,10));const seen=()=>JSON.parse(JSON.stringify(calls.map(c=>c.files||'inspect')));
  onClicked({id:3,url:'https://example.com/'});await settle();assert.deepEqual(seen(),['inspect',['core.js','content.js']]);assert.deepEqual(badges,[]);
  calls.length=0;onClicked({id:3,url:'chrome://extensions/'});await settle();assert.equal(calls.length,0);assert.deepEqual(badges,['!']);assert.match(titles.at(-1),/regular web pages/);

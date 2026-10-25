@@ -7,7 +7,7 @@ import http from 'node:http';
 // Tools are toggles: turn one on only if it isn't already.
 const ensure=async tool=>{if(await tool.getAttribute('aria-pressed')!=='true')await tool.click();};
 const root=path.resolve(import.meta.dirname,'..');
-const temp=await mkdtemp(path.join(tmpdir(),'page-notes-test-'));
+const temp=await mkdtemp(path.join(tmpdir(),'pagecrit-test-'));
 const fixture=await readFile(path.join(root,'tests/fixture.html'));
 const server=http.createServer((_req,res)=>{res.setHeader('content-type','text/html');res.end(fixture);});
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
@@ -31,9 +31,9 @@ try {
  const tabId=await worker.evaluate(async url=>(await chrome.tabs.query({})).find(t=>t.url===url).id,url);
  const inject=()=>worker.evaluate(async tabId=>chrome.scripting.executeScript({target:{tabId},files:['core.js','content.js']}),tabId);
  await inject();
- const ui=page.locator('[data-page-notes-root]');
- await ui.getByRole('region',{name:'Page Notes review'}).waitFor();
- await inject(); assert.equal(await page.locator('[data-page-notes-root]').count(),1);
+ const ui=page.locator('[data-pagecrit-root]');
+ await ui.getByRole('region',{name:'PageCrit review'}).waitFor();
+ await inject(); assert.equal(await page.locator('[data-pagecrit-root]').count(),1);
  await ui.getByRole('button',{name:'Edit text',exact:true}).evaluate(el=>el.click());
  assert.equal(await ui.getByRole('button',{name:'Edit text',exact:true}).getAttribute('aria-pressed'),'false');
  console.log('PASS actual MV3 worker and isolated scripts; activation idempotent; synthetic clicks rejected');
@@ -90,7 +90,7 @@ try {
  await mkdir(path.join(temp,'downloads'));
  const cdp=await context.newCDPSession(page);
  await cdp.send('Browser.setDownloadBehavior',{behavior:'allow',downloadPath:path.join(temp,'downloads'),eventsEnabled:true});
- await worker.evaluate(()=>{const original=chrome.downloads.download.bind(chrome.downloads);globalThis.testDownloadOriginal=original;chrome.downloads.download=opts=>{globalThis.testRequestedFilename=opts.filename;return original({...opts,saveAs:false});};const render=PageNotesExport.renderDigest;PageNotesExport.renderDigest=review=>{globalThis.lastReview=review;return render(review);};});
+ await worker.evaluate(()=>{const original=chrome.downloads.download.bind(chrome.downloads);globalThis.testDownloadOriginal=original;chrome.downloads.download=opts=>{globalThis.testRequestedFilename=opts.filename;return original({...opts,saveAs:false});};const render=PageCritExport.renderDigest;PageCritExport.renderDigest=review=>{globalThis.lastReview=review;return render(review);};});
  await ui.getByRole('button',{name:'Download review',exact:true}).click();
  await ui.getByRole('status').filter({hasText:'Download started'}).waitFor();
  let downloaded;
@@ -111,7 +111,7 @@ try {
  assert.match(markdown,/### \d\. Comment · pin 1 · suggested\n- Note: Clarify this lower section\.\n[\s\S]*- Text: `Lower-page content for coordinate tests\.`/);
  assert.match(markdown,/### \d\. Comment · pin 2 · suggested\n- Note: Make this section more useful\.\n[\s\S]*- Locator: `#nested`/);
  assert.ok(markdown.length<8000,`digest stays small: ${markdown.length}`);
- for(const forbidden of ['SYNTHETIC_SECRET','SYNTHETIC_PASSWORD','SYNTHETIC_HIDDEN','SYNTHETIC_FORM','SYNTHETIC_TOKEN','data-page-notes-root','<script','onclick=','accidentalClicks'])assert.ok(!markdown.includes(forbidden),forbidden);
+ for(const forbidden of ['SYNTHETIC_SECRET','SYNTHETIC_PASSWORD','SYNTHETIC_HIDDEN','SYNTHETIC_FORM','SYNTHETIC_TOKEN','data-pagecrit-root','<script','onclick=','accidentalClicks'])assert.ok(!markdown.includes(forbidden),forbidden);
  console.log('PASS complete local Markdown digest: exact edits with inline markup, anchored context, no page secrets or scripts');
  // Dynamic replacement remains a request with conflict flag, never silently matched to replacement.
  await page.locator('#headline').evaluate(el=>{el.innerHTML='Server replaced this heading';});
@@ -126,7 +126,7 @@ try {
  await page.screenshot({path:path.join(root,'test-results/review.png')});
  await ui.getByRole('button',{name:'Close review',exact:true}).click();
  await ui.getByRole('button',{name:'Discard & close',exact:true}).click();
- assert.equal(await page.locator('[data-page-notes-root]').count(),0);
+ assert.equal(await page.locator('[data-pagecrit-root]').count(),0);
  assert.equal(await page.locator('#cta').textContent(),'Start your next chapter');
  assert.equal(await page.locator('#headline').textContent(),'Server replaced this heading');
  console.log('PASS failed download retains draft; conflicting site change not overwritten by discard; UI cleanup');
@@ -139,7 +139,7 @@ try {
  const prodPage=await context.newPage();await prodPage.goto(url);
  const prodTab=await prodWorker.evaluate(async url=>(await chrome.tabs.query({})).find(t=>t.url===url).id,url);
  await prodWorker.evaluate(async tabId=>chrome.scripting.executeScript({target:{tabId},files:['core.js','content.js']}),prodTab);
- assert.equal(await prodPage.locator('[data-page-notes-root]').evaluate(el=>el.shadowRoot),null);
+ assert.equal(await prodPage.locator('[data-pagecrit-root]').evaluate(el=>el.shadowRoot),null);
  const prodCDP=await context.newCDPSession(prodPage);
  async function clickAccessible(name) {
    const {nodes}=await prodCDP.send('Accessibility.getFullAXTree');

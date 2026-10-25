@@ -7,7 +7,7 @@ import {tmpdir} from 'node:os';
 import http from 'node:http';
 // Tools are toggles: turn one on only if it isn't already.
 const ensure=async tool=>{if(await tool.getAttribute('aria-pressed')!=='true')await tool.click();};
-const root=path.resolve(import.meta.dirname,'..'), temp=await mkdtemp(path.join(tmpdir(),'page-notes-limits-'));
+const root=path.resolve(import.meta.dirname,'..'), temp=await mkdtemp(path.join(tmpdir(),'pagecrit-limits-'));
 const huge='<div hidden>'+'x'.repeat(11*1024*1024)+'</div><p id="wall">'+'word '.repeat(300000)+'</p>'+'<div class="css-1x9f3k">'.repeat(300)+'<span id="deep" aria-label="'+'L'.repeat(100000)+'">Deep target</span>'+'</div>'.repeat(300);
 const server=http.createServer((_req,res)=>res.end('<!doctype html><title>'+'T'.repeat(5000)+'</title><h1>Review this page</h1><p id="keep">Keep this feedback</p>'+huge));
 await new Promise(r=>server.listen(0,'127.0.0.1',r));const base=`http://127.0.0.1:${server.address().port}/`;
@@ -23,7 +23,7 @@ try {
  const page=await context.newPage();await page.goto(base);
  const tab=await worker.evaluate(async url=>(await chrome.tabs.query({})).find(t=>t.url===url).id,page.url());
  await worker.evaluate(async tabId=>chrome.scripting.executeScript({target:{tabId},files:['core.js','content.js']}),tab);
- const ui=page.locator('[data-page-notes-root]');const button=name=>ui.getByRole('button',{name,exact:true});
+ const ui=page.locator('[data-pagecrit-root]');const button=name=>ui.getByRole('button',{name,exact:true});
  await mkdir(path.join(temp,'downloads'));const cdp=await context.newCDPSession(page);await cdp.send('Browser.setDownloadBehavior',{behavior:'allow',downloadPath:path.join(temp,'downloads')});
  const started=Date.now();
  for(const selector of ['#keep','#wall','#deep']){await ensure(button('Pin'));await page.locator(selector).scrollIntoViewIfNeeded();const b=await page.locator(selector).boundingBox();await page.mouse.click(b.x+5,b.y+5);await ui.locator('textarea').fill(`Note on ${selector}`);await button('Save').click();}

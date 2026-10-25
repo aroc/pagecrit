@@ -23,8 +23,8 @@ jobs:
       - run: npm run package
       - uses: actions/upload-artifact@v4
         with:
-          name: page-notes-chrome
-          path: dist/page-notes.zip
+          name: pagecrit-chrome
+          path: dist/pagecrit.zip
   # Pushing a v* tag publishes a GitHub release with the tested zip attached.
   release:
     needs: test
@@ -36,15 +36,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: page-notes-chrome
+          name: pagecrit-chrome
       - name: Check the tag matches the manifest version
         run: test "v$(node -p "require('./extension/manifest.json').version")" = "$GITHUB_REF_NAME"
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" page-notes.zip --title "Page Notes ${GITHUB_REF_NAME#v}" --notes-file - <<'EOF'
-          Download **page-notes.zip**, unzip it, then open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked** and choose the unzipped `page-notes` folder.
+          gh release create "$GITHUB_REF_NAME" pagecrit.zip --title "PageCrit ${GITHUB_REF_NAME#v}" --notes-file - <<'EOF'
+          Download **pagecrit.zip**, unzip it, then open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked** and choose the unzipped `pagecrit` folder.
 
           Updating? Remove the old version (or replace its folder), load the new one, then refresh any tabs you were reviewing.
           EOF

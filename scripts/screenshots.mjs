@@ -12,7 +12,7 @@ const root=path.resolve(import.meta.dirname,'..');
 const out=path.join(root,'site/assets');
 await mkdir(out,{recursive:true});
 await cp(path.join(root,'extension/icons/icon-128.png'),path.join(out,'icon-128.png'));
-const temp=await mkdtemp(path.join(tmpdir(),'page-notes-shots-'));
+const temp=await mkdtemp(path.join(tmpdir(),'pagecrit-shots-'));
 const demo=await readFile(path.join(root,'scripts/demo/index.html'));
 const server=http.createServer((_req,res)=>{res.setHeader('content-type','text/html');res.end(demo);});
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
@@ -31,7 +31,7 @@ try {
  const page=await context.newPage();await page.goto(url);
  const tab=await worker.evaluate(async url=>(await chrome.tabs.query({})).find(t=>t.url===url).id,url);
  await worker.evaluate(async tabId=>chrome.scripting.executeScript({target:{tabId},files:['core.js','content.js']}),tab);
- const ui=page.locator('[data-page-notes-root]');await ui.getByRole('region',{name:'Page Notes review'}).waitFor();
+ const ui=page.locator('[data-pagecrit-root]');await ui.getByRole('region',{name:'PageCrit review'}).waitFor();
  await page.waitForTimeout(400); // handwriting font
  const button=name=>ui.getByRole('button',{name,exact:true});
  const ensure=async name=>{if(await button(name).getAttribute('aria-pressed')!=='true')await button(name).click();};
@@ -58,7 +58,7 @@ try {
  const vp=page.viewportSize(), at=(x,y)=>`${(x/vp.width).toFixed(3)},${(y/vp.height).toFixed(3)}`;
  const pinBox=await box(ui.locator('.pin').filter({hasText:/^1$/})), copyBox=await box(button('Copy Markdown'));
  anchors={pin:at(pinBox.x+pinBox.width/2,pinBox.y+pinBox.height+8),copy:at(copyBox.x,copyBox.y+copyBox.height/2)};
- await shot('panel.png',pad(await box(ui.getByRole('region',{name:'Page Notes review'})),12));
+ await shot('panel.png',pad(await box(ui.getByRole('region',{name:'PageCrit review'})),12));
  await shot('row-severity.png',pad(await box(ui.locator('article').first()),6));
 
  // Pin to element: hover outline and the element's tag, next to placed pins.
@@ -113,7 +113,7 @@ try {
  const fresh=await context.newPage();await fresh.setViewportSize({width:1440,height:900});await fresh.goto(url);
  const freshTab=await worker.evaluate(async()=>(await chrome.tabs.query({active:true,currentWindow:true}))[0].id);
  await worker.evaluate(async tabId=>chrome.scripting.executeScript({target:{tabId},files:['core.js','content.js']}),freshTab);
- const freshUi=fresh.locator('[data-page-notes-root]');await freshUi.getByRole('button',{name:'Recent reviews (3)'}).click();
+ const freshUi=fresh.locator('[data-pagecrit-root]');await freshUi.getByRole('button',{name:'Recent reviews (3)'}).click();
  const recentList=freshUi.getByRole('region',{name:'Recent reviews'});await recentList.waitFor();await fresh.waitForTimeout(400);
  const rb=await recentList.boundingBox();await fresh.mouse.move(1,899);
  await fresh.screenshot({path:path.join(out,'recent.png'),clip:{x:rb.x-18,y:rb.y-4,width:rb.width+36,height:rb.height+14}});
@@ -132,7 +132,7 @@ try {
   p{font-size:18px;line-height:1.5;color:#585c69;margin:0}
   .shot{position:absolute;left:500px;top:96px;width:720px;border-radius:16px;overflow:hidden;box-shadow:0 30px 70px -30px #1f243080,0 0 0 1px #1f24301a;transform:rotate(-1.5deg)}
   .shot img{display:block;width:100%}</style>
-  <div class="copy"><div class="mark"><svg viewBox="0 0 100 100"><path d="M20 9C42 5.5 67 5.5 83 9.5C93 12 95.5 19 95.5 32V52C95.5 65 91 70 79 70H63L50.5 92L38 70H21.5C9.5 70 5 65 5 52V30C5 17.5 8.5 11 20 9Z" fill="#2f4be0" stroke="#2f4be0" stroke-width="4" stroke-linejoin="round"/><path d="M26 49C42 43.5 60 41.5 75 41.5" fill="none" stroke="#ffe36e" stroke-width="10" stroke-linecap="round"/></svg>Page Notes</div>
+  <div class="copy"><div class="mark"><svg viewBox="0 0 100 100"><path d="M20 9C42 5.5 67 5.5 83 9.5C93 12 95.5 19 95.5 32V52C95.5 65 91 70 79 70H63L50.5 92L38 70H21.5C9.5 70 5 65 5 52V30C5 17.5 8.5 11 20 9Z" fill="#2f4be0" stroke="#2f4be0" stroke-width="4" stroke-linejoin="round"/><path d="M26 49C42 43.5 60 41.5 75 41.5" fill="none" stroke="#ffe36e" stroke-width="10" stroke-linecap="round"/></svg>PageCrit</div>
   <h1>Mark up any web page.<br>Hand it to your coding agent.</h1><p>Pins, in-place text edits and removals, turned into one Markdown review.</p></div>
   <div class="shot"><img src="data:image/png;base64,${heroData}"></div>`);
  await banner.waitForTimeout(300);

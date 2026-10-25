@@ -1,7 +1,7 @@
 /* DOM evidence and geometry helpers. No network access; never evaluates page content. */
 (function (root) {
   'use strict';
-  const ROOT = '[data-page-notes-root]';
+  const ROOT = '[data-pagecrit-root]';
   const BLOCKED = 'script,style,noscript,template,input,textarea,select,option,iframe,object,embed,svg,canvas,[contenteditable]:not([contenteditable="false"])';
   const finite = (value, fallback = 0) => Number.isFinite(value) ? value : fallback;
   const truncate = (text, max = 240) => String(text || '').replace(/\s+/g, ' ').trim().slice(0, max);
@@ -684,6 +684,6 @@
     captureContext, inlineMarkup, isHashedToken, cleanUrl,
     createSegment, segmentCurrent, segmentContains, segmentTextNodes, renderSegment, readSegment, segmentOffset, segmentPosition,
     describeElement, scrollContainerFor, createAnchor, resolveAnchor, findElement, snapshotDocument, caretAtPoint, locateTextNodeAtPoint, describeTextNode, resolveTextNode, isEditableTextNode, applyTextEdit };
-  root.PageNotesCore = Object.freeze(api);
+  root.PageCritCore = Object.freeze(api);
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof globalThis !== 'undefined' ? globalThis : window);

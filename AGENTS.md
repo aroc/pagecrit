@@ -1,4 +1,4 @@
-# Page Notes
+# PageCrit
 
 Chrome Manifest V3 extension for local review of rendered web pages. Keep the product small: feedback pins, plain-text edits, explicit local export.
 

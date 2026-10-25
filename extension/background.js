@@ -5,8 +5,8 @@ importScripts('export.js');
 // The content script neither knows API tokens nor sends network requests.
 const destinations = {
   async file(review) {
-    const markdown = PageNotesExport.renderDigest(review);
-    const filename = PageNotesExport.filename(review);
+    const markdown = PageCritExport.renderDigest(review);
+    const filename = PageCritExport.filename(review);
     const id = await saveMarkdown(markdown, filename);
     await remember(review, markdown, filename);
     return {ok: true, downloadId: id};
@@ -79,31 +79,31 @@ async function handleDraft(message, tabId) {
   return {ok: false};
 }
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
-  if (message?.type === 'PAGE_NOTES_DRAFT') {
+  if (message?.type === 'PAGECRIT_DRAFT') {
     if (sender.id !== chrome.runtime.id || !sender.tab || sender.frameId !== 0 || !/^https?:\/\//i.test(sender.url || '')) { respond({ok: false}); return; }
     handleDraft(message, sender.tab.id).then(respond).catch(() => respond({ok: false}));
     return true;
   }
-  if (message?.type === 'PAGE_NOTES_RECENT') {
+  if (message?.type === 'PAGECRIT_RECENT') {
     if (sender.id !== chrome.runtime.id || !sender.tab || sender.frameId !== 0 || !/^https?:\/\//i.test(sender.url || '')) { respond({ok: false}); return; }
     handleRecent(message).then(respond).catch(error => respond({ok: false, error: error.message}));
     return true;
   }
-  if (message?.type === 'PAGE_NOTES_FONT') {
+  if (message?.type === 'PAGECRIT_FONT') {
     if (sender.id !== chrome.runtime.id || !sender.tab) return;
     handFont().then(respond).catch(() => respond({ok: false}));
     return true;
   }
-  if (message?.type !== 'PAGE_NOTES_EXPORT' && message?.type !== 'PAGE_NOTES_RENDER') return;
+  if (message?.type !== 'PAGECRIT_EXPORT' && message?.type !== 'PAGECRIT_RENDER') return;
   // Only our injected top-frame script can request a local export. No external messaging API.
   if (sender.id !== chrome.runtime.id || !sender.tab || sender.frameId !== 0 || !/^https?:\/\//i.test(sender.url || '')) {
     respond({ok: false, error: 'Export must come from the page you are reviewing.'});
     return;
   }
-  if (message.type === 'PAGE_NOTES_RENDER') {
+  if (message.type === 'PAGECRIT_RENDER') {
     let markdown;
-    try { markdown = PageNotesExport.renderDigest(message.review); } catch (error) { respond({ok: false, error: error.message}); return; }
-    remember(message.review, markdown, PageNotesExport.filename(message.review)).then(() => respond({ok: true, markdown}));
+    try { markdown = PageCritExport.renderDigest(message.review); } catch (error) { respond({ok: false, error: error.message}); return; }
+    remember(message.review, markdown, PageCritExport.filename(message.review)).then(() => respond({ok: true, markdown}));
     return true;
   }
   destinations.file(message.review).then(respond).catch(error => respond({ok: false, code: error.code, error: error.message || 'Download failed. Your draft is still open.'}));
@@ -116,21 +116,21 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
 async function startReview(tab) {
   if (!tab?.id) return false;
   try {
-    if (!/^https?:\/\//i.test(tab.url || '')) return explain(tab.id, 'Page Notes works on regular web pages, not browser pages, PDFs or the Chrome Web Store.');
+    if (!/^https?:\/\//i.test(tab.url || '')) return explain(tab.id, 'PageCrit works on regular web pages, not browser pages, PDFs or the Chrome Web Store.');
     const started = await inject(tab.id, {show: true});
     return started === true ? true : explain(tab.id, started);
   } catch (_) {
-    return explain(tab.id, 'Chrome doesn’t allow Page Notes on this page.');
+    return explain(tab.id, 'Chrome doesn’t allow PageCrit on this page.');
   }
 }
 async function explain(tabId, reason) {
   if (!chrome.action) return false;
   await chrome.action.setBadgeText({tabId, text: '!'});
   await chrome.action?.setBadgeBackgroundColor?.({tabId, color: '#d9443a'});
-  await chrome.action?.setTitle({tabId, title: `Page Notes: ${reason}`});
+  await chrome.action?.setTitle({tabId, title: `PageCrit: ${reason}`});
   setTimeout(() => {
     chrome.action?.setBadgeText({tabId, text: ''}).catch(() => {});
-    chrome.action?.setTitle({tabId, title: 'Page Notes: review this page'}).catch(() => {});
+    chrome.action?.setTitle({tabId, title: 'PageCrit: review this page'}).catch(() => {});
   }, 6000);
   return false;
 }
@@ -141,7 +141,7 @@ async function inject(tabId, {show}) {
   const [inspection] = await chrome.scripting.executeScript({target: {tabId: tab.id}, func: () => ({
     modal: Boolean(document.querySelector('dialog:modal')),
     contentType: document.contentType,
-    running: Boolean(globalThis.__pageNotesSession)
+    running: Boolean(globalThis.__pageCritSession)
   })});
   if (inspection?.result?.running && !show) return false;
   if (inspection?.result?.modal) return 'Close the page’s dialog first, then click again.';
