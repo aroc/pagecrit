@@ -15,7 +15,11 @@
       assert(typeof comment.id === 'string' && typeof comment.text === 'string' && comment.text.length <= 20000, 'Invalid comment.');
       assert(['page', 'element'].includes(comment.anchor?.kind), 'Invalid pin anchor.');
     }
-    for (const edit of bundle.edits) assert(typeof edit.before === 'string' && typeof edit.after === 'string' && edit.locator, 'Invalid text edit.');
+    for (const edit of bundle.edits) {
+      assert(typeof edit.before === 'string' && typeof edit.after === 'string' && edit.locator, 'Invalid text edit.');
+      assert(edit.formatting === undefined || (Array.isArray(edit.formatting) && edit.formatting.every(run => Number.isInteger(run.start) && Number.isInteger(run.end) && run.start >= 0 && run.start < run.end && run.end <= edit.after.length && Array.isArray(run.marks) && run.marks.every(mark => ['bold', 'italic', 'underline', 'strike'].includes(mark)))), 'Invalid text formatting.');
+      assert(edit.afterHtml === undefined || typeof edit.afterHtml === 'string', 'Invalid formatted text.');
+    }
     return bundle;
   }
   function quote(text) { return String(text).split('\n').map(line => '> ' + line).join('\n'); }
@@ -26,6 +30,7 @@
     });
     bundle.edits.forEach((edit, i) => {
       lines.push(`## Text edit ${i + 1}`, 'Before:', quote(edit.before), '', 'After:', quote(edit.after), '');
+      if (edit.formatting?.length) lines.push('After, with requested formatting (HTML):', quote(edit.afterHtml || ''), '');
     });
     return lines.join('\n');
   }

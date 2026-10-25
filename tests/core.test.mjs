@@ -179,3 +179,21 @@ test('page anchors inside a scrolling container follow that container, not the w
   assert.equal(core.resolveAnchor(anchor, el, scroller).resolved, false);
   assert.equal(core.createAnchor(el, 70, 155, 'element').container, undefined);
 });
+
+test('formatted text model: typing inherits formatting, toggles, runs and escaped HTML', () => {
+  let m = core.plainModel('Make space');
+  m = core.toggleMark(m, 5, 10, 'bold');
+  assert.deepEqual(core.modelFormatting(m), [{ start: 5, end: 10, marks: ['bold'] }]);
+  m = core.replaceRange(m, 10, 10, ' now');
+  assert.equal(m.text, 'Make space now');
+  assert.deepEqual(core.modelFormatting(m), [{ start: 5, end: 14, marks: ['bold'] }], 'typing after bold stays bold');
+  m = core.toggleMark(m, 0, 14, 'bold');
+  assert.deepEqual(core.modelFormatting(m), [{ start: 0, end: 14, marks: ['bold'] }], 'mixed selection becomes all bold');
+  m = core.toggleMark(m, 0, 14, 'bold');
+  assert.deepEqual(core.modelFormatting(m), [], 'fully bold selection toggles off');
+  m = core.toggleMark(core.toggleMark(core.plainModel('<a> & b'), 0, 3, 'italic'), 0, 7, 'strike');
+  assert.equal(core.modelHtml(m), '<em><s>&lt;a&gt;</s></em><s> &amp; b</s>');
+  assert.ok(core.modelsEqual(core.modelFrom(m.text, core.modelFormatting(m)), m));
+  assert.throws(() => core.toggleMark(m, 0, 1, 'script'), /Unknown mark/);
+  assert.deepEqual(core.modelFrom('abc', [{ start: -5, end: 99, marks: ['bold', 'onclick'] }]).marks, ['bold', 'bold', 'bold']);
+});

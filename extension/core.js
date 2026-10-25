@@ -228,6 +228,146 @@
     return { ...description, newText: text };
   }
 
+  // Formatted replacement text: `marks[i]` lists the styles of UTF-16 unit i, e.g. "bold,italic".
+  // A text edit owns one "segment": the original text node, or the nodes rendered in its place.
+  const MARK_TAGS = { bold: 'strong', italic: 'em', underline: 'u', strike: 's' };
+  const MARKS = Object.keys(MARK_TAGS);
+  const TAG_MARKS = Object.fromEntries(MARKS.map(mark => [MARK_TAGS[mark], mark]));
+  const normalizeMarks = list => MARKS.filter(mark => list.includes(mark)).join(',');
+  function plainModel(text) { return { text: String(text), marks: Array(String(text).length).fill('') }; }
+  function modelFrom(text, formatting = []) {
+    const model = plainModel(text);
+    for (const run of formatting || []) {
+      const start = Math.max(0, Math.min(model.text.length, run.start | 0)), end = Math.max(start, Math.min(model.text.length, run.end | 0));
+      const marks = normalizeMarks((run.marks || []).filter(mark => MARKS.includes(mark)));
+      for (let i = start; i < end; i++) model.marks[i] = marks;
+    }
+    return model;
+  }
+  function marksAt(model, offset) { return offset > 0 ? model.marks[offset - 1] : (model.marks[0] || ''); }
+  function replaceRange(model, start, end, text, marks = marksAt(model, start)) {
+    return { text: model.text.slice(0, start) + text + model.text.slice(end), marks: [...model.marks.slice(0, start), ...Array(text.length).fill(marks), ...model.marks.slice(end)] };
+  }
+  function toggleMarkSet(marks, mark, on) {
+    const list = marks ? marks.split(',') : [];
+    return normalizeMarks(on ? [...list, mark] : list.filter(item => item !== mark));
+  }
+  function rangeHasMark(model, start, end, mark) {
+    if (start === end) return marksAt(model, start).split(',').includes(mark);
+    for (let i = start; i < end; i++) if (!model.marks[i].split(',').includes(mark)) return false;
+    return true;
+  }
+  function toggleMark(model, start, end, mark) {
+    if (!MARKS.includes(mark)) throw new TypeError('Unknown mark');
+    const on = !rangeHasMark(model, start, end, mark);
+    const marks = model.marks.slice();
+    for (let i = start; i < end; i++) marks[i] = toggleMarkSet(marks[i], mark, on);
+    return { text: model.text, marks };
+  }
+  function modelRuns(model) {
+    const runs = [];
+    for (let i = 0; i < model.text.length; i++) {
+      const last = runs[runs.length - 1];
+      if (last && last.marks === model.marks[i]) last.text += model.text[i];
+      else runs.push({ text: model.text[i], marks: model.marks[i], start: i });
+    }
+    return runs;
+  }
+  function modelFormatting(model) {
+    return modelRuns(model).filter(run => run.marks).map(run => ({ start: run.start, end: run.start + run.text.length, marks: run.marks.split(',') }));
+  }
+  function modelsEqual(a, b) { return a.text === b.text && a.marks.join('|') === b.marks.join('|'); }
+  function escapeHtml(text) { return text.replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]); }
+  function modelHtml(model) {
+    return modelRuns(model).map(run => {
+      const tags = run.marks ? run.marks.split(',').map(mark => MARK_TAGS[mark]) : [];
+      return tags.map(tag => `<${tag}>`).join('') + escapeHtml(run.text) + tags.reverse().map(tag => `</${tag}>`).join('');
+    }).join('');
+  }
+
+  const segmentSignature = nodes => nodes.map(node => node.nodeType === 3 ? '#' + node.data : node.outerHTML).join('\u0000');
+  function createSegment(node) {
+    return { original: node, nodes: [node], parent: node.parentElement, signature: segmentSignature([node]) };
+  }
+  // False once the page replaced, moved or changed any node the segment rendered.
+  function segmentCurrent(segment) {
+    const nodes = segment?.nodes || [];
+    if (!nodes.length) return false;
+    for (let i = 0; i < nodes.length; i++) {
+      if (!nodes[i].isConnected || nodes[i].parentNode !== segment.parent) return false;
+      if (i && nodes[i - 1].nextSibling !== nodes[i]) return false;
+    }
+    return segmentSignature(nodes) === segment.signature;
+  }
+  function segmentContains(segment, node) { return Boolean(node && segment?.nodes.some(item => item === node || item.contains(node))); }
+  function segmentTextNodes(segment) {
+    const texts = [];
+    const walk = node => { if (node.nodeType === 3) texts.push(node); else node.childNodes.forEach(walk); };
+    segment.nodes.forEach(walk);
+    return texts;
+  }
+  // Unformatted text stays the original node, so sites keep their own node in the common case.
+  function renderSegment(segment, model) {
+    const document = docFor(segment.parent);
+    const plain = model.marks.every(marks => !marks);
+    if (plain && segment.nodes.length === 1 && segment.nodes[0] === segment.original) {
+      segment.original.data = model.text;
+    } else {
+      let nodes;
+      if (plain) { segment.original.data = model.text; nodes = [segment.original]; }
+      else nodes = modelRuns(model).map(run => {
+        let node = document.createTextNode(run.text);
+        for (const mark of (run.marks ? run.marks.split(',') : []).reverse()) {
+          const wrapper = document.createElement(MARK_TAGS[mark]);
+          wrapper.append(node); node = wrapper;
+        }
+        return node;
+      });
+      const after = segment.nodes[segment.nodes.length - 1].nextSibling;
+      segment.nodes.forEach(node => node.remove());
+      const fragment = document.createDocumentFragment();
+      fragment.append(...nodes);
+      segment.parent.insertBefore(fragment, after);
+      segment.nodes = nodes;
+    }
+    segment.signature = segmentSignature(segment.nodes);
+  }
+  // Reads the segment back after native changes (IME composition) and accepts them.
+  function readSegment(segment) {
+    const model = { text: '', marks: [] };
+    for (const text of segmentTextNodes(segment)) {
+      const marks = [];
+      for (let el = text.parentElement; el && el !== segment.parent; el = el.parentElement) if (TAG_MARKS[el.localName]) marks.push(TAG_MARKS[el.localName]);
+      model.text += text.data;
+      model.marks.push(...Array(text.data.length).fill(normalizeMarks(marks)));
+    }
+    segment.signature = segmentSignature(segment.nodes);
+    return model;
+  }
+  // Maps a DOM boundary point to a text offset, clamped to the segment.
+  function segmentOffset(segment, container, offset) {
+    let total = 0;
+    for (const text of segmentTextNodes(segment)) {
+      if (container === text) return total + Math.min(offset, text.length);
+      const range = docFor(text).createRange();
+      range.selectNodeContents(text);
+      try { if (range.comparePoint(container, offset) < 0) return total; } catch (_) { return total; }
+      total += text.length;
+    }
+    return total;
+  }
+  // Prefers the end of the earlier node, where text typed next inherits its formatting.
+  function segmentPosition(segment, offset) {
+    const texts = segmentTextNodes(segment);
+    let total = 0;
+    for (const text of texts) {
+      if (offset <= total + text.length) return { node: text, offset: Math.max(0, offset - total) };
+      total += text.length;
+    }
+    const last = texts[texts.length - 1];
+    return last ? { node: last, offset: last.length } : null;
+  }
+
   function snapshotDocument() {
     const document = root.document;
     if (!document?.documentElement) throw new Error('No page document available');
@@ -276,7 +416,10 @@
     return '<!DOCTYPE html>\n' + clone.outerHTML;
   }
 
-  const api = { describeElement, scrollContainerFor, createAnchor, resolveAnchor, findElement, snapshotDocument, caretAtPoint, locateTextNodeAtPoint, describeTextNode, resolveTextNode, isEditableTextNode, applyTextEdit };
+  const api = {
+    MARKS, plainModel, modelFrom, marksAt, replaceRange, toggleMark, modelRuns, modelFormatting, modelsEqual, modelHtml,
+    createSegment, segmentCurrent, segmentContains, segmentTextNodes, renderSegment, readSegment, segmentOffset, segmentPosition,
+    describeElement, scrollContainerFor, createAnchor, resolveAnchor, findElement, snapshotDocument, caretAtPoint, locateTextNodeAtPoint, describeTextNode, resolveTextNode, isEditableTextNode, applyTextEdit };
   root.PageNotesCore = Object.freeze(api);
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof globalThis !== 'undefined' ? globalThis : window);

@@ -147,6 +147,45 @@ try {
   const bundle=await exportBundle();assert.deepEqual(bundle.edits.map(e=>[e.before,e.after]),[['Simple ','A Simple '],['Original paragraph for edit cycles.','Committed by clicking away']]);
   assert.ok(!bundle.snapshots.editedHtml.includes('contenteditable'));
  });
+ await test('keyboard formatting: bold/italic/underline/strike wrap only the selection, survive re-editing, revert and export',async({page,ui,button,clickText,editing,exportBundle})=>{
+  await page.evaluate(()=>{window.siteKeys=0;document.addEventListener('keydown',()=>window.siteKeys++);});
+  const original=await page.locator('#plain').innerHTML();
+  await button('Aa Edit text').click();await clickText('#plain');
+  // "Original paragraph for edit cycles." -> select "paragraph" (offset 9..18)
+  await page.keyboard.press('ControlOrMeta+A');await page.keyboard.press('ArrowLeft');for(let i=0;i<9;i++)await page.keyboard.press('ArrowRight');
+  for(let i=0;i<9;i++)await page.keyboard.press('Shift+ArrowRight');
+  await page.keyboard.press('ControlOrMeta+B');
+  assert.equal(await page.locator('#plain').innerHTML(),'Original <strong>paragraph</strong> for edit cycles.');
+  await page.keyboard.press('ControlOrMeta+I');assert.equal(await page.locator('#plain').innerHTML(),'Original <strong><em>paragraph</em></strong> for edit cycles.');
+  await page.keyboard.press('ControlOrMeta+I');await page.keyboard.press('ArrowRight');
+  // Typing right after bold text continues bold; a collapsed toggle switches it off for what follows.
+  await page.keyboard.type('s');await page.keyboard.press('ControlOrMeta+B');await page.keyboard.type('!');
+  assert.equal(await page.locator('#plain').innerHTML(),'Original <strong>paragraphs</strong>! for edit cycles.');
+  // One undo removes the coalesced typing run "s!".
+  await page.keyboard.press('ControlOrMeta+Z');assert.equal(await page.locator('#plain').innerHTML(),'Original <strong>paragraph</strong> for edit cycles.');
+  await page.keyboard.press('Enter');assert.equal(await editing(),0);
+  // Re-edit by clicking inside the bold run, add underline + strike to "edit".
+  await clickText('#plain strong');assert.equal(await page.locator('#plain').getAttribute('contenteditable'),'plaintext-only');
+  await page.keyboard.press('ControlOrMeta+A');await page.keyboard.press('ArrowRight');for(let i=0;i<12;i++)await page.keyboard.press('ArrowLeft');for(let i=0;i<4;i++)await page.keyboard.press('Shift+ArrowRight');
+  await page.keyboard.press('ControlOrMeta+U');await page.keyboard.press('ControlOrMeta+Shift+X');await page.keyboard.press('Enter');
+  assert.equal(await page.locator('#plain').innerHTML(),'Original <strong>paragraph</strong> for <u><s>edit</s></u> cycles.');
+  assert.equal(await ui.locator('article .after strong').textContent(),'paragraph');
+  const bundle=await exportBundle();assert.equal(bundle.edits.length,1);const e=bundle.edits[0];
+  assert.equal(e.before,'Original paragraph for edit cycles.');assert.equal(e.after,'Original paragraph for edit cycles.');
+  assert.deepEqual(e.formatting,[{start:9,end:18,marks:['bold']},{start:23,end:27,marks:['underline','strike']}]);
+  assert.equal(e.afterHtml,'Original <strong>paragraph</strong> for <u><s>edit</s></u> cycles.');assert.match(bundle.reviewMarkdown,/<strong>paragraph<\/strong>/);
+  assert.match(bundle.snapshots.editedHtml,/<strong>paragraph<\/strong>/);assert.equal(await page.evaluate(()=>window.siteKeys),0);
+  await ui.locator('article').getByRole('button',{name:'Revert',exact:true}).click();assert.equal(await page.locator('#plain').innerHTML(),original);
+  assert.equal(await page.locator('#plain').evaluate(el=>el.childNodes.length),1);
+ });
+ await test('removing all formatting from an edit restores the original text node and drops the edit',async({page,ui,button,clickText,editing,exportBundle})=>{
+  const node=await page.locator('#pin1').evaluateHandle(el=>el.firstChild);
+  await button('Aa Edit text').click();await clickText('#pin1');await page.keyboard.press('ControlOrMeta+A');await page.keyboard.press('ControlOrMeta+B');await page.keyboard.press('Enter');
+  assert.equal(await page.locator('#pin1').innerHTML(),'<strong>First comment target</strong>');assert.equal((await exportBundle()).edits.length,1);
+  await clickText('#pin1 strong');await page.keyboard.press('ControlOrMeta+A');await page.keyboard.press('ControlOrMeta+B');await page.keyboard.press('Enter');
+  assert.equal(await page.locator('#pin1').innerHTML(),'First comment target');assert.equal(await node.evaluate(n=>n.isConnected&&n.parentElement.id),'pin1','same text node is back');
+  assert.equal((await exportBundle()).edits.length,0);
+ });
  await test('editing a button or link label in place never activates it',async({page,ui,button,clickText,editing})=>{
   const url=page.url();await button('Aa Edit text').click();
   await clickText('#button');assert.equal(await editing(),1);await page.keyboard.press('ControlOrMeta+A');await page.keyboard.type('Go now please');await page.keyboard.press('Enter');

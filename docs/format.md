@@ -9,7 +9,7 @@ One UTF-8 JSON file (`*.page-notes.json`), maximum 20 MB including the generated
 - `snapshots.originalHtml`: sanitized DOM captured before reviewer edits.
 - `snapshots.editedHtml`: sanitized DOM at export. It can include unrelated live-site mutations; do not infer requested work from a raw HTML diff.
 - `comments`: ID, timestamp, reviewer text and anchor; `anchorState` flags a missing original element and `exportPosition` records export-time viewport coordinates and visibility.
-- `edits`: ID, timestamps, locator, original `before` string and requested final `after` string. Multiple edits to one node preserve the first original and latest replacement.
+- `edits`: ID, timestamps, locator, original `before` string and requested final `after` string. Multiple edits to one node preserve the first original and latest replacement. When the reviewer formatted the replacement, `formatting` lists `{start, end, marks}` ranges over `after` (UTF-16 offsets; marks are `bold`, `italic`, `underline`, `strike`) and `afterHtml` gives the same text with `<strong>`, `<em>`, `<u>`, `<s>` tags and all other characters escaped. Both are absent for plain-text edits.
 - `history`: recent explicit reviewer actions, including revisions/removals/reverts, bounded to 1,000 entries / 512 KB. `historyOmitted` reports how many earlier entries were trimmed. Historical actions are not additional active change requests; current `comments` and `edits` remain complete.
 - `reviewMarkdown`: scannable generated summary of the active comments and edits.
 

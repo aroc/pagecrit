@@ -24,6 +24,12 @@ test('download filename has local date, time and a sanitized page title',()=>{
  b.page.title='   ';assert.equal(api.filename(b,at),'2026-10-24 09-05 example.com.page-notes.json');
  b.session.exportedAt='2026-01-02T03:04:05Z';assert.match(api.filename(b),/^2026-01-0\d \d{2}-\d{2} example\.com\.page-notes\.json$/);
 });
+test('formatted edits carry ranges and escaped HTML into the summary; bad ranges are rejected',()=>{
+ const b=sample();b.edits[0]={before:'Old',after:'New bold',formatting:[{start:4,end:8,marks:['bold']}],afterHtml:'New <strong>bold</strong>',locator:{}};
+ assert.match(JSON.parse(api.serializeBundle(b)).reviewMarkdown,/> New <strong>bold<\/strong>/);
+ b.edits[0].formatting=[{start:4,end:20,marks:['bold']}];assert.throws(()=>api.serializeBundle(b),/formatting/);
+ b.edits[0].formatting=[{start:0,end:2,marks:['script']}];assert.throws(()=>api.serializeBundle(b),/formatting/);
+});
 test('reject malformed or oversized bundles before download',()=>{
  assert.throws(()=>api.serializeBundle({schemaVersion:2}),/Unsupported/);
  const b=sample(); b.snapshots.originalHtml='x'.repeat(api.MAX_BYTES);
