@@ -65,6 +65,7 @@
   .card p{margin:0;color:var(--pencil);font-size:16px}
   .card .art{background:var(--wash);border-radius:16px;padding:14px;display:grid;place-items:center;overflow:hidden}
   .card .art img{border-radius:10px;box-shadow:0 10px 30px -18px #1f243066}
+  .card .art.roomy{padding:30px 14px}.card .art img.flat{box-shadow:none;border-radius:0}
   .s2{grid-column:span 2}.s3{grid-column:span 3}.s4{grid-column:span 4}.r2{grid-row:span 2}
   .keys{display:flex;flex-wrap:wrap;gap:8px}
   kbd{font:600 13px/1 var(--sans);color:var(--ink);background:var(--paper);border:1px solid #d6d9e2;border-bottom-width:3px;border-radius:8px;padding:6px 9px;min-width:30px;text-align:center}
@@ -207,17 +208,22 @@
           <p class="hand">your review, your machine</p>
         </article>
 
-        <article class="card s2">
-          <h3>Survives a reload</h3>
-          <p>Refresh or click through to other pages and your pins come back. Each page joins the same review as P1, P2… On another site, click the icon to carry on.</p>
-          <ul class="pages" aria-label="Pages in one review"><li><b>P1</b>/pricing</li><li><b>P2</b>/checkout</li></ul>
+        <article class="card s3">
+          <h3>Review a whole flow</h3>
+          <p>Click from pricing to signup to checkout and every page joins one review as P1, P2, P3. Reload and your pins are still there.</p>
+          <ul class="pages" aria-label="Pages in one review"><li><b>P1</b>/pricing</li><li><b>P2</b>/signup</li><li><b>P3</b>/checkout</li></ul>
         </article>
-        <article class="card s2">
-          <h3>Done when you are</h3>
-          <p>Copy, paste into Claude Code, Cursor or an issue, then click Done. The page goes back to how it was, and the review waits under Recent reviews if you need it again.</p>
+        <article class="card s3">
+          <h3>Copy in one click, or download</h3>
+          <p>Paste into Claude Code, Cursor or an issue, or save a .md file. Then click Done. Your last 10 reviews wait under Recent reviews if you need one again.</p>
           <div class="keys"><kbd>C</kbd><kbd>Done</kbd></div>
         </article>
-        <article class="card s2">
+        <article class="card s3">
+          <div class="art roomy"><img class="flat" src="assets/pill.png" width="228" alt="The Page Notes panel minimized to a small pill showing 6 items." loading="lazy"></div>
+          <h3>Stays out of your way</h3>
+          <p>Drag the panel anywhere, snap it back to a corner, or shrink it to a pill that keeps count while you look at the page.</p>
+        </article>
+        <article class="card s3">
           <h3>Works on the site you have</h3>
           <p>Localhost, staging or production: anything you can open in Chrome. Nothing to add to your codebase.</p>
           <p class="hand">no snippet, no SDK</p>

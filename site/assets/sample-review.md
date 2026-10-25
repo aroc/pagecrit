@@ -1,8 +1,8 @@
 # Review: Kettle: plan the week your team actually has
 
 - Page: https://kettle.example/pricing
-- Review: r-20261025-2cc5 · Page Notes 0.2.0 · digest v1
-- Started: 2026-10-25T12:56:38-04:00 · Exported: 2026-10-25T12:56:42-04:00 (0 min)
+- Review: r-20261025-dcf1 · Page Notes 0.2.0 · digest v1
+- Started: 2026-10-25T13:00:12-04:00 · Exported: 2026-10-25T13:00:16-04:00 (0 min)
 - Environment: Chromium 141 · macOS · 1440×900 @2x · light
 - Summary: 3 comments, 2 text edits, 1 removal
 - Severity: 1 must fix, 4 suggested, 0 nits, 1 note
@@ -69,6 +69,7 @@
 
 ### 6. Comment · pin 3 · note
 - Note: Love this quote. Keep it right under pricing.
+- Section: Plan the week your team actually has.
 - Text: `Kettle Product Pricing Customers Sign in Spring offer: two months free on annual plans. Ends Friday. Team planning Plan the week your team actually has. Kettle turns meetings, focus time and real cap…`
 - Locator: `html`
 - Excerpt: `<html><head>…</head><body>…</body></html>`

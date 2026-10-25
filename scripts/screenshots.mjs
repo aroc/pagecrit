@@ -94,6 +94,12 @@ try {
  if(!markdown.startsWith('# Review'))throw new Error('Copy Markdown did not produce a digest');
  await writeFile(path.join(out,'sample-review.md'),markdown.replace(/http:\/\/127\.0\.0\.1:\d+\//g,'https://kettle.example/pricing'));
 
+ // Minimized to the pill, which keeps the item count.
+ // Shot against the landing page card's wash so it sits in the card without a visible box.
+ await button('Minimize').click();const pill=ui.locator('.pill');await pill.waitFor();
+ await page.addStyleTag({content:'html,body,nav{background:#f6f7fa!important;border-color:transparent!important}nav>*{visibility:hidden}'});
+ await shot('pill.png',pad(await box(pill),24,20));
+
  // README banner: the product on the left, the hero screenshot on the right.
  const font=(await readFile(path.join(root,'extension/fonts/caveat-latin.woff2'))).toString('base64');
  const heroData=(await readFile(path.join(out,'hero.png'))).toString('base64');
@@ -113,7 +119,7 @@ try {
   <div class="shot"><img src="data:image/png;base64,${heroData}"></div>`);
  await banner.waitForTimeout(300);
  await banner.screenshot({path:path.join(out,'readme-banner.png')});
- console.log('Wrote',['hero.png','panel.png','row-severity.png','pin-hover.png','tools.png','edit-inline.png','remove-hover.png','sample-review.md','readme-banner.png'].join(', '));
+ console.log('Wrote',['hero.png','panel.png','row-severity.png','pin-hover.png','tools.png','edit-inline.png','remove-hover.png','pill.png','sample-review.md','readme-banner.png'].join(', '));
 } finally {
  if(context)await context.close();
  await new Promise(resolve=>server.close(resolve));

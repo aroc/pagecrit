@@ -192,7 +192,8 @@
     }
     return svg;
   }
-  shadow.append(style, pinsLayer, hoverBox, highlight, panel, pill, liveRegion);
+  // Pins sit above the hover outline and highlight, so an outline never covers a placed pin.
+  shadow.append(style, hoverBox, highlight, pinsLayer, panel, pill, liveRegion);
   document.documentElement.appendChild(host);
 
   async function loadHandFont() {

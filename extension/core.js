@@ -472,6 +472,14 @@
     const headings = Array.from(scope.querySelectorAll('h1,h2,h3,h4,h5,h6,[role="heading"]'));
     const chain = [];
     let limit = 7;
+    // An element that holds its own heading (a card, a section) is that section, not the one before it.
+    const own = headings.find(heading => heading !== el && el.contains(heading));
+    if (own) {
+      const text = clip(own.textContent, 60);
+      if (text) chain.push(text);
+      limit = headingLevel(own);
+      if (limit === 1) return chain;
+    }
     for (let i = headings.length - 1; i >= 0 && chain.length < 4; i--) {
       const heading = headings[i];
       if (heading === el || heading.contains(el) || el.contains(heading)) continue;
