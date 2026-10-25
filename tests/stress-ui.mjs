@@ -271,6 +271,8 @@ try {
   await page.locator('#input').evaluate(el=>el.blur());
   // Typing a note keeps its letters; an open draft also blocks tool keys.
   await page.keyboard.press('p');await clickText('#pin1');await page.keyboard.type('pre');assert.equal(await ui.locator('textarea').inputValue(),'pre');
+  // The editor takes focus on the next frame; let that happen before moving focus away.
+  await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
   await ui.locator('textarea').evaluate(el=>el.blur());await page.keyboard.press('e');assert.equal(await active(),'Pin','draft open: no tool switch');assert.equal(await ui.locator('textarea').inputValue(),'pre');
   await button('Save').click();
   // Typing in an inline text edit keeps its letters.
@@ -424,9 +426,11 @@ try {
   await page.context().grantPermissions(['clipboard-read','clipboard-write'],{origin:new URL(page.url()).origin});
   await sw().evaluate(()=>chrome.storage.local.clear());
   const done=()=>ui.getByRole('button',{name:'Close the review',exact:true}).click();
-  await edit('#plain','Remember me <img src=x onerror="window.__pwned=1"> **not bold**');await button('Copy Markdown').click();
-  const copied=await page.evaluate(()=>navigator.clipboard.readText());await done();
-  await inject();await edit('#plain','Second review');await button('Copy Markdown').click();await done();
+  // Done shows only once the clipboard write has finished.
+  const copyAndDone=async()=>{await button('Copy Markdown').click();await ui.getByRole('button',{name:'Close the review',exact:true}).waitFor();const text=await page.evaluate(()=>navigator.clipboard.readText());await done();return text;};
+  await edit('#plain','Remember me <img src=x onerror="window.__pwned=1"> **not bold**');const copied=await copyAndDone();
+  assert.match(copied,/^# Review: Stress fixture[\s\S]*Remember me/);
+  await inject();await edit('#plain','Second review');await copyAndDone();
   await page.evaluate(()=>navigator.clipboard.writeText('something else'));
   await inject();const link=button('Recent reviews (2)');await link.waitFor();
   assert.equal(await ui.getByRole('region',{name:'Recent reviews'}).count(),0,'the list stays closed until asked for');

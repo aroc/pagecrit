@@ -31,12 +31,12 @@ When you're done, **Copy Markdown** and paste it into Claude Code, Cursor, an is
 
 ## Install
 
-1. Clone this repo, or download the `page-notes-chrome` artifact from a successful [GitHub Actions run](https://github.com/aroc/page-notes/actions). It contains `page-notes.zip`; unzip that too.
-2. Open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked** and choose the **`extension`** folder of the clone (or the unzipped folder that contains `manifest.json`).
+1. [**Download page-notes.zip**](https://github.com/aroc/page-notes/releases/latest/download/page-notes.zip) from the [latest release](https://github.com/aroc/page-notes/releases/latest) and unzip it.
+2. Open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked** and choose the unzipped **`page-notes`** folder. (Working from a clone? Choose its `extension` folder instead.)
 3. Pin **Page Notes** to the toolbar.
 4. Open the page you want to review and click the icon, or press **Alt+Shift+N**. The panel opens right away. If a page can't be reviewed, the icon shows a red **!** and its tooltip says why.
 
-After pulling changes, click **Reload** on the extension in `chrome://extensions`, then refresh the page.
+To update, download the new release and load it the same way. From a clone, pull and click **Reload** on the extension in `chrome://extensions`, then refresh the page.
 
 ## Using it
 
@@ -100,6 +100,8 @@ npm run test:activation  # Linux only: real toolbar click / activeTab test
 ```
 
 `extension/` is the installable source: plain JavaScript, no build step and no runtime dependencies. Development uses Node 24; packaging also uses Python 3's standard ZIP library. Tests and screenshots use only synthetic local pages (`scripts/demo` is a made-up product page), so never commit a real review.
+
+**Releasing:** bump the version in `extension/manifest.json`, `package.json` and `VERSION` in `extension/content.js`, then push a matching tag (`git tag v0.2.0 && git push origin v0.2.0`). CI runs every test and publishes the release with `page-notes.zip` attached; the README's download link always points at the latest one.
 
 `site/` is a static landing page (no build, self-hosted fonts) you can serve from anywhere, e.g. GitHub Pages pointed at `site/`.
 
