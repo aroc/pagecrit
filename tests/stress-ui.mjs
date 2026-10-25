@@ -63,7 +63,7 @@ try {
   await ui.locator('article').filter({hasText:'Comment 2'}).getByRole('button',{name:'Edit',exact:true}).click();await ui.locator('textarea').fill('Second revised 🦆');await button('Save').click();
   await ui.locator('article').filter({hasText:'Comment 1'}).getByRole('button',{name:'Remove',exact:true}).click();
   assert.equal(await ui.getByRole('button',{name:'Note 1: Second revised 🦆'}).count(),1);assert.equal(await ui.getByRole('button',{name:'Note 2: Comment 3'}).count(),1);
-  const bundle=await exportBundle();assert.deepEqual(bundle.comments.map(c=>c.id),[secondId,thirdId]);assert.equal(bundle.comments[0].text,'Second revised 🦆');assert.match(bundle.markdown,/Comment · pin 1\n- Note: Second revised 🦆/);
+  const bundle=await exportBundle();assert.deepEqual(bundle.comments.map(c=>c.id),[secondId,thirdId]);assert.equal(bundle.comments[0].text,'Second revised 🦆');assert.match(bundle.markdown,/Comment · pin 1 · should fix\n- Note: Second revised 🦆/);
  });
  await test('pin to element outlines the hovered element in the overlay without shifting layout',async({page,ui,button})=>{
   await button('⊕ Pin').click();assert.equal(await button('Pin to element').getAttribute('aria-pressed'),'true');
@@ -221,7 +221,7 @@ try {
   // A site button is removed without running its click handler; html/body are never removable.
   const bt=await page.locator('#button').boundingBox();await page.mouse.click(bt.x+5,bt.y+5);assert.equal(await page.evaluate(()=>window.siteActions),0);assert.equal(await page.locator('#button').isVisible(),false);
   const bundle=await exportBundle();assert.equal(bundle.removals.length,2);assert.equal(bundle.removals[0].element.id,'pin2');assert.equal(bundle.removals[0].previewState,'applied');
-  assert.match(bundle.markdown,/### 1\. Remove section\n- Remove: `p#pin2`\n[\s\S]*- Text: `Second comment target`/);assert.match(bundle.markdown,/### 2\. Remove section\n- Remove: `button#button`/);
+  assert.match(bundle.markdown,/### 1\. Remove section · should fix\n- Remove: `p#pin2`\n[\s\S]*- Text: `Second comment target`/);assert.match(bundle.markdown,/### 2\. Remove section · should fix\n- Remove: `button#button`/);
   assert.ok(!bundle.markdown.includes('editable original')&&!bundle.markdown.includes('Form original'),'never form values');assert.ok(bundle.markdown.length<6000,'bounded context only');
   await row.getByRole('button',{name:'Restore',exact:true}).click();assert.equal(await page.locator('#pin2').isVisible(),true);assert.equal(await page.locator('#pin2').getAttribute('style'),'color: rgb(1, 2, 3)');
   assert.equal((await exportBundle()).removals.length,1);assert.equal(await page.evaluate(()=>window.siteActions),0);
@@ -237,6 +237,17 @@ try {
   await page.keyboard.press('Escape');assert.equal(await page.locator('#narrow').getAttribute('style'),style,'style restored exactly');assert.equal(await layout(),base,'after cancel');
   await button('⊕ Pin').click();await page.mouse.click(300,140);await page.waitForTimeout(80);assert.equal(await layout(),base,'pending pin');await page.keyboard.press('Escape');
   await button('Close review').click();await page.waitForTimeout(80);assert.equal(await layout(),base,'after close');
+ });
+ await test('severity is one click per row, colors the pin, and sorts the digest',async({page,ui,button,clickText,edit,exportBundle})=>{
+  for(let i=1;i<=2;i++){await button('⊕ Pin').click();await clickText(`#pin${i}`);await ui.locator('textarea').fill(`Note ${i}`);await button('Save').click();}
+  await edit('#plain','Edited copy');
+  const row=ui.locator('article').filter({hasText:'Note 2'});assert.equal(await row.getByRole('button',{name:'Should',exact:true}).getAttribute('aria-pressed'),'true','defaults to should fix');
+  await row.getByRole('button',{name:'Must',exact:true}).click();assert.equal(await row.getByRole('button',{name:'Must',exact:true}).getAttribute('aria-pressed'),'true');
+  assert.equal(await ui.getByRole('button',{name:'Note 2: Note 2'}).evaluate(el=>el.classList.contains('sev1')),true,'pin turns must-fix red');
+  assert.equal(await ui.locator('textarea').count(),0,'severity click does not open the editor');
+  await ui.locator('article').filter({hasText:'Text change'}).getByRole('button',{name:'Nit',exact:true}).click();
+  const bundle=await exportBundle();assert.deepEqual([...bundle.comments.map(c=>c.severity),bundle.edits[0].severity],[2,1,3]);
+  assert.match(bundle.markdown,/### 1\. Comment · pin 2 · must fix\n[\s\S]*### 2\. Comment · pin 1 · should fix\n[\s\S]*### 3\. Text edit · nit\n/);
  });
  await test('blank comment rejected, cancel does not create a phantom note',async({ui,button,clickText,exportBundle})=>{
   await button('⊕ Pin').click();await clickText('#pin1');await ui.locator('textarea').fill(' \n\t ');await button('Save').click();assert.match(await ui.locator('.notice').textContent(),/Add a note/);await button('Cancel').click();assert.equal((await exportBundle()).comments.length,0);

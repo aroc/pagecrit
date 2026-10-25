@@ -60,6 +60,8 @@
     .empty{padding:18px 4px 6px;text-align:center;color:var(--faint);font:500 21px/1.2 var(--hand)}
     .item{padding:12px 0;border-bottom:1px solid var(--line)}.item:last-child{border-bottom:0}.itemtop{display:flex;gap:9px;align-items:center;margin-bottom:6px}
     .badge{flex:none;min-width:24px;height:24px;border-radius:999px;display:grid;place-items:center;background:var(--cobalt);color:white;font:700 17px/1 var(--hand)}.badge.text{background:var(--green-mark);color:var(--green);font:700 11px/1 var(--sans)}.badge.removed{background:var(--red-soft);color:var(--red);font:700 14px/1 var(--sans)}
+    .severity{display:flex;gap:2px;flex:none}.sev{border:0;background:none;font-size:11px;font-weight:600;color:var(--faint);padding:2px 6px;border-radius:999px}.sev:hover{color:var(--ink);background:var(--wash)}.sev.active{color:white}.sev1.active{background:var(--red)}.sev2.active{background:var(--cobalt)}.sev3.active{background:#8d8f9a}
+    .badge.sevbadge1{background:var(--red)}.badge.sevbadge3{background:#8d8f9a}.pin.sev1{background:var(--red)}.pin.sev3{background:#8d8f9a}
     .itemlabel{flex:1;font-size:12px;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .itemtext{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;max-height:120px;overflow:auto}.struck{text-decoration:line-through;text-decoration-color:var(--red);text-decoration-thickness:1.5px;color:var(--pencil)}
     .diff{font-size:14px;margin:2px 0;white-space:pre-wrap;overflow-wrap:anywhere;max-height:96px;overflow:auto}.before{color:var(--faint);text-decoration:line-through;text-decoration-color:var(--red);text-decoration-thickness:1.5px}.after{color:var(--ink)}.after .mark{background:linear-gradient(transparent 58%,var(--green-mark) 58%,var(--green-mark) 92%,transparent 92%);-webkit-box-decoration-break:clone;box-decoration-break:clone}
@@ -324,11 +326,24 @@
       if (event.isTrusted && event.target === item && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); show(); }
     });
   }
+  // 1 = must fix, 2 = should fix (default), 3 = nit. One click on the row sets it.
+  const SEVERITIES = [[1, 'Must'], [2, 'Should'], [3, 'Nit']];
+  function severityPicker(item) {
+    const group = element('span', 'severity');
+    group.setAttribute('role', 'group'); group.setAttribute('aria-label', 'Severity');
+    for (const [value, label] of SEVERITIES) {
+      const b = button(label, () => { item.severity = value; render(); }, `sev sev${value}${(item.severity || 2) === value ? ' active' : ''}`);
+      b.setAttribute('aria-pressed', String((item.severity || 2) === value));
+      b.title = ['', 'Must fix', 'Should fix', 'Nit'][value];
+      group.append(b);
+    }
+    return group;
+  }
   function renderComment(comment, index) {
     const item = element('article', `item${state.selectedId === comment.id ? ` selected${state.revealSelected ? ' pulse' : ''}` : ''}`);
     if (state.selectedId === comment.id) item.setAttribute('aria-current', 'true');
     const top = element('div', 'itemtop');
-    top.append(element('span', 'badge', String(index + 1)), element('span', 'itemlabel', comment.anchor.kind === 'element' ? 'Element note' : 'Page note'));
+    top.append(element('span', `badge sevbadge${comment.severity || 2}`, String(index + 1)), element('span', 'itemlabel', comment.anchor.kind === 'element' ? 'Element note' : 'Page note'), severityPicker(comment));
     revealOnClick(item, () => showComment(comment), `Show note ${index + 1} on the page`);
     item.append(top, element('p', 'itemtext', comment.text));
     const actions = element('div', 'itemactions');
@@ -339,7 +354,7 @@
   function renderEdit(edit) {
     const item = element('article', 'item');
     const top = element('div', 'itemtop');
-    top.append(element('span', 'badge text', 'Aa'), element('span', 'itemlabel', 'Text change'));
+    top.append(element('span', 'badge text', 'Aa'), element('span', 'itemlabel', 'Text change'), severityPicker(edit));
     revealOnClick(item, () => showEdit(edit), 'Show text change on the page');
     item.append(top, element('div', 'diff before', edit.before || '(empty)'), renderFormatted(core.modelFrom(edit.after, edit.formatting), 'diff after'));
     if (!core.segmentCurrent(editSegments.get(edit.id))) item.append(element('p', 'warning', 'The page changed this text. Your requested edit is still saved.'));
@@ -351,7 +366,7 @@
   function renderRemoval(removal) {
     const item = element('article', 'item');
     const top = element('div', 'itemtop');
-    top.append(element('span', 'badge removed', '⊖'), element('span', 'itemlabel', `Removed ${removal.label}`));
+    top.append(element('span', 'badge removed', '⊖'), element('span', 'itemlabel', `Removed ${removal.label}`), severityPicker(removal));
     revealOnClick(item, () => showRemoval(removal), 'Show where this section was');
     item.append(top, element('p', 'itemtext struck', removal.text || '(no text)'));
     if (!removedElements.get(removal.id)?.el.isConnected) item.append(element('p', 'warning', 'The page replaced this section. The removal request is still saved.'));
@@ -368,7 +383,7 @@
     if (!removableTarget(el)) { tell('Pick a section inside the page body.', true); return; }
     if (state.removals.length >= MAX_ITEMS) { tell('This review has reached 500 removals. Download it and start a new review.', true); return; }
     // Rendered text (with line breaks between blocks) reads better than raw textContent.
-    const removal = { id: id(), createdAt: now(), label: tagLabel(el), text: String(el.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 500), element: core.describeElement(el), context: core.captureContext(el) };
+    const removal = { id: id(), createdAt: now(), severity: 2, label: tagLabel(el), text: String(el.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 500), element: core.describeElement(el), context: core.captureContext(el) };
     const style = el.getAttribute('style');
     el.style.setProperty('display', 'none', 'important');
     removedElements.set(removal.id, { el, style, applied: el.getAttribute('style') });
@@ -436,7 +451,7 @@
         const comment = state.comments.find(c => c.id === p.commentId);
         if (comment && text !== comment.text) { comment.text = text; comment.updatedAt = now(); }
       } else {
-        const comment = { id: id(), createdAt: now(), text, anchor: p.anchor, context: p.context };
+        const comment = { id: id(), createdAt: now(), severity: 2, text, anchor: p.anchor, context: p.context };
         state.comments.push(comment); pinElements.set(comment.id, p.element); pinContainers.set(comment.id, p.container);
       }
     } else {
@@ -452,7 +467,7 @@
         if (original) { state.edits = state.edits.filter(e => e.id !== edit.id); editSegments.delete(edit.id); }
         else { setEditResult(edit, p.model, p.seg); edit.updatedAt = now(); }
       } else if (!original) {
-        edit = { id: p.newId, createdAt: now(), updatedAt: now(), locator: p.locator, context: p.context, before: p.before, after: '' };
+        edit = { id: p.newId, createdAt: now(), updatedAt: now(), severity: 2, locator: p.locator, context: p.context, before: p.before, after: '' };
         setEditResult(edit, p.model, p.seg);
         state.edits.push(edit); editSegments.set(edit.id, p.seg);
       }
@@ -688,7 +703,7 @@
   function renderPins() {
     pinsLayer.replaceChildren();
     state.comments.forEach((comment, index) => {
-      const b = button(String(index + 1), () => selectComment(comment), `pin${state.selectedId === comment.id ? ' selected' : ''}`, comment.text);
+      const b = button(String(index + 1), () => selectComment(comment), `pin sev${comment.severity || 2}${state.selectedId === comment.id ? ' selected' : ''}`, comment.text);
       b.setAttribute('aria-label', `Note ${index + 1}: ${comment.text.slice(0, 100)}`);
       b.dataset.id = comment.id; pinsLayer.append(b);
     });

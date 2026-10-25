@@ -26,12 +26,21 @@ test('digest header: identity, ISO times with offset, build, environment, summar
 });
 test('items are chronological with the per-item contract fields',()=>{
  const md=api.renderDigest(sample());
- const order=['### 1. Text edit','### 2. Comment · pin 1','### 3. Remove section'].map(h=>md.indexOf(h));
+ const order=['### 1. Text edit · should fix','### 2. Comment · pin 1 · should fix','### 3. Remove section · should fix'].map(h=>md.indexOf(h));
  assert.ok(order.every((at,i)=>at>0&&(i===0||at>order[i-1])),md);
- assert.match(md,/### 1\. Text edit\n- Original: `Billed annually, cancel anytime` \(appears 4× on page\)\n- Replace: `Billed yearly\. Cancel anytime\.`\n- Section: main › Pricing › Compare plans › Pro\n- Context: …Pro \$29\/mo \*\*Billed annually, cancel anytime\*\* Start free trial…\n- Locator: `div\[data-testid="plan-pro"\] > p:nth-of-type\(2\)` · role: paragraph\n- Ancestors: `main` › `div\[data-testid="plan-pro"\]`\n- Classes: `p-4 gap-6`\n- Excerpt: `<p class="p-4 gap-6">Billed annually, cancel anytime<\/p>`/);
- assert.match(md,/### 2\. Comment · pin 1\n- Note: Pro card feels cramped\n- Section: .*\n- Text: `Pro \$29\/mo`\n- Locator: `div\[data-testid="plan-pro"\]`/);
+ assert.match(md,/### 1\. Text edit · should fix\n- Original: `Billed annually, cancel anytime` \(appears 4× on page\)\n- Replace: `Billed yearly\. Cancel anytime\.`\n- Section: main › Pricing › Compare plans › Pro\n- Context: …Pro \$29\/mo \*\*Billed annually, cancel anytime\*\* Start free trial…\n- Locator: `div\[data-testid="plan-pro"\] > p:nth-of-type\(2\)` · role: paragraph\n- Ancestors: `main` › `div\[data-testid="plan-pro"\]`\n- Classes: `p-4 gap-6`\n- Excerpt: `<p class="p-4 gap-6">Billed annually, cancel anytime<\/p>`/);
+ assert.match(md,/### 2\. Comment · pin 1 · should fix\n- Note: Pro card feels cramped\n- Section: .*\n- Text: `Pro \$29\/mo`\n- Locator: `div\[data-testid="plan-pro"\]`/);
  assert.match(md,/- Pin: on the element, 42% across and 60% down/);
- assert.match(md,/### 3\. Remove section\n- Remove: `div\.promo`\n/);
+ assert.match(md,/### 3\. Remove section · should fix\n- Remove: `div\.promo`\n/);
+});
+test('severity: shown on each item, counted in the header, and sorts must-fix first within the page',()=>{
+ const b=sample();b.removals[0].severity=1;b.edits[0].severity=3;
+ const md=api.renderDigest(b);
+ assert.match(md,/- Severity: 1 must fix, 1 should fix, 1 nit\n/);
+ const order=['### 1. Remove section · must fix','### 2. Comment · pin 1 · should fix','### 3. Text edit · nit'].map(h=>md.indexOf(h));
+ assert.ok(order.every((at,i)=>at>0&&(i===0||at>order[i-1])),md);
+ assert.match(md,/Items are sorted by severity/);
+ b.edits[0].severity=4;assert.throws(()=>api.renderDigest(b),/severity/);
 });
 test('formatting, inline markup, multi-line text, lost anchors and page changes are stated',()=>{
  const b=sample();

@@ -104,10 +104,10 @@ try {
  assert.equal(bundle.edits[0].before,'Make space for ');assert.equal(bundle.edits[0].after,'Find space for ');
  assert.ok(Math.abs(bundle.comments[0].anchor.document.y-(point.y+offset))<2);
  assert.match(markdown,/^# Review: Fieldwork — synthetic test page\n/);
- assert.match(markdown,/### 1\. Text edit\n- Original: `Make space for`\n- Replace: `Find space for`\n- Element after the change \(keep its inline markup\): `Find space for <em>better work\.<\/em>`\n- Section: main\n/);
+ assert.match(markdown,/### 1\. Text edit · should fix\n- Original: `Make space for`\n- Replace: `Find space for`\n- Element after the change \(keep its inline markup\): `Find space for <em>better work\.<\/em>`\n- Section: main\n/);
  assert.match(markdown,/- Locator: `#headline` · role: heading · name: `Make space for better work\.`/);
- assert.match(markdown,/### \d\. Comment · pin 1\n- Note: Clarify this lower section\.\n[\s\S]*- Text: `Lower-page content for coordinate tests\.`/);
- assert.match(markdown,/### \d\. Comment · pin 2\n- Note: Make this section more useful\.\n[\s\S]*- Locator: `#nested`/);
+ assert.match(markdown,/### \d\. Comment · pin 1 · should fix\n- Note: Clarify this lower section\.\n[\s\S]*- Text: `Lower-page content for coordinate tests\.`/);
+ assert.match(markdown,/### \d\. Comment · pin 2 · should fix\n- Note: Make this section more useful\.\n[\s\S]*- Locator: `#nested`/);
  assert.ok(markdown.length<8000,`digest stays small: ${markdown.length}`);
  for(const forbidden of ['SYNTHETIC_SECRET','SYNTHETIC_PASSWORD','SYNTHETIC_HIDDEN','SYNTHETIC_FORM','SYNTHETIC_TOKEN','data-page-notes-root','<script','onclick=','accidentalClicks'])assert.ok(!markdown.includes(forbidden),forbidden);
  console.log('PASS complete local Markdown digest: exact edits with inline markup, anchored context, no page secrets or scripts');

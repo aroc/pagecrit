@@ -21,6 +21,7 @@ After updating the repo, click **Reload** on the extension card in `chrome://ext
 - **Edit text:** click visible text and type directly on the page. Each edit covers one run of plain text (⌘/Ctrl+A selects just that run); inline formatting and neighboring elements stay intact. ⌘/Ctrl+B, I and U toggle bold, italic and underline and ⇧⌘/Ctrl+X toggles strikethrough on the selection (or on what you type next). Enter saves, Shift+Enter adds a line break, Esc cancels, ⌘/Ctrl+Z undoes, and clicking elsewhere saves. While you type, the element is temporarily `contenteditable` and your keystrokes are kept from the site's own keyboard shortcuts.
 - **Remove:** hover to outline a section in red, click to remove it from the page. Restore it from the panel.
 - Review and remove feedback or revert a text edit or restore a removed section in the panel.
+- **Severity:** every item has **Must / Should / Nit** chips in the panel (default Should). Must-fix pins turn red, nits grey, and the digest lists items most important first.
 - **Move the panel:** drag its header, or the minimized pill, anywhere — partly off screen is fine. The corner button snaps it to the nearest corner. Clicking a pin highlights its note in the panel; use **Edit** there to change it.
 - **Download review:** saves one Markdown file named with the date, time and page title (e.g. `2026-10-24 14-05 Pricing.md`). Chrome's Save As dialog lets you choose the folder.
 
