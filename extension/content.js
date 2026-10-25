@@ -11,7 +11,7 @@
   const MAX_TEXT = 20000;
   const MAX_COMMENT = 10000;
   const MAX_ITEMS = 500;
-  const VERSION = '0.2.2';
+  const VERSION = '0.2.3';
   const id = () => crypto.randomUUID();
   const now = () => new Date().toISOString();
   const startUrl = location.href;

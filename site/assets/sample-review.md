@@ -1,8 +1,8 @@
 # Review: Kettle: plan the week your team actually has
 
 - Page: https://kettle.example/pricing
-- Review: r-20261025-51cb · PageCrit 0.2.2 · digest v1
-- Started: 2026-10-25T14:04:51-04:00 · Exported: 2026-10-25T14:04:55-04:00 (0 min)
+- Review: r-20261025-78b2 · PageCrit 0.2.3 · digest v1
+- Started: 2026-10-25T14:46:35-04:00 · Exported: 2026-10-25T14:46:39-04:00 (0 min)
 - Environment: Chromium 141 · macOS · 1440×900 @2x · light
 - Summary: 3 comments, 2 text edits, 1 removal
 - Severity: 1 must fix, 4 suggested, 0 nits, 1 note
