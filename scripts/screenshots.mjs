@@ -95,7 +95,13 @@ try {
  await page.waitForTimeout(2700);await ui.getByRole('button',{name:'Close the review'}).waitFor();
  const fb=await box(ui.locator('footer'));await shot('footer.png',{x:fb.x,y:fb.y+1,width:fb.width,height:fb.height-1});
  if(!markdown.startsWith('# Review'))throw new Error('Copy Markdown did not produce a digest');
- await writeFile(path.join(out,'sample-review.md'),markdown.replace(/http:\/\/127\.0\.0\.1:\d+\//g,'https://kettle.example/pricing'));
+ const sample=markdown.replace(/http:\/\/127\.0\.0\.1:\d+\//g,'https://kettle.example/pricing');
+ await writeFile(path.join(out,'sample-review.md'),sample);
+ // The README shows the whole sample between its markers, so it never drifts from the real output.
+ const readmePath=path.join(root,'README.md'),readme=await readFile(readmePath,'utf8');
+ const block=/(<!-- sample-review:start[^>]*-->\n````markdown\n)[\s\S]*?(\n````\n<!-- sample-review:end -->)/;
+ if(!block.test(readme))throw new Error('README sample-review markers not found');
+ await writeFile(readmePath,readme.replace(block,(_,open,close)=>open+sample.trimEnd()+close));
 
  // Minimized to the pill, which keeps the item count.
  // Shot against the landing page card's wash so it sits in the card without a visible box.
