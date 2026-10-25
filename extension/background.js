@@ -33,12 +33,32 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     handFont().then(respond).catch(() => respond({ok: false}));
     return true;
   }
-  if (message?.type !== 'PAGE_NOTES_EXPORT') return;
+  if (message?.type !== 'PAGE_NOTES_EXPORT' && message?.type !== 'PAGE_NOTES_RENDER') return;
   // Only our injected top-frame script can request a local export. No external messaging API.
   if (sender.id !== chrome.runtime.id || !sender.tab || sender.frameId !== 0 || !/^https?:\/\//i.test(sender.url || '')) {
     respond({ok: false, error: 'Export must come from the page you are reviewing.'});
     return;
   }
+  if (message.type === 'PAGE_NOTES_RENDER') {
+    try { respond({ok: true, markdown: PageNotesExport.renderDigest(message.review)}); } catch (error) { respond({ok: false, error: error.message}); }
+    return;
+  }
   destinations.file(message.review).then(respond).catch(error => respond({ok: false, code: error.code, error: error.message || 'Download failed. Your draft is still open.'}));
   return true;
+});
+
+// Keyboard shortcut (Alt+Shift+N by default) starts a review like the toolbar popup does.
+// Invoking a command grants activeTab for the current tab only.
+async function startReview(tab) {
+  if (!tab?.id || !/^https?:\/\//i.test(tab.url || '')) return false;
+  const [inspection] = await chrome.scripting.executeScript({target: {tabId: tab.id}, func: () => ({
+    modal: Boolean(document.querySelector('dialog:modal')),
+    contentType: document.contentType
+  })});
+  if (inspection?.result?.modal || !['text/html', 'application/xhtml+xml'].includes(inspection?.result?.contentType)) return false;
+  await chrome.scripting.executeScript({target: {tabId: tab.id}, files: ['core.js', 'content.js']});
+  return true;
+}
+chrome.commands?.onCommand.addListener((command, tab) => {
+  if (command === 'start-review') startReview(tab).catch(() => {});
 });

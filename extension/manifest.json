@@ -9,7 +9,7 @@
     "downloads"
   ],
   "action": {
-    "default_title": "Page Notes \u2014 review this page",
+    "default_title": "Page Notes — review this page",
     "default_popup": "popup.html"
   },
   "background": {
@@ -17,5 +17,13 @@
   },
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'none'"
+  },
+  "commands": {
+    "start-review": {
+      "suggested_key": {
+        "default": "Alt+Shift+N"
+      },
+      "description": "Start or show a Page Notes review of this page"
+    }
   }
 }

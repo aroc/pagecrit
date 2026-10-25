@@ -249,6 +249,28 @@ try {
   const bundle=await exportBundle();assert.deepEqual([...bundle.comments.map(c=>c.severity),bundle.edits[0].severity],[2,1,3]);
   assert.match(bundle.markdown,/### 1\. Comment · pin 2 · must fix\n[\s\S]*### 2\. Comment · pin 1 · should fix\n[\s\S]*### 3\. Text edit · nit\n/);
  });
+ await test('single-key tools and Copy Markdown; keys never fire while typing in the site, a note or a text edit',async({page,ui,button,clickText,exportBundle})=>{
+  const active=()=>ui.locator('.mode.active').textContent();
+  await page.mouse.move(5,5);
+  await page.keyboard.press('p');assert.equal(await active(),'⊕ Pin');await page.keyboard.press('e');assert.equal(await active(),'Aa Edit text');
+  await page.keyboard.press('r');assert.equal(await active(),'⊖ Remove');await page.keyboard.press('b');assert.equal(await active(),'Browse');
+  await page.keyboard.press('Escape');assert.equal(await active(),'Browse');
+  // Typing in a site field while browsing stays with the site.
+  await page.locator('#input').click();await page.locator('#input').evaluate(el=>el.setSelectionRange(el.value.length,el.value.length));await page.keyboard.type('pecr');assert.equal(await page.locator('#input').inputValue(),'editable originalpecr');assert.equal(await active(),'Browse');
+  await page.locator('#input').evaluate(el=>el.blur());
+  // Typing a note keeps its letters; an open draft also blocks tool keys.
+  await page.keyboard.press('p');await clickText('#pin1');await page.keyboard.type('pre');assert.equal(await ui.locator('textarea').inputValue(),'pre');
+  await ui.locator('textarea').evaluate(el=>el.blur());await page.keyboard.press('e');assert.equal(await active(),'⊕ Pin','draft open: no tool switch');assert.equal(await ui.locator('textarea').inputValue(),'pre');
+  await button('Save').click();
+  // Typing in an inline text edit keeps its letters.
+  await page.keyboard.press('e');await clickText('#plain');await page.keyboard.press('ControlOrMeta+A');await page.keyboard.type('perc');await page.keyboard.press('Enter');
+  assert.equal(await page.locator('#plain').textContent(),'perc');assert.equal(await active(),'Aa Edit text');
+  await page.context().grantPermissions(['clipboard-read','clipboard-write'],{origin:new URL(page.url()).origin});
+  await page.keyboard.press('Escape');await page.keyboard.press('c');await ui.getByRole('button',{name:'Copy Markdown (C)'}).filter({hasText:'✓ Copied'}).waitFor();
+  const copied=await page.evaluate(()=>navigator.clipboard.readText());assert.match(copied,/^# Review: Stress fixture\n/);assert.match(copied,/- Note: pre\n/);assert.match(copied,/- Replace: `perc`/);
+  await page.evaluate(()=>navigator.clipboard.writeText(''));await ui.getByRole('button',{name:'Copy Markdown (C)'}).click();await page.waitForFunction(()=>navigator.clipboard.readText().then(t=>t.startsWith('# Review')));
+  assert.equal((await exportBundle()).comments[0].text,'pre');
+ });
  await test('blank comment rejected, cancel does not create a phantom note',async({ui,button,clickText,exportBundle})=>{
   await button('⊕ Pin').click();await clickText('#pin1');await ui.locator('textarea').fill(' \n\t ');await button('Save').click();assert.match(await ui.locator('.notice').textContent(),/Add a note/);await button('Cancel').click();assert.equal((await exportBundle()).comments.length,0);
  });

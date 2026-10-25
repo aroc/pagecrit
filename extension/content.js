@@ -68,7 +68,7 @@
     .warning{color:#a8322a;font-size:12px;margin:6px 0 0}.itemactions{display:flex;justify-content:flex-end;gap:2px;margin-top:4px}.link{font-size:12px;font-weight:600;background:none;border:0;color:var(--pencil);padding:3px 7px;border-radius:8px}.link:hover{color:var(--cobalt);background:var(--cobalt-soft)}
     .item.reveal{cursor:pointer;margin:0 -18px;padding:12px 18px}.item.reveal:hover{background:#fafbfc}.item.reveal:focus-visible{outline-offset:-2px}
     .item.selected{background:var(--marker-soft)}.item.selected:hover{background:var(--marker-soft)}.item.pulse{animation:pulse 1s ease-out}@keyframes pulse{from{background:var(--marker)}to{background:var(--marker-soft)}}
-    .footer{border-top:1px solid var(--line);padding:14px 18px 16px}.done{width:100%;padding:12px;font-size:14px;border-radius:14px}.done+.done{margin-top:8px}.privacy{font-size:12px;color:var(--faint);text-align:center;margin:8px 0 0}
+    .footer{border-top:1px solid var(--line);padding:14px 18px 16px}.footrow{display:flex;gap:8px}.done{flex:1;padding:12px;font-size:14px;border-radius:14px}.copy{border-radius:14px;padding:12px 16px;font-size:14px}.privacy{font-size:12px;color:var(--faint);text-align:center;margin:8px 0 0}
     .closebox{padding:14px;background:var(--red-soft);border-radius:16px;margin:8px 0 12px;font-size:13px}.closebox p{margin:0}
     .pill{pointer-events:auto;position:fixed;right:18px;top:18px;display:flex;align-items:center;gap:8px;border:1px solid #e3e4eb;border-radius:999px;padding:7px 9px 7px 13px;background:var(--paper);box-shadow:0 1px 0 #1f24300a,0 14px 34px -14px #1f243066;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}.pill .brand{font-size:23px;flex:none}.pill .count{min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:var(--cobalt);color:white;font:700 12px/22px var(--sans);text-align:center}
     .pin{pointer-events:auto;position:fixed;width:28px;height:28px;display:grid;place-items:center;border:2px solid white;border-radius:50% 50% 50% 5px;transform:translate(-50%,-100%) rotate(-4deg);box-shadow:0 3px 10px #1f243055;background:var(--cobalt);color:white;font:700 18px/1 var(--hand);padding:0 0 1px}.pin:hover{background:var(--cobalt-deep)}.pin.lost{background:#8d8f9a}.pin.pending{background:var(--marker);color:var(--ink)}.pin.selected{z-index:1;box-shadow:0 0 0 4px var(--marker),0 3px 12px #1f243066}
@@ -205,7 +205,7 @@
     if (state.mode === 'pin') return 'Click anywhere to pin a note to that spot. It scrolls with the page.';
     if (state.mode === 'edit') return 'Click any text to edit it right on the page. Enter saves, Esc cancels.';
     if (state.mode === 'remove') return 'Hover to choose a section, then click to remove it from the page. Restore it from the list below.';
-    return 'Browse and scroll normally. Pick a tool to start reviewing.';
+    return 'Browse and scroll normally. Pick a tool to start reviewing: P pin, E edit, R remove, C copy Markdown, Esc stop.';
   }
   function setMode(mode) {
     if (state.busy) return;
@@ -241,8 +241,9 @@
       box.append(actions); body.append(box);
     }
     const modes = element('div', 'modes');
-    for (const [key, label] of [['browse', 'Browse'], ['pin', '⊕ Pin'], ['edit', 'Aa Edit text'], ['remove', '⊖ Remove']]) {
+    for (const [key, label, shortcut] of [['browse', 'Browse', 'B'], ['pin', '⊕ Pin', 'P'], ['edit', 'Aa Edit text', 'E'], ['remove', '⊖ Remove', 'R']]) {
       const b = button(label, () => setMode(key), `mode${state.mode === key ? ' active' : ''}`);
+      b.title = `${label.replace(/^\W+ /, '')} (${shortcut})`; b.setAttribute('aria-keyshortcuts', shortcut.toLowerCase());
       b.setAttribute('aria-pressed', String(state.mode === key)); modes.append(b);
     }
     body.append(modes);
@@ -270,7 +271,11 @@
     const done = button(state.busy ? 'Preparing download…' : state.sent === 'full' ? '✓ Download started' : 'Download review', () => exportReview(), 'button primary done');
     done.setAttribute('aria-label', 'Download review');
     done.disabled = state.busy || Boolean(state.pending);
-    footer.append(done);
+    const copy = button(state.sent === 'copied' ? '✓ Copied' : 'Copy', copyMarkdown, 'button copy', 'Copy Markdown (C)');
+    copy.disabled = state.busy || Boolean(state.pending);
+    const row = element('div', 'footrow');
+    row.append(done, copy);
+    footer.append(row);
     panel.append(header, body, footer);
     if (from) {
       const to = (state.collapsed ? pill : panel).getBoundingClientRect();
@@ -422,7 +427,8 @@
     }
     return box;
   }
-  function focusEditor() { requestAnimationFrame(() => { const input = shadow.getElementById('page-notes-input'); input?.focus(); }); }
+  // Focus right away so fast typing after the click isn't lost; retry after layout just in case.
+  function focusEditor() { const focus = () => shadow.getElementById('page-notes-input')?.focus(); focus(); requestAnimationFrame(focus); }
   function cancelPending(rerender = true) {
     const p = state.pending;
     if (p?.type === 'text') {
@@ -806,6 +812,21 @@
     // Scroll/wheel/touchmove stay available. No synthetic site click/input is emitted.
     event.preventDefault(); event.stopImmediatePropagation();
   }
+  // Single-key tools. Never while typing anywhere (site fields, the note editor) or with a draft open.
+  const TOOL_KEYS = { p: 'pin', e: 'edit', r: 'remove', b: 'browse' };
+  function typingIn(event) {
+    const target = event.composedPath()[0];
+    return target instanceof Element && (target.isContentEditable || Boolean(target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])')));
+  }
+  function toolKey(event) {
+    if (event.metaKey || event.ctrlKey || event.altKey || event.repeat || state.busy || state.pending || state.confirmingClose || typingIn(event)) return false;
+    const key = event.key.toLowerCase();
+    if (!TOOL_KEYS[key] && key !== 'c') return false;
+    event.preventDefault(); event.stopImmediatePropagation();
+    if (key === 'c') copyMarkdown();
+    else { state.collapsed = false; setMode(TOOL_KEYS[key]); }
+    return true;
+  }
   function onKey(event) {
     if (!event.isTrusted) return;
     if (event.key === 'Escape' && !state.busy && (state.pending || state.mode !== 'browse' || state.confirmingClose)) {
@@ -817,6 +838,7 @@
     }
     const p = state.pending;
     if (p?.type === 'text' && p.editHost.contains(event.target)) { inlineKey(event, p); return; }
+    if (toolKey(event)) return;
     if (!ownEvent(event) && state.mode !== 'browse' && !state.collapsed) {
       // Space/Enter on a previously focused site button must not activate it.
       if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopImmediatePropagation(); }
@@ -892,6 +914,29 @@
       edits: state.edits.map(edit => ({ ...edit, previewState: core.segmentCurrent(editSegments.get(edit.id)) ? 'applied' : 'page-changed' })),
       removals: state.removals.map(removal => ({ ...removal, previewState: removedElements.get(removal.id)?.el.isConnected ? 'applied' : 'page-changed' })),
     };
+  }
+  async function copyMarkdown() {
+    if (state.busy || state.pending) return;
+    state.busy = true; state.notice = ''; render();
+    try {
+      const result = await chrome.runtime.sendMessage({ type: 'PAGE_NOTES_RENDER', review: reviewModel() });
+      if (!result?.ok) throw new Error(result?.error || 'The review could not be rendered.');
+      await writeClipboard(result.markdown);
+      announce('Markdown copied.');
+      state.sent = 'copied';
+      clearTimeout(sentTimer); sentTimer = setTimeout(() => { state.sent = ''; render(); }, 2500);
+    } catch (error) {
+      state.notice = error.message || 'Copy failed. Use Download review instead.'; state.noticeType = 'error';
+    } finally { state.busy = false; render(); }
+  }
+  async function writeClipboard(text) {
+    try { await navigator.clipboard.writeText(text); return; } catch (_) { /* Insecure page or no focus: fall back. */ }
+    const area = document.createElement('textarea');
+    area.value = text; area.setAttribute('readonly', ''); area.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
+    shadow.append(area); area.select();
+    const ok = document.execCommand('copy');
+    area.remove();
+    if (!ok) throw new Error('This page blocks copying. Use Download review instead.');
   }
   async function exportReview() {
     if (state.busy || state.pending) return;

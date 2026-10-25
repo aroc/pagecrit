@@ -106,3 +106,21 @@ test('canceled download is returned as an error for draft retention',async()=>{
  const result=await new Promise(resolve=>callback({type:'PAGE_NOTES_EXPORT',review:sample()},{id:'ext',tab:{id:1},frameId:0,url:'https://example.com'},resolve));
  assert.equal(result.ok,false);assert.match(result.error,/canceled/);
 });
+test('render message returns the digest for Copy Markdown, only to our top-frame page script',async()=>{
+ let callback;
+ vm.runInNewContext(readFileSync(new URL('../extension/background.js',import.meta.url),'utf8'),{importScripts(){},PageNotesExport:api,encodeURIComponent,chrome:{runtime:{id:'ext',onMessage:{addListener(fn){callback=fn}}},downloads:{}}});
+ const ask=sender=>new Promise(resolve=>callback({type:'PAGE_NOTES_RENDER',review:sample()},sender,resolve));
+ assert.equal((await ask({id:'other',tab:{id:1},frameId:0,url:'https://example.com'})).ok,false);
+ const result=await ask({id:'ext',tab:{id:1},frameId:0,url:'https://example.com'});
+ assert.equal(result.ok,true);assert.match(result.markdown,/^# Review: Pricing/);
+});
+test('start-review keyboard command injects into http(s) HTML pages only, never past a modal dialog',async()=>{
+ let onCommand;const calls=[];let inspection={modal:false,contentType:'text/html'};
+ vm.runInNewContext(readFileSync(new URL('../extension/background.js',import.meta.url),'utf8'),{importScripts(){},PageNotesExport:api,encodeURIComponent,chrome:{runtime:{id:'ext',onMessage:{addListener(){}}},downloads:{},commands:{onCommand:{addListener(fn){onCommand=fn}}},scripting:{async executeScript(opts){calls.push(opts);return opts.func?[{result:inspection}]:[]}}}});
+ const settle=()=>new Promise(r=>setTimeout(r,10));const seen=()=>JSON.parse(JSON.stringify(calls.map(c=>c.files||'inspect')));
+ onCommand('start-review',{id:7,url:'https://example.com/a'});await settle();
+ assert.deepEqual(seen(),['inspect',['core.js','content.js']]);assert.equal(calls[1].target.tabId,7);
+ calls.length=0;onCommand('start-review',{id:7,url:'chrome://settings'});onCommand('other',{id:7,url:'https://example.com'});await settle();assert.equal(calls.length,0);
+ inspection={modal:true,contentType:'text/html'};onCommand('start-review',{id:7,url:'https://example.com'});await settle();assert.deepEqual(seen(),['inspect']);
+ calls.length=0;inspection={modal:false,contentType:'application/pdf'};onCommand('start-review',{id:7,url:'https://example.com/x.pdf'});await settle();assert.deepEqual(seen(),['inspect']);
+});

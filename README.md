@@ -22,7 +22,9 @@ After updating the repo, click **Reload** on the extension card in `chrome://ext
 - **Remove:** hover to outline a section in red, click to remove it from the page. Restore it from the panel.
 - Review and remove feedback or revert a text edit or restore a removed section in the panel.
 - **Severity:** every item has **Must / Should / Nit** chips in the panel (default Should). Must-fix pins turn red, nits grey, and the digest lists items most important first.
+- **Keyboard:** Alt+Shift+N starts (or shows) a review; change it in `chrome://extensions/shortcuts`. In a review, **P** pin, **E** edit text, **R** remove, **B** browse, **C** copy the Markdown, **Esc** stop. Keys are ignored while you type in a field, a note or a text edit.
 - **Move the panel:** drag its header, or the minimized pill, anywhere — partly off screen is fine. The corner button snaps it to the nearest corner. Clicking a pin highlights its note in the panel; use **Edit** there to change it.
+- **Copy** puts the same Markdown on the clipboard to paste into your agent, an issue or a PR.
 - **Download review:** saves one Markdown file named with the date, time and page title (e.g. `2026-10-24 14-05 Pricing.md`). Chrome's Save As dialog lets you choose the folder.
 
 The digest is short and readable, so you can check what you're sending. A header gives the page, timing, browser and viewport, then a short "How to address this review" block for the agent. Each item lists what to change (your note, or the exact original → replacement, keeping inline markup) and how to find it in source: the exact text with ~80 characters either side and how often it appears, the section heading path and landmark, a stable locator (test id › id › role + name › short path), the element's non-hashed classes and a short excerpt. There is no full-page HTML, no form values and no action history. The format is in [docs/format.md](docs/format.md).
