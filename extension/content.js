@@ -91,7 +91,8 @@
     .highlight,.hover{pointer-events:none;position:fixed;border:2px dashed var(--cobalt);border-radius:6px;background:#2f4be00a;display:none}.highlight{border-style:solid;background:#ffe36e33;border-color:#e8c534}
     .hovertag{position:absolute;left:-2px;bottom:100%;margin-bottom:4px;background:var(--cobalt);color:white;font:600 11px/1.6 var(--sans);padding:1px 7px;border-radius:999px;white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis}.hover.inside .hovertag{bottom:auto;top:0;margin:4px}
     .hover.danger{border-color:var(--red);background:#d9443a12}.hover.danger .hovertag{background:var(--red)}
-    @media(prefers-reduced-motion:reduce){.item.pulse{animation:none}.mode.active{transform:none}}
+    .panel.enter{animation:enter .34s cubic-bezier(.2,.9,.3,1.12);transform-origin:top right}@keyframes enter{from{opacity:0;transform:translateY(-12px) scale(.94)}}
+    @media(prefers-reduced-motion:reduce){.item.pulse,.panel.enter{animation:none}.mode.active{transform:none}}
     @media(max-width:500px){.mode{white-space:normal;line-height:1.2}.panel{right:8px;top:8px;max-height:calc(100vh - 16px);width:310px}.pill{right:8px;top:8px}}
   `;
   const pinsLayer = document.createElement('div');
@@ -104,7 +105,9 @@
   hoverTag.className = 'hovertag';
   hoverBox.append(hoverTag);
   const panel = document.createElement('section');
-  panel.className = 'panel';
+  // A short entrance on first open, so the panel visibly arrives rather than just appearing.
+  panel.className = 'panel enter';
+  panel.addEventListener('animationend', () => panel.classList.remove('enter'), { once: true });
   panel.setAttribute('aria-label', 'PageCrit review');
   // Screen-reader-only confirmation for actions that need no visible callout.
   const liveRegion = document.createElement('div');

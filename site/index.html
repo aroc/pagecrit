@@ -63,6 +63,13 @@
   /* The demo needs a mouse, like the extension: touch screens get the sample review instead. */
   .try{display:none}
   @media (hover:hover) and (pointer:fine){.try{display:inline-flex}.sample-link{display:none}}
+  /* After Try it: a sticky note under the PageCrit panel saying what to do first. */
+  .try-hint{position:fixed;top:304px;right:40px;z-index:20;width:236px;padding:16px 18px 14px;background:var(--marker);color:var(--ink);font:600 23px/1.15 var(--hand);border-radius:3px 3px 14px 3px;box-shadow:0 14px 30px -14px #1f243066;transform:rotate(1.5deg);pointer-events:none;animation:hint .4s .3s both cubic-bezier(.2,.9,.3,1.2)}
+  .try-hint svg{position:absolute;left:50%;bottom:100%;width:34px;height:44px;margin-left:-17px;overflow:visible}
+  .try-hint path{fill:none;stroke:var(--cobalt);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+  .try-hint b{display:block;color:var(--cobalt);font-size:27px}
+  @keyframes hint{from{opacity:0;transform:translateY(10px) rotate(1.5deg)}}
+  @media (prefers-reduced-motion:reduce){.try-hint{animation:none}}
   .small{font-size:14px;color:var(--faint);margin:18px 0 0}
   figure{margin:0}
   .shot{position:relative}
@@ -309,11 +316,33 @@
       script.onerror = () => { loading = null; reject(); };
       document.head.append(script);
     });
-    const open = () => load().then(() => {
-      if (!PageCrit.open()) button.textContent = 'PageCrit is already open';
-    }).catch(() => { button.textContent = 'Couldn’t load. Try again'; });
-    button.addEventListener('click', open);
-    try { if (sessionStorage.getItem('pagecrit:draft')) open(); } catch (_) { /* No storage: start fresh. */ }
+    const open = () => load().then(() => PageCrit.open()).catch(() => { button.textContent = 'Couldn’t load. Try again'; return false; });
+    // The first time, point at the panel with what to do; the note goes at the first click or key.
+    // Listening from the start puts these ahead of PageCrit's own listeners, which stop page events.
+    let hint = null, hinted = false;
+    const dismiss = () => { hint?.remove(); hint = null; };
+    for (const type of ['pointerdown', 'keydown']) addEventListener(type, dismiss, true);
+    const showHint = () => {
+      if (hinted) return;
+      hinted = true;
+      hint = document.createElement('div');
+      hint.className = 'try-hint';
+      hint.setAttribute('role', 'status');
+      hint.innerHTML = '<svg viewBox="0 0 34 44" aria-hidden="true"><path d="M20 42C10 32 9 18 17 4M10 11L17 3L23 11"/></svg><b>Here it is!</b>Pick Pin, then click anything on this page.';
+      document.body.append(hint);
+    };
+    button.addEventListener('click', async () => {
+      if (await open()) showHint();
+      else if (document.querySelector('[data-pagecrit-root]')) button.textContent = 'PageCrit is already open';
+    });
+    // While a review is open the button reads "Show PageCrit"; closing it brings back "Try it".
+    new MutationObserver(() => {
+      const isOpen = Boolean(document.querySelector('[data-pagecrit-root]'));
+      if (!isOpen) { dismiss(); button.textContent = 'Try it on this page'; }
+      else if (button.textContent === 'Try it on this page') button.textContent = 'Show PageCrit';
+    }).observe(document.documentElement, { childList: true });
+    // A resumed review needs no introduction.
+    try { if (sessionStorage.getItem('pagecrit:draft')) { hinted = true; open(); } } catch (_) { /* No storage: start fresh. */ }
   })();
   // Mobile menu: the button toggles it; picking a link, Escape, or tapping outside closes it.
   (() => {
