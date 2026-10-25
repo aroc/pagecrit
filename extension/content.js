@@ -473,16 +473,36 @@
     };
     // Edit in place. Every change is applied by beforeinput to this text's own segment, so
     // neighboring markup is never touched and an emptied node is never removed.
+    lockEditableLayout(state.pending);
     editHost.setAttribute('contenteditable', 'plaintext-only');
+    holdEditableLayout(state.pending);
     state.mode = 'edit'; state.collapsed = false; state.notice = ''; render();
     if (knownEdit) editHost.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     editHost.focus({ preventScroll: true });
     const offset = caret ? core.segmentOffset(segment, caret.node, caret.offset) : model.text.length;
     placeCaret(state.pending, offset);
   }
+  // Chrome's UA styles for editable elements change wrapping (overflow-wrap, white-space),
+  // which would reflow the page while editing. Pin the computed values inline meanwhile.
+  const WRAP_PROPERTIES = ['overflow-wrap', 'word-break', 'line-break', 'white-space-collapse', 'text-wrap-mode', 'white-space', '-webkit-line-break', 'tab-size'];
+  function lockEditableLayout(p) {
+    const computed = getComputedStyle(p.editHost);
+    p.layout = Object.fromEntries(WRAP_PROPERTIES.map(name => [name, computed.getPropertyValue(name)]));
+    p.style = p.editHost.getAttribute('style');
+  }
+  function holdEditableLayout(p) {
+    const computed = getComputedStyle(p.editHost);
+    for (const [name, value] of Object.entries(p.layout)) {
+      if (value && computed.getPropertyValue(name) !== value) p.editHost.style.setProperty(name, value, 'important');
+    }
+    p.heldStyle = p.editHost.getAttribute('style');
+  }
   function endInline(p) {
     if (p.hadEditable) p.editHost.setAttribute('contenteditable', p.editableValue);
     else p.editHost.removeAttribute('contenteditable');
+    if (p.heldStyle !== p.style && p.editHost.getAttribute('style') === p.heldStyle) {
+      if (p.style === null) p.editHost.removeAttribute('style'); else p.editHost.setAttribute('style', p.style);
+    }
     const selection = getSelection();
     if (selection.rangeCount && p.editHost.contains(selection.anchorNode)) selection.removeAllRanges();
     if (p.editHost.contains(document.activeElement) || document.activeElement === p.editHost) p.editHost.blur();

@@ -226,6 +226,17 @@ try {
   assert.equal((await exportBundle()).removals.length,1);assert.equal(await page.evaluate(()=>window.siteActions),0);
   await button('Close review').click();await button('Discard & close').click();assert.equal(await page.locator('#button').isVisible(),true);assert.equal(await page.locator('#button').getAttribute('style'),null);
  });
+ await test('review UI never shifts page layout: editing keeps wrapping, closing leaves no trace',async({page,ui,button})=>{
+  await page.evaluate(()=>{const p=document.createElement('p');p.id='narrow';p.style.cssText='width:120px;border:1px solid';p.textContent='Supercalifragilisticexpialidocious words   with   spaces end';document.querySelector('#plain').before(p);});
+  const layout=()=>page.evaluate(()=>JSON.stringify({s:[scrollX,scrollY,document.documentElement.scrollWidth,document.documentElement.scrollHeight],r:[...document.body.querySelectorAll('*')].map(el=>{const r=el.getBoundingClientRect();return[r.x,r.y,r.width,r.height].map(v=>v.toFixed(2)).join()})}));
+  const base=await layout();const style=await page.locator('#narrow').getAttribute('style');
+  await button('Aa Edit text').click();await page.mouse.move(60,200);await page.waitForTimeout(80);assert.equal(await layout(),base,'edit mode');
+  const p=await page.locator('#narrow').evaluate(el=>{const r=document.createRange();r.selectNodeContents(el.firstChild);const q=r.getClientRects()[0];return{x:q.x+5,y:q.y+q.height/2};});
+  await page.mouse.click(p.x,p.y);await page.waitForTimeout(80);assert.equal(await page.locator('#narrow').getAttribute('contenteditable'),'plaintext-only');assert.equal(await layout(),base,'while editing');
+  await page.keyboard.press('Escape');assert.equal(await page.locator('#narrow').getAttribute('style'),style,'style restored exactly');assert.equal(await layout(),base,'after cancel');
+  await button('⊕ Pin').click();await page.mouse.click(300,140);await page.waitForTimeout(80);assert.equal(await layout(),base,'pending pin');await page.keyboard.press('Escape');
+  await button('Close review').click();await page.waitForTimeout(80);assert.equal(await layout(),base,'after close');
+ });
  await test('blank comment rejected, cancel does not create a phantom note',async({ui,button,clickText,exportBundle})=>{
   await button('⊕ Pin').click();await clickText('#pin1');await ui.locator('textarea').fill(' \n\t ');await button('Save').click();assert.match(await ui.locator('.notice').textContent(),/Add a note/);await button('Cancel').click();assert.equal((await exportBundle()).comments.length,0);
  });
