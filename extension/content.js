@@ -23,7 +23,7 @@
     pending: null, notice: '', noticeType: '', busy: false, confirmingClose: false,
     collapsed: false, dock: 'tr', pos: null, closed: false, frame: 0,
     pages: [], pageId: null, restored: false,
-    sent: '', hoverPoint: null, selectedId: null, revealSelected: false,
+    sent: '', deliveredSignature: null, hoverPoint: null, selectedId: null, revealSelected: false,
   };
   // References never enter the exported review. Keeping them avoids matching a different
   // repeated element when a framework replaces DOM nodes during a review.
@@ -71,7 +71,7 @@
     .pagehead{margin:14px 0 2px;font-size:12px;font-weight:600;color:var(--pencil);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.item.archived .itemtext{color:var(--pencil)}
     .item.reveal{cursor:pointer;margin:0 -18px;padding:12px 18px}.item.reveal:hover{background:#fafbfc}.item.reveal:focus-visible{outline-offset:-2px}
     .item.selected{background:var(--marker-soft)}.item.selected:hover{background:var(--marker-soft)}.item.pulse{animation:pulse 1s ease-out}@keyframes pulse{from{background:var(--marker)}to{background:var(--marker-soft)}}
-    .footer{border-top:1px solid var(--line);padding:14px 18px 16px}.footrow{display:flex;gap:8px}.done{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;font-size:14px;border-radius:14px}.download{border-radius:14px;padding:12px 16px;font-size:14px}.privacy{font-size:12px;color:var(--faint);text-align:center;margin:8px 0 0}
+    .footer{border-top:1px solid var(--line);padding:14px 18px 16px}.footrow{display:flex;gap:8px}.footrow .button{white-space:nowrap}.done{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;font-size:14px;border-radius:14px}.download,.finish{border-radius:14px;padding:12px;font-size:14px}.finish{background:var(--green-mark);border-color:var(--green-mark);color:var(--green)}.finish:hover{border-color:var(--green)}.privacy{font-size:12px;color:var(--faint);text-align:center;margin:8px 0 0}
     .closebox{padding:14px;background:var(--red-soft);border-radius:16px;margin:8px 0 12px;font-size:13px}.closebox p{margin:0}
     .pill{pointer-events:auto;position:fixed;right:18px;top:18px;display:flex;align-items:center;gap:8px;border:1px solid #e3e4eb;border-radius:999px;padding:7px 9px 7px 13px;background:var(--paper);box-shadow:0 1px 0 #1f24300a,0 14px 34px -14px #1f243066;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}.pill .brand{font-size:23px;flex:none}.pill .count{min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:var(--cobalt);color:white;font:700 12px/22px var(--sans);text-align:center}
     .pin{pointer-events:auto;position:fixed;width:28px;height:28px;display:grid;place-items:center;border:2px solid white;border-radius:50% 50% 50% 5px;transform:translate(-50%,-100%) rotate(-4deg);box-shadow:0 3px 10px #1f243055;background:var(--cobalt);color:white;font:700 12px/1 var(--sans);font-variant-numeric:tabular-nums;padding:0}.pin:hover{filter:brightness(.92)}.pin.lost{background:#8d8f9a}.pin.pending{background:var(--marker);color:var(--ink)}.pin.selected{z-index:1;box-shadow:0 0 0 4px var(--marker),0 3px 12px #1f243066}
@@ -308,7 +308,8 @@
     const footer = element('footer', 'footer');
     // Copy is the quick path (paste into your agent, an issue or a PR); the file is the alternative.
     const copy = button(state.sent === 'copied' ? '✓ Copied' : 'Copy Markdown', copyMarkdown, 'button primary done');
-    if (state.sent !== 'copied') copy.append(element('kbd', 'kbd', 'C'));
+    // The key hint gives way to Done so all three fit on one line.
+    if (state.sent !== 'copied' && !delivered()) copy.append(element('kbd', 'kbd', 'C'));
     copy.setAttribute('aria-label', 'Copy Markdown'); copy.setAttribute('aria-keyshortcuts', 'c');
     copy.disabled = state.busy || Boolean(state.pending);
     const done = button(state.busy ? 'Preparing…' : state.sent === 'full' ? '✓ Started' : 'Download', () => exportReview(), 'button download');
@@ -316,6 +317,13 @@
     done.disabled = state.busy || Boolean(state.pending);
     const row = element('div', 'footrow');
     row.append(copy, done);
+    // Once the current review has been copied or downloaded, Done closes it in one click.
+    // Any change afterwards hides it again, so unsent feedback is never thrown away.
+    if (delivered()) {
+      const finish = button('Done', close, 'button finish', 'Close the review');
+      finish.disabled = state.busy || Boolean(state.pending);
+      row.append(finish);
+    }
     footer.append(row);
     panel.append(header, body, footer);
     persistSoon();
@@ -969,6 +977,15 @@
       removals: state.removals.map(removal => onPage(removal, state.pageId) ? { ...removal, previewState: removedElements.get(removal.id)?.el.isConnected ? 'applied' : 'page-changed' } : removal),
     };
   }
+  // Everything that changes what an export would say.
+  function reviewSignature() {
+    return JSON.stringify([
+      state.comments.map(c => [c.id, c.text, c.severity]),
+      state.edits.map(e => [e.id, e.after, e.formatting, e.severity]),
+      state.removals.map(r => [r.id, r.severity]),
+    ]);
+  }
+  function delivered() { return state.deliveredSignature !== null && !state.pending && state.deliveredSignature === reviewSignature(); }
   async function copyMarkdown() {
     if (state.busy || state.pending) return;
     state.busy = true; state.notice = ''; render();
@@ -977,7 +994,7 @@
       if (!result?.ok) throw new Error(result?.error || 'The review could not be rendered.');
       await writeClipboard(result.markdown);
       announce('Markdown copied.');
-      state.sent = 'copied';
+      state.sent = 'copied'; state.deliveredSignature = reviewSignature();
       clearTimeout(sentTimer); sentTimer = setTimeout(() => { state.sent = ''; render(); }, 2500);
     } catch (error) {
       state.notice = error.message || 'Copy failed. Use Download review instead.'; state.noticeType = 'error';
@@ -1000,7 +1017,7 @@
       if (!result?.ok) throw new Error(result?.error || 'The download could not be started.');
       // Confirm briefly on the button itself; the draft simply stays open.
       announce('Download started.');
-      state.sent = 'full';
+      state.sent = 'full'; state.deliveredSignature = reviewSignature();
       clearTimeout(sentTimer); sentTimer = setTimeout(() => { state.sent = ''; render(); }, 2500);
     } catch (error) {
       state.notice = error.message || 'Download failed. Your notes are still here; try again.'; state.noticeType = 'error';

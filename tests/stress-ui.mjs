@@ -279,6 +279,20 @@ try {
   await page.evaluate(()=>navigator.clipboard.writeText(''));await ui.getByRole('button',{name:'Copy Markdown'}).click();await page.waitForFunction(()=>navigator.clipboard.readText().then(t=>t.startsWith('# Review')));
   assert.equal((await exportBundle()).comments[0].text,'pre');
  });
+ await test('Done appears after copy or download, hides when the review changes, and closes without a prompt',async({page,ui,button,clickText,edit,exportBundle})=>{
+  await page.context().grantPermissions(['clipboard-read','clipboard-write'],{origin:new URL(page.url()).origin});
+  const done=ui.getByRole('button',{name:'Close the review',exact:true});
+  await edit('#plain','Shipped copy');assert.equal(await done.count(),0,'nothing delivered yet');
+  await button('Copy Markdown').click();await done.waitFor();
+  await ensure(button('Pin'));await clickText('#pin1');assert.equal(await done.count(),0,'hidden while a draft is open');
+  await ui.locator('textarea').fill('Late note');await button('Save').click();assert.equal(await done.count(),0,'hidden after a change');
+  await exportBundle();await done.waitFor();
+  await ui.locator('article').filter({hasText:'Late note'}).getByRole('button',{name:'Nit',exact:true}).click();assert.equal(await done.count(),0,'severity change counts');
+  await button('Copy Markdown').click();await done.waitFor();assert.match(await page.evaluate(()=>navigator.clipboard.readText()),/· nit\n- Note: Late note/);
+  await done.click();
+  assert.equal(await page.locator('[data-page-notes-root]').count(),0,'closed without a discard prompt');assert.equal(await page.locator('#plain').textContent(),'Original paragraph for edit cycles.','page restored');
+  await page.reload();await page.waitForTimeout(1200);assert.equal(await page.locator('[data-page-notes-root]').count(),0,'draft cleared');
+ });
  await test('blank comment rejected, cancel does not create a phantom note',async({ui,button,clickText,exportBundle})=>{
   await ensure(button('Pin'));await clickText('#pin1');await ui.locator('textarea').fill(' \n\t ');await button('Save').click();assert.match(await ui.locator('.notice').textContent(),/Add a note/);await button('Cancel').click();assert.equal((await exportBundle()).comments.length,0);
  });
