@@ -10,7 +10,7 @@ Private prototype. Runs locally in Chrome; no account, backend, API key, or buil
 2. Open `chrome://extensions` and enable **Developer mode**.
 3. Click **Load unpacked** and choose this repo's **`extension`** folder (or the unzipped artifact folder containing `manifest.json`).
 4. Pin **Page Notes** to the Chrome toolbar.
-5. Visit the page you want to review, click the extension, then **Review this page**.
+5. Visit the page you want to review and click the Page Notes icon (or press Alt+Shift+N). The review panel opens right away. If a page can't be reviewed, the icon shows a red **!** and its tooltip says why.
 
 After updating the repo, click **Reload** on the extension card in `chrome://extensions`, then refresh the page before starting another review.
 

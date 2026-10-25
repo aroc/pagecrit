@@ -66,12 +66,31 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   return true;
 });
 
-// Keyboard shortcut (Alt+Shift+N by default) starts a review like the toolbar popup does.
-// Invoking a command grants activeTab for the current tab only.
+// The toolbar button and the keyboard shortcut (Alt+Shift+N) open the review panel directly.
+// Either grants activeTab for the current tab only. Pages that can't be reviewed get a short
+// reason on the toolbar button instead of an overlay.
 async function startReview(tab) {
-  if (!tab?.id || !/^https?:\/\//i.test(tab.url || '')) return false;
-  return inject(tab.id, {show: true});
+  if (!tab?.id) return false;
+  try {
+    if (!/^https?:\/\//i.test(tab.url || '')) return explain(tab.id, 'Page Notes works on regular web pages, not browser pages, PDFs or the Chrome Web Store.');
+    const started = await inject(tab.id, {show: true});
+    return started === true ? true : explain(tab.id, started);
+  } catch (_) {
+    return explain(tab.id, 'Chrome doesn’t allow Page Notes on this page.');
+  }
 }
+async function explain(tabId, reason) {
+  if (!chrome.action) return false;
+  await chrome.action.setBadgeText({tabId, text: '!'});
+  await chrome.action?.setBadgeBackgroundColor?.({tabId, color: '#d9443a'});
+  await chrome.action?.setTitle({tabId, title: `Page Notes: ${reason}`});
+  setTimeout(() => {
+    chrome.action?.setBadgeText({tabId, text: ''}).catch(() => {});
+    chrome.action?.setTitle({tabId, title: 'Page Notes: review this page'}).catch(() => {});
+  }, 6000);
+  return false;
+}
+chrome.action?.onClicked.addListener(tab => { startReview(tab).catch(() => {}); });
 // `show: false` (automatic restore) leaves an already running review exactly as it is.
 async function inject(tabId, {show}) {
   const tab = {id: tabId};
@@ -81,7 +100,8 @@ async function inject(tabId, {show}) {
     running: Boolean(globalThis.__pageNotesSession)
   })});
   if (inspection?.result?.running && !show) return false;
-  if (inspection?.result?.modal || !['text/html', 'application/xhtml+xml'].includes(inspection?.result?.contentType)) return false;
+  if (inspection?.result?.modal) return 'Close the page’s dialog first, then click again.';
+  if (!['text/html', 'application/xhtml+xml'].includes(inspection?.result?.contentType)) return 'This isn’t an HTML page, so it can’t be reviewed.';
   await chrome.scripting.executeScript({target: {tabId: tab.id}, files: ['core.js', 'content.js']});
   return true;
 }

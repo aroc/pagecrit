@@ -42,21 +42,14 @@ for key in reversed(keys):t.XTestFakeKeyEvent(d,key,0,0)
 x.XFlush(d);x.XCloseDisplay(d)
 `]);
  await page.waitForTimeout(500);
- const cdp=await context.newCDPSession(page);
- const targets=await cdp.send('Target.getTargets');
- const popupTarget=targets.targetInfos.find(t=>t.url.endsWith('/popup.html'));
- assert.ok(popupTarget,'Native Chrome action opened extension popup');
- // Attaching through page CDP proves popup exists; scripted click here is inside extension origin.
- // It exercises the shipped popup handler and its real granted activeTab, not broadened test permissions.
- const popup=context.pages().find(p=>p.url().endsWith('/popup.html'));
- if(popup){await popup.locator('#start').click();}
- else {
-   const {sessionId}=await cdp.send('Target.attachToTarget',{targetId:popupTarget.targetId,flatten:false});
-   await cdp.send('Target.sendMessageToTarget',{sessionId,message:JSON.stringify({id:1,method:'Runtime.evaluate',params:{expression:"document.querySelector('#start').click()"}})});
- }
+ // No popup: the action opens the review panel directly through the shipped background handler.
  await page.locator('[data-page-notes-root]').waitFor({timeout:5000});
  assert.equal(await page.locator('[data-page-notes-root]').evaluate(el=>el.shadowRoot),null);
- console.log('PASS no host permissions: denied before action, native action opens popup, actual popup injects closed production UI');
+ console.log('PASS no host permissions: denied before action, native action opens the closed production panel directly');
+ // Same-origin reload: report whether Chrome kept activeTab so the saved review comes back by itself.
+ await page.reload();
+ const restored=await page.locator('[data-page-notes-root]').waitFor({timeout:3000}).then(()=>true,()=>false);
+ console.log(`INFO same-origin reload ${restored?'restored the review automatically':'needs a toolbar click to continue the saved review'}`);
  // Grant revoked on cross-origin navigation.
  await page.goto(url.replace('127.0.0.1','localhost'));
  const revoked=await worker.evaluate(async tabId=>{try{await chrome.scripting.executeScript({target:{tabId},files:['core.js']});return false;}catch{return true;}},tabId);

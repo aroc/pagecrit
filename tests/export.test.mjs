@@ -136,3 +136,13 @@ test('start-review keyboard command injects into http(s) HTML pages only, never 
  inspection={modal:true,contentType:'text/html'};onCommand('start-review',{id:7,url:'https://example.com'});await settle();assert.deepEqual(seen(),['inspect']);
  calls.length=0;inspection={modal:false,contentType:'application/pdf'};onCommand('start-review',{id:7,url:'https://example.com/x.pdf'});await settle();assert.deepEqual(seen(),['inspect']);
 });
+test('toolbar click opens the panel directly; pages that cannot be reviewed explain why on the button',async()=>{
+ let onClicked;const calls=[],badges=[],titles=[];let inspection={modal:false,contentType:'text/html'};
+ const action={onClicked:{addListener(fn){onClicked=fn}},async setBadgeText(o){badges.push(o.text)},async setBadgeBackgroundColor(){},async setTitle(o){titles.push(o.title)}};
+ vm.runInNewContext(readFileSync(new URL('../extension/background.js',import.meta.url),'utf8'),{importScripts(){},PageNotesExport:api,encodeURIComponent,setTimeout(){},chrome:{action,runtime:{id:'ext',onMessage:{addListener(){}}},downloads:{},scripting:{async executeScript(opts){calls.push(opts);return opts.func?[{result:inspection}]:[]}}}});
+ const settle=()=>new Promise(r=>setTimeout(r,10));const seen=()=>JSON.parse(JSON.stringify(calls.map(c=>c.files||'inspect')));
+ onClicked({id:3,url:'https://example.com/'});await settle();assert.deepEqual(seen(),['inspect',['core.js','content.js']]);assert.deepEqual(badges,[]);
+ calls.length=0;onClicked({id:3,url:'chrome://extensions/'});await settle();assert.equal(calls.length,0);assert.deepEqual(badges,['!']);assert.match(titles.at(-1),/regular web pages/);
+ inspection={modal:true,contentType:'text/html'};onClicked({id:3,url:'https://example.com/'});await settle();assert.deepEqual(seen(),['inspect']);assert.match(titles.at(-1),/Close the page’s dialog/);
+ calls.length=0;inspection={modal:false,contentType:'application/pdf'};onClicked({id:3,url:'https://example.com/a.pdf'});await settle();assert.match(titles.at(-1),/isn’t an HTML page/);
+});

@@ -16,8 +16,7 @@
     "storage"
   ],
   "action": {
-    "default_title": "Page Notes — review this page",
-    "default_popup": "popup.html",
+    "default_title": "Page Notes: review this page",
     "default_icon": {
       "16": "icons/icon-16.png",
       "32": "icons/icon-32.png",

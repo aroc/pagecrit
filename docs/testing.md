@@ -10,7 +10,7 @@ The October 24 hardening pass exercised **19 unit tests and 44 browser scenarios
 - Geometry: both scroll axes, nested scrolling and clipping, fixed/sticky/absolute positioning, CSS scale/zoom, transparent/hidden elements, viewport resize, actual browser zoom at 125%, 150% and 200%.
 - Exports: real complete JSON downloads; original/final snapshots; exact edit ledger; canceled downloads retain drafts; 6,000 history events stay bounded; 22 MB of snapshots recover through explicit feedback-only export.
 - Browser lifecycle: actual MV3 worker termination, automatic restart on Done, complete export from unchanged production code.
-- Permissions: no host permissions in the shipped manifest; native Chrome action grants activeTab; real popup injects; cross-origin navigation revokes access.
+- Permissions: no host permissions in the shipped manifest; native Chrome action grants activeTab; the real toolbar handler injects; cross-origin navigation revokes access.
 - Page safety: forged events rejected; normal page buttons/links do not activate in edit mode; form/rich-text inputs excluded; sanitizer strips scripts, common sensitive fields and URL payloads; custom-element constructors/callbacks do not run during snapshots; source DOM remains unchanged by snapshotting.
 - Size/performance: a 5,000-node synthetic snapshot completed in about 19 ms in the local VM. This is a fixture measurement, not a guarantee on arbitrary websites.
 

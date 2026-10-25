@@ -1,7 +1,7 @@
 // Genuine MV3 worker cold-start + local download through the unmodified closed-shadow UI.
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
-import { mkdtemp, cp, readFile, writeFile, mkdir, rm } from 'node:fs/promises';
+import { mkdtemp, cp, readFile, writeFile, mkdir, rm, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
@@ -46,6 +46,15 @@ try {
   const tabId = await worker.evaluate(async url => (await chrome.tabs.query({})).find(tab => tab.url === url).id, url);
   await worker.evaluate(async tabId => chrome.scripting.executeScript({ target: { tabId }, files: ['core.js', 'content.js'] }), tabId);
   assert.equal(await page.locator('[data-page-notes-root]').evaluate(host => host.shadowRoot), null);
+  // Real keyboard and mouse only (closed shadow root): P for the pin tool, click the heading, type, save.
+  await page.waitForTimeout(300);
+  await page.keyboard.press('p');
+  const heading = await page.locator('h1').boundingBox();
+  await page.mouse.click(heading.x + 20, heading.y + heading.height / 2);
+  await page.waitForTimeout(100);
+  await page.keyboard.insertText('Cold start note');
+  await page.keyboard.press('ControlOrMeta+Enter');
+  await page.keyboard.press('Escape');
   const cdp = await context.newCDPSession(page);
   const downloads = path.join(temp, 'downloads');
   await mkdir(downloads);
@@ -78,19 +87,18 @@ try {
     const { nodes } = await cdp.send('Accessibility.getFullAXTree');
     return nodes.some(node => node.role?.value === 'StaticText' && node.name?.value?.includes('Download started'));
   }, 'Cold-start export did not report success');
-  // Playwright may retain the destroyed Worker handle after a Chrome cold restart.
-  // Read Chrome's persisted download receipt from a separate extension-origin page.
-  const receiptPage = await context.newPage();
-  await receiptPage.goto(new URL('popup.html', worker.url()).href);
+  // Playwright may retain the destroyed Worker handle after a Chrome cold restart, so read the
+  // finished file from the synthetic download folder instead of asking the worker.
   const downloaded = await eventually(async () => {
-    const items = await receiptPage.evaluate(() => chrome.downloads.search({}));
-    return items.find(item => item.state === 'complete');
+    const names = (await readdir(downloads)).filter(name => !name.endsWith('.crdownload'));
+    return names.length ? { filename: path.join(downloads, names[0]) } : null;
   }, 'Cold-start export did not complete its local download');
   assert.ok(path.resolve(downloaded.filename).startsWith(downloads + path.sep), 'Download stays inside synthetic test directory');
   const markdown = await readFile(downloaded.filename, 'utf8');
   assert.match(markdown, /^# Review: /);
   assert.ok(markdown.includes(`- Page: ${url}\n`), 'page URL in the header');
-  assert.match(markdown, /- Summary: 0 comments, 0 text edits, 0 removals/);
+  assert.match(markdown, /- Summary: 1 comment, 0 text edits, 0 removals/);
+  assert.match(markdown, /- Note: Cold start note\n/);
   assert.ok(observedStates.includes('stopped'));
   console.log('PASS genuine MV3 worker stop/restart, unmodified closed-shadow UI and complete local Markdown download');
 } finally {
