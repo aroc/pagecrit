@@ -106,3 +106,11 @@ npm run test:activation  # Linux only: real toolbar click / activeTab test
 `site/` is a static landing page (no build, self-hosted fonts) you can serve from anywhere, e.g. GitHub Pages pointed at `site/`.
 
 More in [architecture](docs/architecture.md), [review format](docs/format.md) and [testing](docs/testing.md).
+
+## Contributing
+
+Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## License
+
+[MIT](LICENSE)

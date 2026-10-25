@@ -2,6 +2,7 @@
   "name": "pagecrit",
   "version": "0.2.0",
   "private": true,
+  "license": "MIT",
   "description": "Local-first Chrome feedback pins and page text edits for agent handoff",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
