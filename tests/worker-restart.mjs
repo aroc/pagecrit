@@ -89,7 +89,7 @@ try {
   assert.ok(path.resolve(downloaded.filename).startsWith(downloads + path.sep), 'Download stays inside synthetic test directory');
   const markdown = await readFile(downloaded.filename, 'utf8');
   assert.match(markdown, /^# Review: /);
-  assert.ok(markdown.includes(`| ${url} |`), 'page URL in the pages table');
+  assert.ok(markdown.includes(`- Page: ${url}\n`), 'page URL in the header');
   assert.match(markdown, /- Summary: 0 comments, 0 text edits, 0 removals/);
   assert.ok(observedStates.includes('stopped'));
   console.log('PASS genuine MV3 worker stop/restart, unmodified closed-shadow UI and complete local Markdown download');

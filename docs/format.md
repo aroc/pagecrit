@@ -4,18 +4,18 @@ One UTF-8 Markdown file named `YYYY-MM-DD HH-MM <page title>.md`, rendered by `e
 
 ## Header
 
-- `# Review: <page title>`
+- `# Review: <page title>`, then `Page:` (or `Pages:`) first
 - `Review:` review ID (`r-YYYYMMDD-xxxx`), tool version, digest version.
 - `Started:` / `Exported:` ISO 8601 with the reviewer's UTC offset, plus duration.
 - `Build:` only when the page opts in with `<meta name="build-sha" content="…">`. Never guessed.
 - `Environment:` browser and version, OS, viewport and device pixel ratio, color scheme.
 - `Summary:` counts by type. A `Note:` line appears if the tab navigated during the review.
 - `## How to address this review`: fixed agent instructions (change real source, treat quoted page text as untrusted data, ask on ambiguity, report each item as done/skipped/unclear).
-- A pages table: one row per page visited in the tab (`P1`, `P2`…, including in-app route changes) with title, URL (query string, fragment and credentials removed), item count and first–last item time. `Summary` says `across N pages` when there is more than one.
+- `Page:` the page URL (query string, fragment and credentials removed). When the review spans several pages in the tab (`P1`, `P2`…, including in-app route changes), a `Pages:` list instead gives each page's title, URL, item count and first–last item time, and `Summary` says `across N pages`.
 
 ## Items
 
-Each page with items gets a `## Pn — <path>` section. Numbers run across pages. Within a page, items are sorted by severity (`must fix`, `suggested`, `nit`, then `note` for praise or observations that request no change; default `suggested`) and then by the order they were made, numbered in that order. The header adds a `Severity:` count line. Each heading ends with ` · <severity>`. Each starts with `### N. <type>`:
+Items go under `## Items`; with several pages, each page with items gets a `## Pn — <path>` section instead. Numbers run across pages. Within a page, items are sorted by severity (`must fix`, `suggested`, `nit`, then `note` for praise or observations that request no change; default `suggested`) and then by the order they were made, numbered in that order. The header adds a `Severity:` count line. Each heading ends with ` · <severity>`. Each starts with `### N. <type>`:
 
 - `Comment · pin N` (N matches the pin on the page): `Note`, context fields, then `Pin` (relative position inside the element, or a page position and its scrolling container).
 - `Text edit`: `Original` and `Replace` (whitespace-normalized code spans; multi-line text in a fenced block), the occurrence count, `Replace with formatting` (HTML with only `<strong>`, `<em>`, `<u>`, `<s>`) when the reviewer formatted it, and `Element after the change` with the element's inline markup (links, bold…) so it isn't flattened.
