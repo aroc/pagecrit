@@ -22,7 +22,8 @@ try {
  context.setDefaultTimeout(5000);
  const worker=context.serviceWorkers()[0]||await context.waitForEvent('serviceworker');
  await mkdir(path.join(temp,'downloads'));
- await worker.evaluate(()=>{const download=chrome.downloads.download.bind(chrome.downloads);chrome.downloads.download=opts=>download({...opts,saveAs:false});});
+ // Keep the rendered review model alongside the downloaded Markdown so tests can check both.
+ await worker.evaluate(()=>{const download=chrome.downloads.download.bind(chrome.downloads);chrome.downloads.download=opts=>download({...opts,saveAs:false});const render=PageNotesExport.renderDigest;PageNotesExport.renderDigest=review=>{globalThis.lastReview=review;return render(review);};});
  async function setup(){
   const page=await context.newPage();await page.goto(base+crypto.randomUUID());
   const tab=await worker.evaluate(async url=>(await chrome.tabs.query({})).find(t=>t.url===url).id,page.url());
@@ -36,25 +37,25 @@ try {
   const typeInline=async value=>{await page.keyboard.press('ControlOrMeta+A');if(value)await page.keyboard.insertText(value);else await page.keyboard.press('Backspace');};
   const editing=()=>page.locator('[contenteditable="plaintext-only"]').count();
   const edit=async(selector,value,index=0)=>{await button('Aa Edit text').click();await clickText(selector,index);await typeInline(value);await button('Save').click();};
-  const exportBundle=async()=>{const before=await worker.evaluate(async()=>(await chrome.downloads.search({})).map(d=>d.id));await button('Download review').click();await ui.getByRole('status').filter({hasText:'Download started'}).waitFor();let d;for(let i=0;i<40;i++){d=await worker.evaluate(async before=>(await chrome.downloads.search({})).find(d=>!before.includes(d.id)),before);if(d?.state==='complete')break;await page.waitForTimeout(75);}assert.equal(d?.state,'complete');return JSON.parse(await readFile(d.filename,'utf8'));};
+  const exportBundle=async()=>{const before=await worker.evaluate(async()=>(await chrome.downloads.search({})).map(d=>d.id));await button('Download review').click();await ui.getByRole('status').filter({hasText:'Download started'}).waitFor();let d;for(let i=0;i<40;i++){d=await worker.evaluate(async before=>(await chrome.downloads.search({})).find(d=>!before.includes(d.id)),before);if(d?.state==='complete')break;await page.waitForTimeout(75);}assert.equal(d?.state,'complete');return{...await worker.evaluate(()=>globalThis.lastReview),markdown:await readFile(d.filename,'utf8')};};
   return{page,ui,button,clickText,edit,typeInline,editing,exportBundle,inject,tab};
  }
  async function test(name,run){let env;try{env=await setup();await run(env);checks++;console.log('PASS',name);}catch(e){failures.push({name,error:e.stack});console.error('FAIL',name,e.message);}finally{if(env)await env.page.close({runBeforeUnload:false});}}
  await test('12 edit/revert cycles restore exact baseline and original inline DOM',async({page,ui,button,edit,exportBundle})=>{
   const before=await page.locator('#headline').innerHTML();
   for(let i=0;i<12;i++){await edit('#headline',`Round ${i} `);assert.equal(await page.locator('#headline em').textContent(),'nested');await ui.locator('article').getByRole('button',{name:'Revert',exact:true}).click();assert.equal(await page.locator('#headline').innerHTML(),before);}
-  const bundle=await exportBundle();assert.equal(bundle.edits.length,0);assert.equal(bundle.history.filter(x=>x.type==='text_edited').length,12);assert.equal(bundle.history.filter(x=>x.type==='text_reverted').length,12);
+  const bundle=await exportBundle();assert.equal(bundle.edits.length,0);assert.match(bundle.markdown,/Summary: 0 comments, 0 text edits/);
  });
  await test('multiline Unicode HTML-looking text is literal; clipboard-like paste retains exact text',async({page,ui,button,clickText,exportBundle})=>{
   const value='Line one\n日本語 café 🦆 e\u0301\n<img src=x onerror="window.siteActions=9"> & <b>literal</b>\nمرحبا';
   await button('Aa Edit text').click();await clickText('#inline');await page.keyboard.press('ControlOrMeta+A');await page.keyboard.insertText(value);await page.keyboard.press('ControlOrMeta+Enter');
   assert.equal(await page.locator('#inline').textContent(),value);assert.equal(await page.locator('#inline img,#inline b').count(),0);assert.equal(await page.evaluate(()=>window.siteActions),0);
-  const bundle=await exportBundle();assert.equal(bundle.edits[0].after,value);assert.match(bundle.snapshots.editedHtml,/&lt;img/);
+  const bundle=await exportBundle();assert.equal(bundle.edits[0].after,value);assert.ok(bundle.markdown.includes('\n  <img src=x onerror="window.siteActions=9"> & <b>literal</b>\n'),'multi-line replacement kept verbatim in a fenced block');
  });
  await test('repeated saves collapse ledger to one edit and original value removes it',async({page,ui,button,edit,exportBundle})=>{
   const original=await page.locator('#plain').textContent();for(let i=0;i<8;i++)await edit('#plain',`Version ${i}`);
   let bundle=await exportBundle();assert.equal(bundle.edits.length,1);assert.equal(bundle.edits[0].before,original);assert.equal(bundle.edits[0].after,'Version 7');
-  await edit('#plain',original);bundle=await exportBundle();assert.equal(bundle.edits.length,0);assert.equal(bundle.history.filter(h=>h.type==='text_edited').length,9);
+  await edit('#plain',original);bundle=await exportBundle();assert.equal(bundle.edits.length,0);
  });
  await test('comment update/remove renumbers pins without changing surviving identities',async({page,ui,button,clickText,exportBundle})=>{
   for(let i=1;i<=3;i++){await button('⊕ Pin').click();await clickText(`#pin${i}`);await ui.locator('textarea').fill(`Comment ${i}`);await button('Save').click();}
@@ -62,7 +63,7 @@ try {
   await ui.locator('article').filter({hasText:'Comment 2'}).getByRole('button',{name:'Edit',exact:true}).click();await ui.locator('textarea').fill('Second revised 🦆');await button('Save').click();
   await ui.locator('article').filter({hasText:'Comment 1'}).getByRole('button',{name:'Remove',exact:true}).click();
   assert.equal(await ui.getByRole('button',{name:'Note 1: Second revised 🦆'}).count(),1);assert.equal(await ui.getByRole('button',{name:'Note 2: Comment 3'}).count(),1);
-  const bundle=await exportBundle();assert.deepEqual(bundle.comments.map(c=>c.id),[secondId,thirdId]);assert.equal(bundle.comments[0].text,'Second revised 🦆');assert.equal(bundle.history.filter(h=>h.type==='comment_removed').length,1);
+  const bundle=await exportBundle();assert.deepEqual(bundle.comments.map(c=>c.id),[secondId,thirdId]);assert.equal(bundle.comments[0].text,'Second revised 🦆');assert.match(bundle.markdown,/Comment · pin 1\n- Note: Second revised 🦆/);
  });
  await test('pin to element outlines the hovered element in the overlay without shifting layout',async({page,ui,button})=>{
   await button('⊕ Pin').click();assert.equal(await button('Pin to element').getAttribute('aria-pressed'),'true');
@@ -145,7 +146,7 @@ try {
   await page.keyboard.press('Escape');assert.equal(await editing(),0);
   assert.equal(await page.evaluate(()=>window.siteKeys),0,'site listeners never saw review typing');
   const bundle=await exportBundle();assert.deepEqual(bundle.edits.map(e=>[e.before,e.after]),[['Simple ','A Simple '],['Original paragraph for edit cycles.','Committed by clicking away']]);
-  assert.ok(!bundle.snapshots.editedHtml.includes('contenteditable'));
+  assert.ok(!bundle.markdown.includes('contenteditable'));assert.match(bundle.markdown,/- Original: `Simple`/);
  });
  await test('keyboard formatting: bold/italic/underline/strike wrap only the selection, survive re-editing, revert and export',async({page,ui,button,clickText,editing,exportBundle})=>{
   await page.evaluate(()=>{window.siteKeys=0;document.addEventListener('keydown',()=>window.siteKeys++);});
@@ -173,8 +174,8 @@ try {
   const bundle=await exportBundle();assert.equal(bundle.edits.length,1);const e=bundle.edits[0];
   assert.equal(e.before,'Original paragraph for edit cycles.');assert.equal(e.after,'Original paragraph for edit cycles.');
   assert.deepEqual(e.formatting,[{start:9,end:18,marks:['bold']},{start:23,end:27,marks:['underline','strike']}]);
-  assert.equal(e.afterHtml,'Original <strong>paragraph</strong> for <u><s>edit</s></u> cycles.');assert.match(bundle.reviewMarkdown,/<strong>paragraph<\/strong>/);
-  assert.match(bundle.snapshots.editedHtml,/<strong>paragraph<\/strong>/);assert.equal(await page.evaluate(()=>window.siteKeys),0);
+  assert.equal(e.afterHtml,'Original <strong>paragraph</strong> for <u><s>edit</s></u> cycles.');assert.match(bundle.markdown,/- Replace with formatting: `Original <strong>paragraph<\/strong> for <u><s>edit<\/s><\/u> cycles\.`/);
+  assert.equal(await page.evaluate(()=>window.siteKeys),0);
   await ui.locator('article').getByRole('button',{name:'Revert',exact:true}).click();assert.equal(await page.locator('#plain').innerHTML(),original);
   assert.equal(await page.locator('#plain').evaluate(el=>el.childNodes.length),1);
  });
@@ -220,8 +221,8 @@ try {
   // A site button is removed without running its click handler; html/body are never removable.
   const bt=await page.locator('#button').boundingBox();await page.mouse.click(bt.x+5,bt.y+5);assert.equal(await page.evaluate(()=>window.siteActions),0);assert.equal(await page.locator('#button').isVisible(),false);
   const bundle=await exportBundle();assert.equal(bundle.removals.length,2);assert.equal(bundle.removals[0].element.id,'pin2');assert.equal(bundle.removals[0].previewState,'applied');
-  assert.match(bundle.snapshots.originalHtml,/Second comment target/);assert.ok(!bundle.snapshots.editedHtml.includes('Second comment target'),'edited snapshot omits removed section');assert.ok(!bundle.snapshots.editedHtml.includes('Do not submit this button'));
-  assert.match(bundle.snapshots.editedHtml,/Third comment target/);assert.match(bundle.reviewMarkdown,/## Remove section 1/);
+  assert.match(bundle.markdown,/### 1\. Remove section\n- Remove: `p#pin2`\n[\s\S]*- Text: `Second comment target`/);assert.match(bundle.markdown,/### 2\. Remove section\n- Remove: `button#button`/);
+  assert.ok(!bundle.markdown.includes('editable original')&&!bundle.markdown.includes('Form original'),'never form values');assert.ok(bundle.markdown.length<6000,'bounded context only');
   await row.getByRole('button',{name:'Restore',exact:true}).click();assert.equal(await page.locator('#pin2').isVisible(),true);assert.equal(await page.locator('#pin2').getAttribute('style'),'color: rgb(1, 2, 3)');
   assert.equal((await exportBundle()).removals.length,1);assert.equal(await page.evaluate(()=>window.siteActions),0);
   await button('Close review').click();await button('Discard & close').click();assert.equal(await page.locator('#button').isVisible(),true);assert.equal(await page.locator('#button').getAttribute('style'),null);
@@ -261,7 +262,7 @@ try {
   assert.equal(await page.locator('#input').inputValue(),'editable original');assert.equal(await page.locator('#textarea').inputValue(),'Form original');assert.equal(await page.locator('#editable').textContent(),'Site editor original');
  });
  await test('SPA route change warns; discard and restart captures new route as baseline',async({page,ui,button,edit,exportBundle,inject})=>{
-  const initial=page.url();await edit('#plain','Old route requested value');await page.evaluate(()=>{history.pushState({},'','/new-route');document.title='New route title';document.querySelector('#plain').textContent='New route paragraph';});await ui.getByRole('status').filter({hasText:'navigated within'}).waitFor();const bundle=await exportBundle();assert.equal(bundle.page.url,initial);assert.ok(bundle.warnings.some(w=>w.includes('URL changed')));assert.equal(bundle.edits[0].previewState,'page-changed');await button('Close review').click();await button('Discard & close').click();await inject();const fresh=await exportBundle();assert.equal(fresh.page.url,new URL('/new-route',initial).href);assert.equal(fresh.page.title,'New route title');assert.equal(fresh.edits.length,0);assert.match(fresh.snapshots.originalHtml,/New route paragraph/);
+  const initial=page.url();await edit('#plain','Old route requested value');await page.evaluate(()=>{history.pushState({},'','/new-route');document.title='New route title';document.querySelector('#plain').textContent='New route paragraph';});await ui.getByRole('status').filter({hasText:'navigated within'}).waitFor();const bundle=await exportBundle();assert.equal(bundle.page.url,initial);assert.equal(bundle.page.navigatedTo,new URL('/new-route',initial).href);assert.match(bundle.markdown,/the tab navigated to/);assert.equal(bundle.edits[0].previewState,'page-changed');await button('Close review').click();await button('Discard & close').click();await inject();const fresh=await exportBundle();assert.equal(fresh.page.url,new URL('/new-route',initial).href);assert.equal(fresh.page.title,'New route title');assert.equal(fresh.edits.length,0);
  });
  await test('small viewport controls remain reachable when the note editor and review list are tall',async({page,ui,button,clickText})=>{
   await page.setViewportSize({width:390,height:500});const h=await ui.locator('.header').boundingBox();await page.mouse.move(h.x+40,h.y+15);await page.mouse.down();await page.mouse.move(h.x-60,h.y+120,{steps:5});await page.mouse.up();await button('Snap to nearest corner').click();await button('Minimize').click();await page.locator('#deep').scrollIntoViewIfNeeded();await ui.getByRole('button',{name:/Open Page Notes/}).click();
@@ -304,7 +305,7 @@ try {
    const expected=await page.locator('#pin1').evaluate((el,offset)=>{const r=el.getBoundingClientRect();return{x:r.left+r.width*offset.xRatio,y:r.top+r.height*offset.yRatio};},anchor.offset);
    const actual=await ui.getByRole('button',{name:'Note 1: Zoom anchor',includeHidden:true}).evaluate(el=>({x:parseFloat(el.style.left),y:parseFloat(el.style.top)}));
    assert.ok(Math.abs(expected.x-actual.x)<1,`zoom x ${JSON.stringify({expected,actual})}`);assert.ok(Math.abs(expected.y-actual.y)<1,`zoom y ${JSON.stringify({expected,actual})}`);
-   const bundle=await exportBundle();assert.ok(Math.abs(bundle.comments[0].exportPosition.x-expected.x)<1);assert.ok(Math.abs(bundle.comments[0].exportPosition.y-expected.y)<1);assert.deepEqual(bundle.comments[0].anchor.document,anchor.document);
+   const bundle=await exportBundle();assert.equal(bundle.comments[0].anchorState,'resolved');assert.deepEqual(bundle.comments[0].anchor.document,anchor.document);
   };
   try {
    for(const zoom of [1.25,1.5,2]){

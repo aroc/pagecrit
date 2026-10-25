@@ -85,15 +85,12 @@ try {
     return items.find(item => item.state === 'complete');
   }, 'Cold-start export did not complete its local download');
   assert.ok(path.resolve(downloaded.filename).startsWith(downloads + path.sep), 'Download stays inside synthetic test directory');
-  const bundle = JSON.parse(await readFile(downloaded.filename, 'utf8'));
-  assert.equal(bundle.page.url, url);
-  assert.equal(bundle.schemaVersion, 1);
-  assert.match(bundle.snapshots.originalHtml, /Cold start review/);
-  assert.match(bundle.snapshots.editedHtml, /Cold start review/);
-  assert.deepEqual(bundle.comments, []);
-  assert.deepEqual(bundle.edits, []);
+  const markdown = await readFile(downloaded.filename, 'utf8');
+  assert.match(markdown, /^# Review: /);
+  assert.ok(markdown.includes(`| ${url} |`), 'page URL in the pages table');
+  assert.match(markdown, /- Summary: 0 comments, 0 text edits, 0 removals/);
   assert.ok(observedStates.includes('stopped'));
-  console.log('PASS genuine MV3 worker stop/restart, unmodified closed-shadow UI and complete local JSON download');
+  console.log('PASS genuine MV3 worker stop/restart, unmodified closed-shadow UI and complete local Markdown download');
 } finally {
   if (context) await context.close();
   if (server?.listening) await new Promise(resolve => server.close(resolve));

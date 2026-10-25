@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Page Notes",
-  "version": "0.1.1",
-  "description": "Pin feedback and edit text on a page, then export a local review bundle for your agent.",
+  "version": "0.2.0",
+  "description": "Pin feedback and edit text on a page, then download a Markdown review for your coding agent.",
   "permissions": [
     "activeTab",
     "scripting",

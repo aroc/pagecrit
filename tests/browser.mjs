@@ -88,7 +88,7 @@ try {
  await mkdir(path.join(temp,'downloads'));
  const cdp=await context.newCDPSession(page);
  await cdp.send('Browser.setDownloadBehavior',{behavior:'allow',downloadPath:path.join(temp,'downloads'),eventsEnabled:true});
- await worker.evaluate(()=>{const original=chrome.downloads.download.bind(chrome.downloads);globalThis.testDownloadOriginal=original;chrome.downloads.download=opts=>{globalThis.testRequestedFilename=opts.filename;return original({...opts,saveAs:false});};});
+ await worker.evaluate(()=>{const original=chrome.downloads.download.bind(chrome.downloads);globalThis.testDownloadOriginal=original;chrome.downloads.download=opts=>{globalThis.testRequestedFilename=opts.filename;return original({...opts,saveAs:false});};const render=PageNotesExport.renderDigest;PageNotesExport.renderDigest=review=>{globalThis.lastReview=review;return render(review);};});
  await ui.getByRole('button',{name:'Download review',exact:true}).click();
  await ui.getByRole('status').filter({hasText:'Download started'}).waitFor();
  let downloaded;
@@ -98,18 +98,19 @@ try {
  }
  assert.equal(downloaded?.state,'complete', JSON.stringify(downloaded));
  // CDP download behavior renames saved files; check the name Chrome accepted from the extension.
- assert.match(await worker.evaluate(()=>globalThis.testRequestedFilename),/^\d{4}-\d{2}-\d{2} \d{2}-\d{2} Fieldwork — synthetic test page\.page-notes\.json$/);
- const bundle=JSON.parse(await readFile(downloaded.filename,'utf8'));
+ assert.match(await worker.evaluate(()=>globalThis.testRequestedFilename),/^\d{4}-\d{2}-\d{2} \d{2}-\d{2} Fieldwork — synthetic test page\.md$/);
+ const bundle=await worker.evaluate(()=>globalThis.lastReview);const markdown=await readFile(downloaded.filename,'utf8');
  assert.equal(bundle.comments.length,2);assert.deepEqual(bundle.comments.map(c=>c.anchor.kind),['page','element']);assert.equal(bundle.edits.length,2);
  assert.equal(bundle.edits[0].before,'Make space for ');assert.equal(bundle.edits[0].after,'Find space for ');
  assert.ok(Math.abs(bundle.comments[0].anchor.document.y-(point.y+offset))<2);
- assert.match(bundle.snapshots.originalHtml,/Make space for /);assert.match(bundle.snapshots.editedHtml,/Find space for /);
- for(const html of [bundle.snapshots.originalHtml,bundle.snapshots.editedHtml]){
-   for(const forbidden of ['SYNTHETIC_SECRET','SYNTHETIC_PASSWORD','SYNTHETIC_HIDDEN','SYNTHETIC_FORM','SYNTHETIC_TOKEN','data-page-notes-root','<script','onclick='])assert.ok(!html.includes(forbidden),forbidden);
-   assert.match(html,/Content-Security-Policy/);
- }
- assert.match(bundle.reviewMarkdown,/Clarify this lower section/);
- console.log('PASS complete local JSON download with baseline, final DOM, exact edit ledger, sanitized snapshot and summary');
+ assert.match(markdown,/^# Review: Fieldwork — synthetic test page\n/);
+ assert.match(markdown,/### 1\. Text edit\n- Original: `Make space for`\n- Replace: `Find space for`\n- Element after the change \(keep its inline markup\): `Find space for <em>better work\.<\/em>`\n- Section: main\n/);
+ assert.match(markdown,/- Locator: `#headline` · role: heading · name: `Make space for better work\.`/);
+ assert.match(markdown,/### \d\. Comment · pin 1\n- Note: Clarify this lower section\.\n[\s\S]*- Text: `Lower-page content for coordinate tests\.`/);
+ assert.match(markdown,/### \d\. Comment · pin 2\n- Note: Make this section more useful\.\n[\s\S]*- Locator: `#nested`/);
+ assert.ok(markdown.length<8000,`digest stays small: ${markdown.length}`);
+ for(const forbidden of ['SYNTHETIC_SECRET','SYNTHETIC_PASSWORD','SYNTHETIC_HIDDEN','SYNTHETIC_FORM','SYNTHETIC_TOKEN','data-page-notes-root','<script','onclick=','accidentalClicks'])assert.ok(!markdown.includes(forbidden),forbidden);
+ console.log('PASS complete local Markdown digest: exact edits with inline markup, anchored context, no page secrets or scripts');
  // Dynamic replacement remains a request with conflict flag, never silently matched to replacement.
  await page.locator('#headline').evaluate(el=>{el.innerHTML='Server replaced this heading';});
  await worker.evaluate(()=>{chrome.downloads.download=async()=>{throw new Error('User canceled the save dialog');};});

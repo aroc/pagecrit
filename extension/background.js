@@ -1,14 +1,14 @@
 'use strict';
 importScripts('export.js');
 
-// Future destinations implement deliver(bundle) here, behind explicit user selection.
+// Future destinations implement deliver(review) here, behind explicit user selection.
 // The content script neither knows API tokens nor sends network requests.
 const destinations = {
-  async file(bundle) {
-    const json = PageNotesExport.serializeBundle(bundle);
+  async file(review) {
+    const markdown = PageNotesExport.renderDigest(review);
     const id = await chrome.downloads.download({
-      url: 'data:application/json;charset=utf-8,' + encodeURIComponent(json),
-      filename: PageNotesExport.filename(bundle),
+      url: 'data:text/markdown;charset=utf-8,' + encodeURIComponent(markdown),
+      filename: PageNotesExport.filename(review),
       saveAs: true,
       conflictAction: 'uniquify'
     });
@@ -39,6 +39,6 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     respond({ok: false, error: 'Export must come from the page you are reviewing.'});
     return;
   }
-  destinations.file(message.bundle).then(respond).catch(error => respond({ok: false, code: error.code, error: error.message || 'Download failed. Your draft is still open.'}));
+  destinations.file(message.review).then(respond).catch(error => respond({ok: false, code: error.code, error: error.message || 'Download failed. Your draft is still open.'}));
   return true;
 });
