@@ -54,10 +54,10 @@ try {
  await page.keyboard.press('Escape');
  await ui.getByRole('button',{name:/^Note 1:/}).click();await page.waitForTimeout(1100);
  await shot('hero.png');
- // Where the landing page's hand-drawn arrows land: pin 1's tail and the Copy Markdown button.
+ // Where the landing page's hand-drawn arrows land: pin 1's tail and the left side of the Copy Markdown button.
  const vp=page.viewportSize(), at=(x,y)=>`${(x/vp.width).toFixed(3)},${(y/vp.height).toFixed(3)}`;
  const pinBox=await box(ui.locator('.pin').filter({hasText:/^1$/})), copyBox=await box(button('Copy Markdown'));
- anchors={pin:at(pinBox.x+pinBox.width/2,pinBox.y+pinBox.height+8),copy:at(copyBox.x+copyBox.width/2,copyBox.y+copyBox.height)};
+ anchors={pin:at(pinBox.x+pinBox.width/2,pinBox.y+pinBox.height+8),copy:at(copyBox.x,copyBox.y+copyBox.height/2)};
  await shot('panel.png',pad(await box(ui.getByRole('region',{name:'Page Notes review'})),12));
  await shot('row-severity.png',pad(await box(ui.locator('article').first()),6));
 

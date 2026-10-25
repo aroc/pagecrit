@@ -139,7 +139,7 @@
         <!-- Each arrow runs from its label to a point in the screenshot (fractions of the image,
              written by npm run screenshots) and is redrawn whenever the layout changes. -->
         <span class="note pin" data-anchor="pin" data-at="0.413,0.631">pin anywhere</span>
-        <span class="note copy" data-anchor="copy" data-at="0.826,0.961">one click, ready to paste</span>
+        <span class="note copy" data-from="left" data-anchor="copy" data-at="0.748,0.935">one click, ready to paste</span>
         <svg class="arrows" aria-hidden="true"></svg>
       </figure>
     </section>
@@ -257,8 +257,10 @@
         if (!label.width) continue;
         const [fx, fy] = note.dataset.at.split(',').map(Number);
         const tx = pic.left - box.left + fx * pic.width, ty = pic.top - box.top + fy * pic.height;
-        // Leave the label from the side of its top edge nearest the target.
-        const sx = Math.min(Math.max(tx, label.left - box.left + 14), label.right - box.left - 14), sy = label.top - box.top - 6;
+        // Leave from the label's left side (data-from="left") or from its top edge, nearest the target.
+        const fromLeft = note.dataset.from === 'left';
+        const sx = fromLeft ? label.left - box.left - 8 : Math.min(Math.max(tx, label.left - box.left + 14), label.right - box.left - 14);
+        const sy = fromLeft ? label.top - box.top + label.height * 0.45 : label.top - box.top - 6;
         const dx = tx - sx, dy = ty - sy, length = Math.hypot(dx, dy);
         if (length < 20) continue;
         const ux = dx / length, uy = dy / length;
