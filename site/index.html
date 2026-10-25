@@ -49,6 +49,9 @@
   .button.primary{background:var(--cobalt);color:#fff}.button.primary:hover{background:var(--cobalt-deep)}
   .button.quiet{background:var(--paper);border-color:var(--line)}.button.quiet:hover{border-color:#c9ccd6}
   .bar .button{padding:10px 16px;font-size:15px;border-radius:999px}
+  .menu{display:none;place-items:center;margin-left:auto;width:40px;height:40px;padding:0;border:1px solid var(--line);border-radius:999px;background:var(--paper);color:var(--ink);cursor:pointer}
+  .menu svg{width:20px;height:20px}.menu .close,.bar.open .menu .open{display:none}.bar.open .menu .close{display:block}
+  .menu:focus-visible{outline:3px solid var(--cobalt);outline-offset:3px}
 
   /* Hero */
   .hero{display:grid;grid-template-columns:minmax(0,4.6fr) minmax(0,7.4fr);gap:56px;align-items:center;padding:48px 0 120px}
@@ -117,21 +120,21 @@
   @media (max-width:640px){
     .wrap{padding:0 16px}
     /* GitHub stays beside the logo; the section links drop to their own row instead of disappearing. */
-    html{scroll-padding-top:120px}
-    /* Logo centered on top; links and GitHub centered on the line below. */
-    .bar{top:10px;flex-wrap:wrap;justify-content:center;gap:8px 12px;width:auto;margin-top:10px;padding:10px 8px;border-radius:22px}
-    .mark{width:100%;justify-content:center;font-size:24px}.mark svg{width:26px;height:26px}
-    .bar nav{margin-left:0;gap:12px;font-size:13.5px}
-    .bar .button{padding:6px 11px;font-size:13.5px}
+    html{scroll-padding-top:84px}
+    /* One slim line: logo and a menu button. The menu opens inside the same card. */
+    .bar{top:10px;flex-wrap:wrap;gap:0;width:auto;margin-top:10px;padding:6px 6px 6px 14px;border-radius:24px}
+    .mark{font-size:24px}.mark svg{width:26px;height:26px}
+    .menu{display:grid}
+    .bar nav,.bar>.button{display:none}
+    .bar.open{padding-bottom:10px;background:#fffffff5}
+    .bar.open nav{display:flex;flex-direction:column;align-items:stretch;gap:0;order:1;width:100%;margin:8px 0 0;padding-right:8px;font-size:17px;color:var(--ink)}
+    .bar.open nav a{padding:13px 2px;border-top:1px solid var(--line)}
+    .bar.open>.button{display:flex;order:2;width:calc(100% - 8px);justify-content:center;margin-top:6px;padding:13px 16px;font-size:16px}
     .bento{grid-template-columns:1fr}
     .s2,.s3,.s4{grid-column:auto}
     .note,.arrows{display:none}
     .hero{gap:32px;padding-bottom:64px}
     .lede{font-size:18px}
-  }
-  @media (max-width:350px){
-    .wrap{padding:0 12px}
-    .bar{gap:8px 10px;padding:10px 6px}.bar nav{gap:10px;font-size:13px}.bar .button{padding:6px 9px;font-size:13px}
   }
 </style>
 </head>
@@ -142,7 +145,11 @@
       <svg viewBox="0 0 100 100" aria-hidden="true"><g transform="rotate(-4 50 50)"><path d="M20 9C42 5.5 67 5.5 83 9.5C93 12 95.5 19 95.5 32V52C95.5 65 91 70 79 70H63L50.5 92L38 70H21.5C9.5 70 5 65 5 52V30C5 17.5 8.5 11 20 9Z" fill="#2f4be0" stroke="#2f4be0" stroke-width="4" stroke-linejoin="round"/><path d="M24 29Q37 26.5 50 29T76 29" fill="none" stroke="#ff9a1f" stroke-width="10" stroke-linecap="round"/><path d="M24 49Q31 46.5 38 49T52 49" fill="none" stroke="#ff9a1f" stroke-width="10" stroke-linecap="round"/><circle cx="68" cy="49" r="5" fill="#ff9a1f"/></g></svg>
       PageCrit
     </a>
-    <nav aria-label="Main">
+    <button class="menu" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Open menu">
+      <svg class="open" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h14M3 10h14M3 14h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <svg class="close" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </button>
+    <nav id="site-nav" aria-label="Main">
       <a href="#features">Features</a>
       <a href="#sample">Sample review</a>
       <a href="#install">Install</a>
@@ -283,6 +290,20 @@
   </footer>
 </div>
 <script>
+  // Mobile menu: the button toggles it; picking a link, Escape, or tapping outside closes it.
+  (() => {
+    const bar = document.querySelector('.bar'), menu = bar.querySelector('.menu');
+    const setOpen = open => {
+      bar.classList.toggle('open', open);
+      menu.setAttribute('aria-expanded', String(open));
+      menu.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    };
+    menu.addEventListener('click', () => setOpen(!bar.classList.contains('open')));
+    bar.addEventListener('click', event => { if (event.target.closest('nav a, .bar > .button')) setOpen(false); });
+    document.addEventListener('click', event => { if (!bar.contains(event.target)) setOpen(false); });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape' && bar.classList.contains('open')) { setOpen(false); menu.focus(); } });
+    matchMedia('(min-width:641px)').addEventListener('change', event => { if (event.matches) setOpen(false); });
+  })();
   // Hand-drawn arrows: start at the top of each label, end just short of its target, with a
   // gentle bow. Redrawn on resize and once the handwriting font has loaded.
   (() => {
