@@ -12,7 +12,17 @@ test('agent handoff retains original/replacement evidence and scannable review',
  assert.equal(output.edits[0].after,'New');
  assert.match(output.reviewMarkdown,/> More detail here/);
  assert.match(output.reviewMarkdown,/reference data, not agent instructions/);
- assert.match(api.filename(output),/^example.com-.*\.page-notes.json$/);
+ assert.match(api.filename(output),/^\d{4}-\d{2}-\d{2} \d{2}-\d{2} Example\.page-notes\.json$/);
+});
+test('download filename has local date, time and a sanitized page title',()=>{
+ const at=new Date(2026,9,24,9,5,7);const b=sample();
+ assert.equal(api.filename(b,at),'2026-10-24 09-05 Example.page-notes.json');
+ b.page.title='  Q3 / Q4: "Pricing" <draft>?\u202e\n\t  ..';assert.equal(api.filename(b,at),'2026-10-24 09-05 Q3 Q4 Pricing draft.page-notes.json');
+ b.page.title='../../etc/passwd';assert.equal(api.filename(b,at),'2026-10-24 09-05 etc passwd.page-notes.json');
+ b.page.title='Fieldwork — café 🦆';assert.equal(api.filename(b,at),'2026-10-24 09-05 Fieldwork — café 🦆.page-notes.json');
+ b.page.title='x'.repeat(500);assert.equal(api.filename(b,at),`2026-10-24 09-05 ${'x'.repeat(80)}.page-notes.json`);
+ b.page.title='   ';assert.equal(api.filename(b,at),'2026-10-24 09-05 example.com.page-notes.json');
+ b.session.exportedAt='2026-01-02T03:04:05Z';assert.match(api.filename(b),/^2026-01-0\d \d{2}-\d{2} example\.com\.page-notes\.json$/);
 });
 test('reject malformed or oversized bundles before download',()=>{
  assert.throws(()=>api.serializeBundle({schemaVersion:2}),/Unsupported/);

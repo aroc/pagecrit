@@ -38,10 +38,19 @@
     }
     return json;
   }
-  function filename(bundle) {
-    const host = new URL(bundle.page.url).hostname.replace(/[^a-zA-Z0-9.-]/g, '_').slice(0, 80) || 'page';
-    const date = new Date().toISOString().replace(/[:.]/g, '-');
-    return `${host}-${date}.page-notes.json`;
+  // "2026-10-24 14-05 Page title.page-notes.json" in the reviewer's local time. The title is
+  // page-controlled: strip path, reserved and control/bidi characters before Chrome sees it.
+  function filename(bundle, at = new Date(bundle.session?.exportedAt || Date.now())) {
+    if (Number.isNaN(at.getTime())) at = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const stamp = `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())} ${pad(at.getHours())}-${pad(at.getMinutes())}`;
+    const clean = text => Array.from(String(text || '')
+      .replace(/[<>:"/\\|?*~\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2060-\u2069\ufeff]/g, ' ')
+      .replace(/\s+/g, ' ').trim()).slice(0, 80).join('').replace(/^[\s.]+|[\s.]+$/g, '');
+    let host = '';
+    try { host = new URL(bundle.page.url).hostname; } catch (_) { /* Validated before download. */ }
+    const title = clean(bundle.page?.title) || clean(host) || 'page';
+    return `${stamp} ${title}.page-notes.json`;
   }
   root.PageNotesExport = {MAX_BYTES, validateBundle, serializeBundle, toMarkdown, filename};
   if (typeof module !== 'undefined' && module.exports) module.exports = root.PageNotesExport;

@@ -88,7 +88,7 @@ try {
  await mkdir(path.join(temp,'downloads'));
  const cdp=await context.newCDPSession(page);
  await cdp.send('Browser.setDownloadBehavior',{behavior:'allow',downloadPath:path.join(temp,'downloads'),eventsEnabled:true});
- await worker.evaluate(()=>{const original=chrome.downloads.download.bind(chrome.downloads);globalThis.testDownloadOriginal=original;chrome.downloads.download=opts=>original({...opts,saveAs:false});});
+ await worker.evaluate(()=>{const original=chrome.downloads.download.bind(chrome.downloads);globalThis.testDownloadOriginal=original;chrome.downloads.download=opts=>{globalThis.testRequestedFilename=opts.filename;return original({...opts,saveAs:false});};});
  await ui.getByRole('button',{name:'Done · Download review',exact:true}).click();
  await ui.getByRole('status').filter({hasText:'Download started'}).waitFor();
  let downloaded;
@@ -97,6 +97,8 @@ try {
    if(downloaded?.state==='complete')break;await page.waitForTimeout(100);
  }
  assert.equal(downloaded?.state,'complete', JSON.stringify(downloaded));
+ // CDP download behavior renames saved files; check the name Chrome accepted from the extension.
+ assert.match(await worker.evaluate(()=>globalThis.testRequestedFilename),/^\d{4}-\d{2}-\d{2} \d{2}-\d{2} Fieldwork — synthetic test page\.page-notes\.json$/);
  const bundle=JSON.parse(await readFile(downloaded.filename,'utf8'));
  assert.equal(bundle.comments.length,2);assert.deepEqual(bundle.comments.map(c=>c.anchor.kind),['page','element']);assert.equal(bundle.edits.length,2);
  assert.equal(bundle.edits[0].before,'Make space for ');assert.equal(bundle.edits[0].after,'Find space for ');
