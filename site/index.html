@@ -132,6 +132,8 @@
   ol.steps li::before{content:counter(step);position:absolute;left:20px;top:17px;width:28px;height:24px;border-radius:7px 8px 6px 8px;background:var(--cobalt);color:#fff;font:700 13px/24px var(--sans);text-align:center}
   ol.steps b{display:block;margin-bottom:2px}
   ol.steps span{color:var(--pencil);font-size:16px}
+  ol.steps .button{margin-top:14px}
+  .install .source{margin:22px 4px 0;color:var(--pencil);font-size:15px}.install .source b{color:var(--ink)}
   code{font:14px/1.4 var(--mono);background:var(--code);border-radius:6px;padding:2px 6px}
 
   footer{border-top:1px solid var(--line);padding:28px 0 40px;color:var(--faint);font-size:14px;display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between}
@@ -190,11 +192,11 @@
         <h1><span>Add feedback on any web page.</span> <span>Then hand it to your agent.</span></h1>
         <p class="lede">Review your own site the way you'd mark up a printout: pin notes, rewrite copy in place, strike what doesn't belong. Then copy one short Markdown review your agent can actually act on.</p>
         <div class="cta">
-          <a class="button primary" href="#install">Add it to Chrome</a>
+          <a class="button primary" href="https://chromewebstore.google.com/detail/pfpjpnccobppojmgmihaachhjlgjndfd" target="_blank" rel="noopener">Add to Chrome</a>
           <a class="button quiet sample-link" href="#sample">See a sample review</a>
           <button class="button quiet try" type="button">Try it on this page</button>
         </div>
-        <p class="small">Free Chrome extension. No account, nothing uploaded.</p>
+        <p class="small">Free on the Chrome Web Store. No account, nothing uploaded.</p>
       </div>
       <figure class="shot">
         <img src="assets/hero.png" width="1800" height="1125" alt="A pricing page being reviewed: numbered comment pins on the Pro plan and the Business button, and the PageCrit panel listing comments, text edits and a removal with severity chips.">
@@ -302,13 +304,16 @@
     <section class="install" id="install" aria-labelledby="install-title">
       <div class="section-head">
         <h2 id="install-title">Install in a minute</h2>
-        <p>PageCrit loads straight from its folder: no store listing, no build step.</p>
+        <p>Free on the Chrome Web Store. It only runs when you click it, and nothing leaves your browser.</p>
       </div>
-      <ol class="steps">
-        <li><b>Get the extension</b><span><a href="https://github.com/aroc/pagecrit/releases/latest/download/pagecrit.zip">Download pagecrit.zip</a> from the latest release and unzip it. Or clone it from <a href="https://github.com/aroc/pagecrit" target="_blank" rel="noopener">GitHub</a>: it's open source.</span></li>
-        <li><b>Load it in Chrome</b><span>Open <code>chrome://extensions</code>, turn on Developer mode, click Load unpacked and pick the unzipped <code>pagecrit</code> folder (or <code>extension</code> in your clone).</span></li>
-        <li><b>Start reviewing</b><span>Pin PageCrit to the toolbar, open any page and click the PageCrit button.</span></li>
-      </ol>
+      <div>
+        <ol class="steps">
+          <li><b>Add it to Chrome</b><span>Open PageCrit on the Chrome Web Store and click Add to Chrome.</span><a class="button primary" href="https://chromewebstore.google.com/detail/pfpjpnccobppojmgmihaachhjlgjndfd" target="_blank" rel="noopener">Add to Chrome</a></li>
+          <li><b>Pin it</b><span>Click the puzzle-piece icon in Chrome's toolbar and pin PageCrit, so it's one click away.</span></li>
+          <li><b>Start reviewing</b><span>Open any page and click the PageCrit button.</span></li>
+        </ol>
+        <p class="source"><b>Prefer to run it from source?</b> It's open source. <a href="https://github.com/aroc/pagecrit/releases/latest/download/pagecrit.zip">Download pagecrit.zip</a> (or clone it from <a href="https://github.com/aroc/pagecrit" target="_blank" rel="noopener">GitHub</a>), open <code>chrome://extensions</code>, turn on Developer mode, click Load unpacked and pick the unzipped <code>pagecrit</code> folder (or <code>extension</code> in your clone).</p>
+      </div>
     </section>
   </main>
 

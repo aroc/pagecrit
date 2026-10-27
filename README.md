@@ -31,12 +31,11 @@ When you're done, **Copy Markdown** and paste it into Claude Code, Cursor, an is
 
 ## Install
 
-1. [**Download pagecrit.zip**](https://github.com/aroc/pagecrit/releases/latest/download/pagecrit.zip) from the [latest release](https://github.com/aroc/pagecrit/releases/latest) and unzip it.
-2. Open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked** and choose the unzipped **`pagecrit`** folder. (Working from a clone? Choose its `extension` folder instead.)
-3. Pin **PageCrit** to the toolbar.
-4. Open the page you want to review and click the PageCrit button in the toolbar. The panel opens right away. If a page can't be reviewed, the icon shows a red **!** and its tooltip says why.
+1. **[Add PageCrit to Chrome](https://chromewebstore.google.com/detail/pfpjpnccobppojmgmihaachhjlgjndfd)** from the Chrome Web Store. It's free.
+2. Pin **PageCrit** to the toolbar (the puzzle-piece icon).
+3. Open the page you want to review and click the PageCrit button in the toolbar. The panel opens right away. If a page can't be reviewed, the icon shows a red **!** and its tooltip says why.
 
-To update, download the new release and load it the same way. From a clone, pull and click **Reload** on the extension in `chrome://extensions`, then refresh the page.
+**From source:** [download pagecrit.zip](https://github.com/aroc/pagecrit/releases/latest/download/pagecrit.zip) from the [latest release](https://github.com/aroc/pagecrit/releases/latest) and unzip it, or clone this repo. Open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked** and choose the unzipped **`pagecrit`** folder (from a clone, its `extension` folder). To update, load the new release the same way; from a clone, pull and click **Reload** on the extension, then refresh the page.
 
 ## Using it
 
@@ -175,7 +174,7 @@ npm run test:activation  # Linux only: real toolbar click / activeTab test
 
 `extension/` is the installable source: plain JavaScript, no build step and no runtime dependencies. Development uses Node 24; packaging also uses Python 3's standard ZIP library. Tests and screenshots use only synthetic local pages (`scripts/demo` is a made-up product page), so never commit a real review.
 
-**Releasing:** bump the version in `extension/manifest.json`, `package.json` and `VERSION` in `extension/content.js`, then push a matching tag (`git tag v0.2.0 && git push origin v0.2.0`). CI runs every test and publishes the release with `pagecrit.zip` attached; the README's download link always points at the latest one.
+**Releasing:** bump the version in `extension/manifest.json`, `package.json` and `VERSION` in `extension/content.js`, then push a matching tag (`git tag v0.2.0 && git push origin v0.2.0`). CI runs every test and publishes the release with `pagecrit.zip` attached; the README's download link always points at the latest one. Then upload that same `pagecrit.zip` in the Chrome Web Store Developer Dashboard (Package → Upload new package) and submit it for review.
 
 `site/` is the static landing page at [pagecrit.dev](https://pagecrit.dev) (no build, self-hosted fonts). It's a Cloudflare Worker serving only `site/` (`wrangler.jsonc`); `npm run deploy:site` publishes it (needs `CLOUDFLARE_API_TOKEN`). Its **Try it on this page** button loads `site/embed/pagecrit.js`: the same extension scripts running inside the page, with `embed/host.js` answering what the service worker would (Markdown, Blob downloads, the draft in `sessionStorage`, recent reviews in `localStorage`). Run `npm run embed` after changing the extension; `npm test` fails if the build is stale.
 
