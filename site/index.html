@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
 <title>PageCrit: mark up any web page for your coding agent</title>
 <meta name="description" content="A Chrome extension for reviewing your own site: pin notes, edit text in place, strike sections, then copy one Markdown review your coding agent can act on.">
 <meta property="og:title" content="PageCrit">
@@ -23,10 +24,21 @@
   @font-face{font-family:"Hand";src:url(fonts/caveat-latin.woff2) format("woff2");font-weight:400 700;font-display:swap}
   :root{
     --ink:#1f2430;--pencil:#5d6170;--faint:#8b8f9c;--line:#e4e6ed;--page:#f3f4f7;--paper:#fff;--wash:#f7f8fa;
-    --cobalt:#2f4be0;--cobalt-deep:#2238b8;--marker:#ffe36e;--must:#dc3b30;--suggested:#ef7d1a;--nit:#f5c518;--green:#1d7f4c;
+    --cobalt:#2f4be0;--cobalt-deep:#2238b8;--cobalt-ink:#2f4be0;--marker:#ffe36e;--on-marker:#1f2430;--must:#dc3b30;--suggested:#ef7d1a;--nit:#f5c518;--green:#1d7f4c;
+    --bar:#ffffffd6;--bar-open:#fffffff5;--hairline:#1f243012;--divider:#1f243014;--tint:#1f24300d;--tint-hover:#1f243017;--control-hover:#c9ccd6;--key-line:#d6d9e2;--code:#eceef3;--shadow:#1f243066;--feature:#1f2430;
     --sans:"Bricolage",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;--hand:"Hand",ui-rounded,cursive;
     --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
     color-scheme:light;
+  }
+  /* Dark mode follows the system. Screenshots stay as they are: they show a light page. */
+  @media (prefers-color-scheme:dark){
+    :root{
+      --ink:#e8eaf0;--pencil:#a4a9b8;--faint:#7c8191;--line:#272b35;--page:#0f1115;--paper:#171a20;--wash:#1e2128;
+      --cobalt-ink:#8d9cff;
+      --bar:#171a20d6;--bar-open:#171a20f5;--hairline:#ffffff14;--divider:#ffffff17;--tint:#ffffff0f;--tint-hover:#ffffff1c;--control-hover:#4b5060;--key-line:#3a3f4c;--code:#242833;--shadow:#000000b3;--feature:#0b0d11;
+      color-scheme:dark;
+    }
+    .shot>img,.card .art img{outline-color:#ffffff1a}
   }
   *,*::before,*::after{box-sizing:border-box}
   html{-webkit-text-size-adjust:100%}
@@ -39,7 +51,7 @@
   /* Top bar */
   html{scroll-padding-top:96px}
   /* Top bar: a pill that stays put while the page scrolls under its blurred backdrop. */
-  .bar{position:sticky;top:14px;z-index:10;display:flex;align-items:center;gap:32px;width:fit-content;margin:14px auto 8px;padding:8px 8px 8px 18px;border-radius:999px;background:#ffffffd6;border:1px solid #1f243012;box-shadow:0 10px 30px -18px #1f243055;-webkit-backdrop-filter:blur(18px) saturate(1.4);backdrop-filter:blur(18px) saturate(1.4)}
+  .bar{position:sticky;top:14px;z-index:10;display:flex;align-items:center;gap:32px;width:fit-content;margin:14px auto 8px;padding:8px 8px 8px 18px;border-radius:999px;background:var(--bar);border:1px solid var(--hairline);box-shadow:0 10px 30px -18px var(--shadow);-webkit-backdrop-filter:blur(18px) saturate(1.4);backdrop-filter:blur(18px) saturate(1.4)}
   .mark{display:flex;align-items:center;gap:9px;text-decoration:none;font:700 28px/1 var(--hand)}
   .mark svg{width:30px;height:30px}
   .bar nav{margin-left:auto;display:flex;gap:22px;align-items:center;font-size:15px;color:var(--pencil)}
@@ -47,9 +59,9 @@
 
   .button{display:inline-flex;align-items:center;gap:10px;text-decoration:none;font:600 16px/1 var(--sans);padding:15px 22px;border-radius:14px;border:1px solid transparent}
   .button.primary{background:var(--cobalt);color:#fff}.button.primary:hover{background:var(--cobalt-deep)}
-  .button.quiet{background:var(--paper);border-color:var(--line)}.button.quiet:hover{border-color:#c9ccd6}
+  .button.quiet{background:var(--paper);border-color:var(--line)}.button.quiet:hover{border-color:var(--control-hover)}
   .bar .button{padding:10px 16px;font-size:15px;border-radius:999px}
-  .menu{display:none;place-items:center;margin-left:auto;width:40px;height:40px;padding:0;border:0;border-radius:999px;background:#1f24300d;color:var(--ink);cursor:pointer}.menu:hover{background:#1f243017}
+  .menu{display:none;place-items:center;margin-left:auto;width:40px;height:40px;padding:0;border:0;border-radius:999px;background:var(--tint);color:var(--ink);cursor:pointer}.menu:hover{background:var(--tint-hover)}
   .menu svg{width:20px;height:20px}.menu .close,.bar.open .menu .open{display:none}.bar.open .menu .close{display:block}
   .menu:focus-visible{outline:3px solid var(--cobalt);outline-offset:3px}
 
@@ -65,9 +77,9 @@
   @media (hover:hover) and (pointer:fine){.try{display:inline-flex}.sample-link{display:none}}
   /* After Try it: a sticky note just left of the PageCrit panel (docked 18px from the top right,
      364px wide) saying what to do first, with an arrow into the panel's left edge. */
-  .try-hint{position:fixed;top:170px;right:410px;z-index:20;width:236px;padding:16px 18px 14px;background:var(--marker);color:var(--ink);font:600 23px/1.15 var(--hand);border-radius:3px 3px 14px 3px;box-shadow:0 14px 30px -14px #1f243066;transform:rotate(1.5deg);pointer-events:none;animation:hint .4s .3s both cubic-bezier(.2,.9,.3,1.2)}
+  .try-hint{position:fixed;top:170px;right:410px;z-index:20;width:236px;padding:16px 18px 14px;background:var(--marker);color:var(--on-marker);font:600 23px/1.15 var(--hand);border-radius:3px 3px 14px 3px;box-shadow:0 14px 30px -14px #1f243066;transform:rotate(1.5deg);pointer-events:none;animation:hint .4s .3s both cubic-bezier(.2,.9,.3,1.2)}
   .try-hint svg{position:absolute;left:0;bottom:100%;width:280px;height:60px;overflow:visible}
-  .try-hint path{fill:none;stroke:var(--cobalt);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+  .try-hint path{fill:none;stroke:var(--cobalt-ink);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
   .try-hint b{display:block;color:var(--cobalt);font-size:27px}
   @keyframes hint{from{opacity:0;transform:translateY(10px) rotate(1.5deg)}}
   @media (prefers-reduced-motion:reduce){.try-hint{animation:none}}
@@ -77,10 +89,10 @@
   .shot{position:relative}
   .shot>img{border-radius:18px;box-shadow:0 1px 0 #1f24300d,0 30px 70px -34px #1f243088;outline:1px solid #1f243014}
   /* Hand-written review notes on the screenshots: the page is marked up like the product does. */
-  .note{position:absolute;top:calc(100% + 22px);font:600 25px/1 var(--hand);color:var(--cobalt);white-space:nowrap;pointer-events:none}
+  .note{position:absolute;top:calc(100% + 22px);font:600 25px/1 var(--hand);color:var(--cobalt-ink);white-space:nowrap;pointer-events:none}
   .note.pin{left:14%}.note.copy{right:0}
   .arrows{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
-  .arrows path{fill:none;stroke:var(--cobalt);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+  .arrows path{fill:none;stroke:var(--cobalt-ink);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
 
   /* Bento */
   .section-head{max-width:640px;margin:0 0 28px}
@@ -91,27 +103,27 @@
   .card h3{font-size:22px;line-height:1.2;letter-spacing:-.02em;font-weight:650;margin:0}
   .card p{margin:0;color:var(--pencil);font-size:16px}
   .card .art{background:var(--wash);border-radius:16px;padding:14px;display:grid;place-items:center;overflow:hidden}
-  .card .art img{border-radius:10px;box-shadow:0 10px 30px -18px #1f243066}
+  .card .art img{border-radius:10px;box-shadow:0 10px 30px -18px var(--shadow)}
   .bars{list-style:none;margin:0;padding:4px 0;display:grid;gap:10px;width:min(100%,380px)}
-  .bars li{display:flex;align-items:center;gap:10px;background:var(--paper);border-radius:999px;padding:7px 8px 7px 16px;box-shadow:0 8px 24px -18px #1f243066,0 0 0 1px #1f24300f;font-size:14px;color:var(--faint)}
+  .bars li{display:flex;align-items:center;gap:10px;background:var(--paper);border-radius:999px;padding:7px 8px 7px 16px;box-shadow:0 8px 24px -18px var(--shadow),0 0 0 1px var(--hairline);font-size:14px;color:var(--faint)}
   .bars li:nth-child(2){margin-left:18px;margin-right:-18px}
   .bars .url{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bars .url b{color:var(--ink);font-weight:500}
   .card .bars img{border-radius:0;box-shadow:none;flex:none}
   .card .art.roomy{padding:30px 14px}.card .art img.flat{box-shadow:none;border-radius:0}
   .s2{grid-column:span 2}.s3{grid-column:span 3}.s4{grid-column:span 4}.r2{grid-row:span 2}
   .keys{display:flex;flex-wrap:wrap;gap:8px}
-  kbd{font:600 13px/1 var(--sans);color:var(--ink);background:var(--paper);border:1px solid #d6d9e2;border-bottom-width:3px;border-radius:8px;padding:6px 9px;min-width:30px;text-align:center}
+  kbd{font:600 13px/1 var(--sans);color:var(--ink);background:var(--paper);border:1px solid var(--key-line);border-bottom-width:3px;border-radius:8px;padding:6px 9px;min-width:30px;text-align:center}
   .chips{display:flex;flex-wrap:wrap;gap:6px}
   .chip{font:600 13px/1 var(--sans);padding:7px 11px;border-radius:999px;color:#fff}
-  .chip-must{background:var(--must)}.chip-suggested{background:var(--suggested)}.chip-nit{background:var(--nit);color:var(--ink)}.chip-note{background:var(--cobalt)}
-  .card.dark{background:var(--ink);border-color:var(--ink);color:#fff}
+  .chip-must{background:var(--must)}.chip-suggested{background:var(--suggested)}.chip-nit{background:var(--nit);color:var(--on-marker)}.chip-note{background:var(--cobalt)}
+  .card.dark{background:var(--feature);border-color:var(--feature);color:#fff}
   .card.dark p{color:#c2c6d2}
   pre{margin:0;background:#151922;border-radius:16px;padding:18px 20px;overflow:auto;font:13px/1.6 var(--mono);color:#d6d9e3;white-space:pre-wrap;word-break:break-word}
   pre .h{color:#9fb0ff;font-weight:600}pre .c{color:var(--marker)}pre .m{color:#ff9a8f}
   .pages{list-style:none;margin:0;padding:0;display:grid;gap:8px}
   .pages li{display:flex;gap:10px;align-items:center;font-size:15px;color:var(--pencil)}
   .pages b{font:700 12px/1 var(--sans);color:#fff;background:var(--cobalt);border-radius:7px;padding:5px 7px}
-  .card .hand{font:600 26px/1.1 var(--hand);color:var(--cobalt);margin-top:auto}
+  .card .hand{font:600 26px/1.1 var(--hand);color:var(--cobalt-ink);margin-top:auto}
 
   /* Install */
   .install{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,8fr);gap:48px;padding:0 0 110px}
@@ -120,7 +132,7 @@
   ol.steps li::before{content:counter(step);position:absolute;left:20px;top:17px;width:28px;height:24px;border-radius:7px 8px 6px 8px;background:var(--cobalt);color:#fff;font:700 13px/24px var(--sans);text-align:center}
   ol.steps b{display:block;margin-bottom:2px}
   ol.steps span{color:var(--pencil);font-size:16px}
-  code{font:14px/1.4 var(--mono);background:#eceef3;border-radius:6px;padding:2px 6px}
+  code{font:14px/1.4 var(--mono);background:var(--code);border-radius:6px;padding:2px 6px}
 
   footer{border-top:1px solid var(--line);padding:28px 0 40px;color:var(--faint);font-size:14px;display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between}
   footer .links{display:flex;gap:20px}
@@ -140,10 +152,10 @@
     .mark{font-size:24px}.mark svg{width:26px;height:26px}
     .menu{display:grid}
     .bar nav,.bar>.button{display:none}
-    .bar.open{padding-bottom:10px;background:#fffffff5}
+    .bar.open{padding-bottom:10px;background:var(--bar-open)}
     .bar.open nav{display:flex;flex-direction:column;align-items:stretch;gap:0;order:1;width:100%;margin:8px 0 0;padding-right:8px;font-size:17px;color:var(--ink)}
     .bar.open nav a{position:relative;padding:13px 14px}
-    .bar.open nav a+a::before{content:'';position:absolute;top:0;left:14px;width:min(200px,calc(100% - 28px));border-top:.5px solid #1f243014}
+    .bar.open nav a+a::before{content:'';position:absolute;top:0;left:14px;width:min(200px,calc(100% - 28px));border-top:.5px solid var(--divider)}
     .bar.open>.button{display:flex;order:2;width:calc(100% - 8px);justify-content:center;margin-top:6px;padding:13px 16px;font-size:16px}
     .bento{grid-template-columns:1fr}
     .s2,.s3,.s4{grid-column:auto}

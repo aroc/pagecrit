@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
 <title>Privacy policy · PageCrit</title>
 <meta name="description" content="PageCrit collects no data. Your reviews stay in your browser until you copy or download them.">
 <link rel="canonical" href="https://pagecrit.dev/privacy">
@@ -10,7 +11,8 @@
 <style>
   @font-face{font-family:"Bricolage";src:url(fonts/bricolage-latin.woff2) format("woff2");font-weight:400 800;font-display:swap}
   @font-face{font-family:"Hand";src:url(fonts/caveat-latin.woff2) format("woff2");font-weight:400 700;font-display:swap}
-  :root{--ink:#1f2430;--pencil:#5d6170;--faint:#8b8f9c;--line:#e4e6ed;--page:#f3f4f7;--paper:#fff;--cobalt:#2f4be0;--sans:"Bricolage",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;--hand:"Hand",ui-rounded,cursive;color-scheme:light}
+  :root{--ink:#1f2430;--pencil:#5d6170;--faint:#8b8f9c;--line:#e4e6ed;--page:#f3f4f7;--paper:#fff;--cobalt:#2f4be0;--summary:#eef1fe;--sans:"Bricolage",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;--hand:"Hand",ui-rounded,cursive;color-scheme:light}
+  @media (prefers-color-scheme:dark){:root{--ink:#e8eaf0;--pencil:#a4a9b8;--faint:#7c8191;--line:#272b35;--page:#0f1115;--paper:#171a20;--cobalt:#8d9cff;--summary:#20264a;color-scheme:dark}}
   *,*::before,*::after{box-sizing:border-box}
   html{-webkit-text-size-adjust:100%}
   body{margin:0;background:var(--page);color:var(--ink);font:400 17px/1.6 var(--sans)}
@@ -25,7 +27,7 @@
   p,li{color:var(--pencil)}p{margin:0 0 12px}ul{margin:0 0 12px;padding-left:22px}li{margin:4px 0}
   b{color:var(--ink)}code{font-size:.9em}
   .updated{color:var(--faint);font-size:15px;margin-bottom:24px}
-  .summary{background:#eef1fe;border-radius:16px;padding:16px 20px;color:var(--ink);margin:0}
+  .summary{background:var(--summary);border-radius:16px;padding:16px 20px;color:var(--ink);margin:0}
   footer{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;padding:28px 0 40px;color:var(--faint);font-size:14px}
   footer a{color:inherit}
   @media (max-width:640px){main{padding:28px 22px;border-radius:20px}h1{font-size:32px}.mark{margin:24px 0 28px}}
