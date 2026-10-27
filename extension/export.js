@@ -130,7 +130,10 @@
     const page = { ...review.page, title: cap(review.page.title, 120), url: cap(review.page.url, 500) };
     const pathOf = url => { try { return new URL(url).pathname; } catch (_) { return url; } };
     const env = review.environment || {};
-    const viewport = page.viewport ? `${page.viewport.width}×${page.viewport.height}${page.devicePixelRatio ? ` @${+page.devicePixelRatio.toFixed(2)}x` : ''}` : '';
+    // Docked as a sidebar, PageCrit moved the page over: it was laid out narrower than the window,
+    // while media queries still saw the full width.
+    const docked = Number.isFinite(page.sidebarWidth) && page.viewport ? ` (sidebar open: page laid out ${Math.round(page.viewport.width - page.sidebarWidth)}px wide)` : '';
+    const viewport = page.viewport ? `${page.viewport.width}×${page.viewport.height}${page.devicePixelRatio ? ` @${+page.devicePixelRatio.toFixed(2)}x` : ''}${docked}` : '';
     const summary = [plural(review.comments.length, 'comment', 'comments'), plural(review.edits.length, 'text edit', 'text edits'), plural(review.removals.length, 'removal', 'removals')].join(', ');
     const window = list => { const times = list.map(item => item.createdAt).filter(Boolean).sort(); return times.length ? `${clock(times[0], offset)}–${clock(times[times.length - 1], offset)}` : '—'; };
     let number = 0;

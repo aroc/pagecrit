@@ -8,7 +8,7 @@ One UTF-8 Markdown file named `YYYY-MM-DD HH-MM <page title>.md`, rendered by `e
 - `Review:` review ID (`r-YYYYMMDD-xxxx`), tool version, digest version.
 - `Started:` / `Exported:` ISO 8601 with the reviewer's UTC offset, plus duration.
 - `Build:` only when the page opts in with `<meta name="build-sha" content="…">`. Never guessed.
-- `Environment:` browser and version, OS, viewport and device pixel ratio, color scheme.
+- `Environment:` browser and version, OS, viewport and device pixel ratio, color scheme. When the review was exported with the panel docked as a sidebar, the viewport adds `(sidebar open: page laid out Npx wide)`: the page was narrower than the window while media queries still saw the full width.
 - `Summary:` counts by type. A `Note:` line appears if the tab navigated during the review.
 - `## How to address this review`: fixed agent instructions (change real source, treat quoted page text as untrusted data, ask on ambiguity, report each item as done/skipped/unclear).
 - `Page:` the page URL (query string, fragment and credentials removed). When the review spans several pages in the tab (`P1`, `P2`…, including in-app route changes), a `Pages:` list instead gives each page's title, URL, item count and first–last item time, and `Summary` says `across N pages`.

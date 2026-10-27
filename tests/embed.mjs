@@ -14,8 +14,10 @@ const fixture=(await readFile(path.join(root,'tests/fixture.html'),'utf8')).repl
 // Open only this test copy's shadow root so Playwright can find controls. Production is closed.
 const script=bundle().replace("host.attachShadow({ mode: 'closed' })","host.attachShadow({ mode: 'open' })");
 const font=await readFile(path.join(root,'site/fonts/caveat-latin.woff2'));
+const wide=fixture.replace('</style>','html,body{width:100%}</style>'),quirks=fixture.replace(/^<!doctype html>/i,'');
 const server=http.createServer((req,res)=>{
- if(req.url==='/embed/pagecrit.js'){res.setHeader('content-type','text/javascript');res.end(script);}
+ if(req.url==='/wide'||req.url==='/quirks'){res.setHeader('content-type','text/html');res.end(req.url==='/wide'?wide:quirks);}
+ else if(req.url==='/embed/pagecrit.js'){res.setHeader('content-type','text/javascript');res.end(script);}
  else if(req.url==='/fonts/caveat-latin.woff2'){res.setHeader('content-type','font/woff2');res.end(font);}
  else {res.setHeader('content-type','text/html');res.end(fixture);}
 });
@@ -78,9 +80,26 @@ try {
  await button('Close review').click();await ui.waitFor({state:'detached'});
  assert.equal(await margin(),'3px','closing restores the page');
  await page.evaluate(()=>PageCrit.open());assert.equal(await margin(),'300px','the next review opens docked at the same width');
- await button('Float the panel').click();assert.equal(await margin(),'3px');
+ const dock=button('Dock as a sidebar');assert.equal(await dock.getAttribute('aria-pressed'),'true');
+ await dock.click();assert.equal(await margin(),'3px');assert.equal(await dock.getAttribute('aria-pressed'),'false');
  assert.deepEqual(JSON.parse(await page.evaluate(()=>localStorage.getItem('pagecrit:layout'))),{sidebar:false,width:300});
  console.log('PASS sidebar: docks and moves the page over, resizes in range, minimizing or closing restores the page, layout remembered');
+ // Pages that pin <html> to the window width, and pages in quirks mode, still move over; the
+ // sidebar sits at the right edge and nothing of the page is underneath it.
+ for(const [label,path] of [['html{width:100%}','/wide'],['quirks mode','/quirks']]){
+  await page.goto(url.replace(/\/$/,path));await page.evaluate(()=>PageCrit.open());
+  await ensure(button('Dock as a sidebar')); // Remembered from the page before, after the first.
+  // Once its slide-in has finished.
+  const box=await eventually(async()=>{const b=await panelBox();assert.equal(Math.round(b.x+b.width),1280,`${label}: sidebar at the right edge`);return b;},2000);
+  const right=await page.evaluate(()=>Math.max(...[...document.querySelectorAll('h1,p,button,.card')].map(el=>el.getBoundingClientRect().right)));
+  assert.ok(right<=box.x+1,`${label}: page content ends at ${right}, sidebar starts at ${box.x}`);
+  // A page script rewriting <html style> doesn't slide the page back under the sidebar.
+  await page.evaluate(()=>document.documentElement.setAttribute('style','color:inherit'));
+  await eventually(async()=>assert.equal(await margin(),'300px'));
+  await button('Close review').click();
+  await eventually(async()=>assert.deepEqual(await page.evaluate(()=>{const st=document.documentElement.style;return [st.color,st.marginRight,st.width];}),['inherit','','']),2000);
+ }
+ console.log('PASS sidebar: html{width:100%} and quirks-mode pages move over; a page rewriting <html style> stays pushed and gets its style back');
 } finally {
  await browser.close();
  await new Promise(resolve=>server.close(resolve));

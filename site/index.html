@@ -25,7 +25,7 @@
   :root{
     --ink:#1f2430;--pencil:#5d6170;--faint:#8b8f9c;--line:#e4e6ed;--page:#f3f4f7;--paper:#fff;--wash:#f7f8fa;
     --cobalt:#2f4be0;--cobalt-deep:#2238b8;--cobalt-ink:#2f4be0;--marker:#ffe36e;--on-marker:#1f2430;--must:#dc3b30;--suggested:#ef7d1a;--nit:#f5c518;--green:#1d7f4c;
-    --bar:#ffffffd6;--bar-open:#fffffff5;--hairline:#1f243012;--divider:#1f243014;--tint:#1f24300d;--tint-hover:#1f243017;--control-hover:#c9ccd6;--key-line:#d6d9e2;--code:#eceef3;--shadow:#1f243066;--feature:#1f2430;
+    --bar:#ffffffd6;--bar-open:#fffffff5;--hairline:#1f243012;--divider:#1f243014;--tint:#1f24300d;--tint-hover:#1f243017;--control-hover:#c9ccd6;--key-line:#d6d9e2;--code:#eceef3;--shadow:#1f243066;--feature:#1f2430;--feature-line:#1f2430;
     --sans:"Bricolage",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;--hand:"Hand",ui-rounded,cursive;
     --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
     color-scheme:light;
@@ -35,7 +35,7 @@
     :root{
       --ink:#e8eaf0;--pencil:#a4a9b8;--faint:#7c8191;--line:#272b35;--page:#0f1115;--paper:#171a20;--wash:#1e2128;
       --cobalt-ink:#8d9cff;
-      --bar:#171a20d6;--bar-open:#171a20f5;--hairline:#ffffff14;--divider:#ffffff17;--tint:#ffffff0f;--tint-hover:#ffffff1c;--control-hover:#4b5060;--key-line:#3a3f4c;--code:#242833;--shadow:#000000b3;--feature:#0b0d11;
+      --bar:#171a20d6;--bar-open:#171a20f5;--hairline:#ffffff14;--divider:#ffffff17;--tint:#ffffff0f;--tint-hover:#ffffff1c;--control-hover:#4b5060;--key-line:#3a3f4c;--code:#242833;--shadow:#000000b3;--feature:#1b1f2b;--feature-line:#2c3242;
       color-scheme:dark;
     }
     .shot>img,.card .art img{outline-color:#ffffff1a}
@@ -116,7 +116,7 @@
   .chips{display:flex;flex-wrap:wrap;gap:6px}
   .chip{font:600 13px/1 var(--sans);padding:7px 11px;border-radius:999px;color:#fff}
   .chip-must{background:var(--must)}.chip-suggested{background:var(--suggested)}.chip-nit{background:var(--nit);color:var(--on-marker)}.chip-note{background:var(--cobalt)}
-  .card.dark{background:var(--feature);border-color:var(--feature);color:#fff}
+  .card.dark{background:var(--feature);border-color:var(--feature-line);color:#fff}
   .card.dark p{color:#c2c6d2}
   pre{margin:0;background:#151922;border-radius:16px;padding:18px 20px;overflow:auto;font:13px/1.6 var(--mono);color:#d6d9e3;white-space:pre-wrap;word-break:break-word}
   pre .h{color:#9fb0ff;font-weight:600}pre .c{color:var(--marker)}pre .m{color:#ff9a8f}

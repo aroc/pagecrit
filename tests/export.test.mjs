@@ -172,3 +172,8 @@ test('panel layout is remembered locally, clamped, and only for our own scripts'
  assert.equal((await send({type:'PAGECRIT_LAYOUT',action:'set',layout:{sidebar:false,width:400}},{id:'someone-else',tab:{id:1}})).ok,false);
  assert.deepEqual(store.layout,{sidebar:true,width:520});
 });
+test('a review made with the sidebar docked says how wide the page was laid out',()=>{
+ const review=sample();review.page.sidebarWidth=360;
+ assert.match(api.renderDigest(review),/- Environment: Google Chrome 141 · macOS · 1440×900 @2x \(sidebar open: page laid out 1080px wide\) · light/);
+ assert.ok(!api.renderDigest(sample()).includes('sidebar'));
+});

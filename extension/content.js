@@ -43,9 +43,9 @@
   const style = document.createElement('style');
   // Pen-on-printout: cobalt ink pins, a highlighter for what's active, red pen for removals.
   style.textContent = `
-    :host{--ink:#1f2430;--pencil:#676b79;--faint:#9a9daa;--line:#ebecf1;--paper:#fff;--wash:#f6f7fa;--cobalt:#2f4be0;--cobalt-deep:#2238b8;--cobalt-soft:#eef1fe;--cobalt-ink:#2f4be0;--notice-ink:#2238b8;--marker:#ffe36e;--marker-soft:#fff5c4;--on-marker:#1f2430;--red:#d9443a;--must:#dc3b30;--suggested:#ef7d1a;--nit:#f5c518;--red-soft:#fdeeec;--error-ink:#a8322a;--danger-line:#f0c3be;--green:#1d7f4c;--green-mark:#c9efd6;--edge:#e3e4eb;--control:#dcdee6;--control-hover:#c4c7d2;--row-hover:#fafbfc;--shadow:#1f243066;--hand:"PageCrit Hand",ui-rounded,system-ui,sans-serif;--sans:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font:14px/1.5 var(--sans);color:var(--ink);color-scheme:light}
+    :host{--ink:#1f2430;--pencil:#676b79;--faint:#9a9daa;--line:#ebecf1;--paper:#fff;--wash:#f6f7fa;--cobalt:#2f4be0;--cobalt-deep:#2238b8;--cobalt-soft:#eef1fe;--cobalt-ink:#2f4be0;--notice-ink:#2238b8;--marker:#ffe36e;--marker-soft:#fff5c4;--pulse:#ffe36e;--on-marker:#1f2430;--red:#d9443a;--must:#dc3b30;--suggested:#ef7d1a;--nit:#f5c518;--red-soft:#fdeeec;--error-ink:#a8322a;--danger-line:#f0c3be;--green:#1d7f4c;--green-mark:#c9efd6;--edge:#e3e4eb;--control:#dcdee6;--control-hover:#c4c7d2;--row-hover:#fafbfc;--shadow:#1f243066;--hand:"PageCrit Hand",ui-rounded,system-ui,sans-serif;--sans:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font:14px/1.5 var(--sans);color:var(--ink);color-scheme:light}
     /* Dark mode follows the system. Pins and page outlines keep their colors: they sit on the page. */
-    @media(prefers-color-scheme:dark){:host{--ink:#e8eaf0;--pencil:#a4a9b8;--faint:#777c8c;--line:#2a2e38;--paper:#17191f;--wash:#22252d;--cobalt-soft:#232a4c;--cobalt-ink:#8d9cff;--notice-ink:#b4beff;--marker-soft:#3a3418;--red-soft:#3a2124;--error-ink:#ff978e;--danger-line:#5c2c2c;--green:#6ad39a;--green-mark:#1c3d2b;--edge:#2c303a;--control:#353946;--control-hover:#4b5060;--row-hover:#1d2027;--shadow:#000000a6;color-scheme:dark}}
+    @media(prefers-color-scheme:dark){:host{--ink:#e8eaf0;--pencil:#a4a9b8;--faint:#777c8c;--line:#2a2e38;--paper:#17191f;--wash:#22252d;--cobalt-soft:#232a4c;--cobalt-ink:#8d9cff;--notice-ink:#b4beff;--marker-soft:#3a3418;--pulse:#6b5a17;--red-soft:#3a2124;--error-ink:#ff978e;--danger-line:#5c2c2c;--green:#6ad39a;--green-mark:#1c3d2b;--edge:#2c303a;--control:#353946;--control-hover:#4b5060;--row-hover:#1d2027;--shadow:#000000a6;color-scheme:dark}}
     *,*::before,*::after{box-sizing:border-box} [hidden]{display:none!important}.sr{position:fixed;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
     button,input,textarea,select{font:inherit;color:inherit} button{cursor:pointer} button:disabled{cursor:wait;opacity:.5}
     button:focus-visible,textarea:focus-visible,select:focus-visible,.item:focus-visible{outline:2px solid var(--cobalt-ink);outline-offset:2px}
@@ -82,7 +82,7 @@
     .recenttitle{font-size:14px;font-weight:600}.recentmeta{font-size:12px;color:var(--faint)}
     .pagehead{margin:14px 0 2px;font-size:12px;font-weight:600;color:var(--pencil);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.item.archived .itemtext{color:var(--pencil)}
     .item.reveal{cursor:pointer;margin:0 -18px;padding:12px 18px}.item.reveal:hover{background:var(--row-hover)}.item.reveal:focus-visible{outline-offset:-2px}
-    .item.selected{background:var(--marker-soft)}.item.selected:hover{background:var(--marker-soft)}.item.pulse{animation:pulse 1s ease-out}@keyframes pulse{from{background:var(--marker)}to{background:var(--marker-soft)}}
+    .item.selected{background:var(--marker-soft)}.item.selected:hover{background:var(--marker-soft)}.item.pulse{animation:pulse 1s ease-out}@keyframes pulse{from{background:var(--pulse)}to{background:var(--marker-soft)}}
     .footer{border-top:1px solid var(--line);padding:14px 18px 16px}.footrow{display:flex;gap:8px}.footrow .button{white-space:nowrap;flex:none}.footrow .done{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}.done{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;font-size:14px;border-radius:14px}.download,.finish{border-radius:14px;padding:12px;font-size:14px}.finish{background:var(--green-mark);border-color:var(--green-mark);color:var(--green)}.finish:hover{border-color:var(--green)}.privacy{font-size:12px;color:var(--faint);text-align:center;margin:8px 0 0}
     .closebox{padding:14px;background:var(--red-soft);border-radius:16px;margin:8px 0 12px;font-size:13px}.closebox p{margin:0}
     .pill{pointer-events:auto;position:fixed;right:18px;top:18px;display:flex;align-items:center;gap:8px;border:1px solid var(--edge);border-radius:999px;padding:7px 9px 7px 13px;background:var(--paper);box-shadow:0 1px 0 #1f24300a,0 14px 34px -14px var(--shadow);cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}.pill .brand{font-size:23px;flex:none}.pill .count{min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:var(--cobalt);color:white;font:700 12px/22px var(--sans);text-align:center}
@@ -172,7 +172,7 @@
     if (sidebarShown()) {
       // Docked: full height on the right, left of the page's own scrollbar.
       panel.style.setProperty('--side-width', `${sideWidth()}px`);
-      Object.assign(panel.style, { right: `${innerWidth - document.documentElement.clientWidth}px`, top: '0px', bottom: '0px' });
+      Object.assign(panel.style, { right: `${innerWidth - viewportWidth()}px`, top: '0px', bottom: '0px' });
       return;
     }
     if (state.dock || !state.pos) {
@@ -192,25 +192,40 @@
   const SIDE_MIN = 300, SIDE_MAX = 520, SIDE_MIN_WINDOW = 760;
   function sideWidth() { return Math.round(Math.min(Math.max(state.sideWidth, SIDE_MIN), SIDE_MAX, innerWidth / 2)); }
   function sidebarShown() { return state.sidebar && !state.collapsed && !state.closed && innerWidth >= SIDE_MIN_WINDOW; }
-  let pushed = null; // <html>'s own inline margin-right, restored when the sidebar goes.
+  // The visible width without the scrollbar. In quirks mode <html>'s clientWidth is its own box.
+  function viewportWidth() { return (document.compatMode === 'BackCompat' && document.body ? document.body : document.documentElement).clientWidth; }
+  // <html>'s own inline margin-right and width (width:auto overrides resets like html{width:100%},
+  // which would otherwise ignore the margin). Restored when the sidebar goes; if the page rewrites
+  // either while docked, its new value becomes the one to restore and the sidebar's is set again.
+  const PUSHED = ['margin-right', 'width'];
+  let pushed = null;
   function pushPage() {
     const root = document.documentElement;
     if (sidebarShown()) {
-      if (!pushed) pushed = { value: root.style.getPropertyValue('margin-right'), priority: root.style.getPropertyPriority('margin-right'), hadStyle: root.hasAttribute('style') };
-      if (root.style.getPropertyValue('margin-right') !== `${sideWidth()}px`) root.style.setProperty('margin-right', `${sideWidth()}px`, 'important');
+      const want = { 'margin-right': `${sideWidth()}px`, width: 'auto' };
+      if (!pushed) pushed = { hadStyle: root.hasAttribute('style'), props: {} };
+      for (const name of PUSHED) {
+        const current = root.style.getPropertyValue(name), mine = pushed.props[name];
+        if (!mine || current !== mine.applied) pushed.props[name] = { value: current, priority: root.style.getPropertyPriority(name), applied: want[name] };
+        if (current !== want[name] || root.style.getPropertyPriority(name) !== 'important') root.style.setProperty(name, want[name], 'important');
+        pushed.props[name].applied = want[name];
+      }
     } else if (pushed) {
-      if (pushed.value) root.style.setProperty('margin-right', pushed.value, pushed.priority);
-      else root.style.removeProperty('margin-right');
+      for (const name of PUSHED) {
+        const { value, priority } = pushed.props[name];
+        if (value) root.style.setProperty(name, value, priority); else root.style.removeProperty(name);
+      }
       if (!pushed.hadStyle && !root.getAttribute('style')) root.removeAttribute('style');
       pushed = null;
     }
   }
   function toggleSidebar() {
     state.sidebar = !state.sidebar;
-    if (!state.sidebar) { state.dock = 'tr'; state.pos = null; }
+    state.dock = 'tr'; state.pos = null;
     saveLayout(); render();
   }
-  function saveLayout() { runtime.sendMessage({ type: 'PAGECRIT_LAYOUT', action: 'set', layout: { sidebar: state.sidebar, width: sideWidth() } }).catch(() => {}); }
+  // The width the reviewer chose; a narrow window only caps what's shown.
+  function saveLayout() { runtime.sendMessage({ type: 'PAGECRIT_LAYOUT', action: 'set', layout: { sidebar: state.sidebar, width: Math.round(Math.min(Math.max(state.sideWidth, SIDE_MIN), SIDE_MAX)) } }).catch(() => {}); }
   // The first render waits briefly for the saved layout, so a docked review doesn't jump into place.
   async function loadLayout() {
     try {
@@ -232,14 +247,14 @@
   });
   resizer.addEventListener('pointermove', event => {
     if (event.pointerId !== resizing) return;
-    state.sideWidth = Math.min(Math.max(document.documentElement.clientWidth - event.clientX, SIDE_MIN), SIDE_MAX);
+    state.sideWidth = Math.min(Math.max(viewportWidth() - event.clientX, SIDE_MIN), SIDE_MAX);
     placeFloating(); resizer.setAttribute('aria-valuenow', String(sideWidth()));
   });
   const endResize = event => {
     if (event.pointerId !== resizing) return;
     resizing = null; panel.classList.remove('resizing');
     if (resizer.hasPointerCapture(event.pointerId)) resizer.releasePointerCapture(event.pointerId);
-    state.sideWidth = sideWidth(); saveLayout();
+    saveLayout();
   };
   resizer.addEventListener('pointerup', endResize);
   resizer.addEventListener('pointercancel', endResize);
@@ -249,6 +264,7 @@
     state.sideWidth = Math.min(Math.max(sideWidth() + (event.key === 'ArrowLeft' ? 20 : -20), SIDE_MIN), SIDE_MAX);
     placeFloating(); resizer.setAttribute('aria-valuenow', String(sideWidth())); saveLayout();
   });
+  function resizerRange() { resizer.setAttribute('aria-valuenow', String(sideWidth())); resizer.setAttribute('aria-valuemax', String(Math.max(SIDE_MIN, Math.min(SIDE_MAX, Math.floor(innerWidth / 2))))); }
   function snapToCorner() {
     const rect = (state.collapsed ? pill : panel).getBoundingClientRect();
     state.dock = (rect.top + rect.height / 2 > innerHeight / 2 ? 'b' : 't') + (rect.left + rect.width / 2 > innerWidth / 2 ? 'r' : 'l');
@@ -319,6 +335,7 @@
   for (const type of ['pointerdown', 'wheel']) shadow.addEventListener(type, hideTip, { capture: true, passive: true });
   shadow.addEventListener('focusin', event => { const el = tipTarget(event); if (el?.matches(':focus-visible')) showTip(el); });
   shadow.addEventListener('focusout', hideTip);
+  addEventListener('keydown', event => { if (event.key === 'Escape') hideTip(); }, true);
   shadow.append(style, hoverBox, highlight, pinsLayer, panel, pill, liveRegion, tip);
   document.documentElement.appendChild(host);
 
@@ -383,8 +400,9 @@
     const docked = sidebarShown();
     panel.classList.toggle('side', docked);
     if (innerWidth >= SIDE_MIN_WINDOW) {
-      const side = button('', toggleSidebar, 'smallbutton', docked ? 'Float the panel' : 'Dock as a sidebar');
+      const side = button('', toggleSidebar, 'smallbutton', 'Dock as a sidebar');
       side.setAttribute('aria-pressed', String(docked)); side.append(sidebarIcon()); header.append(side);
+      if (docked) side.dataset.tip = 'Float the panel';
     }
     if (!docked) { const snap = button('', snapToCorner, 'smallbutton snap', 'Snap to nearest corner'); snap.append(snapIcon()); header.append(snap); }
     header.append(button('−', () => { cancelPending(false); state.collapsed = true; state.mode = 'browse'; highlight.style.display = 'none'; render(); }, 'smallbutton', 'Minimize'));
@@ -462,7 +480,7 @@
     copy.setAttribute('aria-label', 'Copy Markdown'); copy.setAttribute('aria-keyshortcuts', 'c');
     copy.disabled = state.busy || Boolean(state.pending);
     const done = button(state.busy ? 'Preparing…' : state.sent === 'full' ? '✓ Started' : 'Download', () => exportReview(), 'button download');
-    done.setAttribute('aria-label', 'Download review'); done.dataset.tip = 'Download review as a .md file';
+    done.setAttribute('aria-label', 'Download review'); done.dataset.tip = 'Download review as a .md file'; done.setAttribute('aria-description', 'Saves a .md file');
     done.disabled = state.busy || Boolean(state.pending);
     const row = element('div', 'footrow');
     row.append(copy, done);
@@ -475,7 +493,7 @@
     }
     footer.append(row);
     panel.append(resizer, header, body, footer);
-    resizer.setAttribute('aria-valuenow', String(sideWidth()));
+    resizerRange();
     persistSoon();
     if (from) {
       const to = (state.collapsed ? pill : panel).getBoundingClientRect();
@@ -526,7 +544,7 @@
   }
   // The whole review row scrolls to its place on the page; its buttons keep their own actions.
   function revealOnClick(item, show, label) {
-    item.classList.add('reveal'); item.tabIndex = 0; item.dataset.tip = label;
+    item.classList.add('reveal'); item.tabIndex = 0; item.dataset.tip = label; item.setAttribute('aria-description', label);
     item.addEventListener('click', event => { if (event.isTrusted && !state.busy && !event.target.closest('button')) show(); });
     item.addEventListener('keydown', event => {
       if (event.isTrusted && event.target === item && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); show(); }
@@ -577,6 +595,7 @@
     for (const review of state.recent) {
       const row = element('div', 'item recentitem');
       revealOnClick(row, () => openRecent(review), `Open ${recentName(review)}`);
+      row.setAttribute('role', 'button'); row.setAttribute('aria-label', `Open ${recentName(review)}`);
       const info = element('div', 'recentinfo');
       info.append(element('p', 'recenttitle', recentName(review)), element('p', 'recentmeta', recentMeta(review)));
       const confirming = state.confirmDelete === review.id;
@@ -1337,6 +1356,7 @@
       session: { id: state.sessionId, startedAt: state.startedAt, exportedAt: now(), timezoneOffset: -new Date().getTimezoneOffset() },
       page: {
         url: state.pages[0].url, title: state.pages[0].title, viewport: { width: innerWidth, height: innerHeight }, devicePixelRatio,
+        ...(sidebarShown() ? { sidebarWidth: sideWidth() } : {}),
         colorScheme: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
         ...(/^[\w.+-]{1,64}$/.test(build) ? { build } : {}),
       },
@@ -1412,6 +1432,7 @@
   window.addEventListener('pointerout', onHover, { capture: true, passive: true });
   runtime.onMessage.addListener(runtimeMessage);
   const observer = new MutationObserver(mutations => {
+    if (pushed && mutations.some(m => m.target === document.documentElement && m.attributeName === 'style')) pushPage();
     if (mutations.some(m => !host.contains(m.target))) queuePosition();
   });
   observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true, attributes: true });
