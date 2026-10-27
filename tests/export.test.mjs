@@ -159,3 +159,26 @@ test('toolbar click opens the panel directly; pages that cannot be reviewed expl
  inspection={modal:true,contentType:'text/html'};onClicked({id:3,url:'https://example.com/'});await settle();assert.deepEqual(seen(),['inspect']);assert.match(titles.at(-1),/Close the page’s dialog/);
  calls.length=0;inspection={modal:false,contentType:'application/pdf'};onClicked({id:3,url:'https://example.com/a.pdf'});await settle();assert.match(titles.at(-1),/isn’t an HTML page/);
 });
+test('screenshots: only a download folder lists them, numbered like the items, with an extra agent step',()=>{
+ const review=sample();review.comments[0].clipId='shot-c';review.removals[0].clipId='shot-r';review.edits[0].clipId='shot-missing';
+ const available=new Set(['shot-c','shot-r']);
+ assert.deepEqual(api.screenshotFiles(review,available),[{clipId:'shot-c',path:'screenshots/item-2.png'},{clipId:'shot-r',path:'screenshots/item-3.png'}]);
+ const md=api.renderDigest(review,{screenshots:available});
+ assert.match(md,/### 2\. Comment · pin 1 · suggested\n[\s\S]*?- Screenshot: screenshots\/item-2\.png\n\n### 3\./);
+ assert.match(md,/### 3\. Remove section[\s\S]*- Screenshot: screenshots\/item-3\.png\n/);
+ assert.equal((md.match(/- Screenshot:/g)||[]).length,2,'no line for a screenshot that was not saved');
+ assert.match(md,/\n3\. Screenshots show how an item looked when it was marked[^\n]*\n4\. If an item could match[\s\S]*\n6\. When finished/);
+ const copy=api.renderDigest(review);
+ assert.ok(!copy.includes('Screenshot'),'Copy Markdown stays text only');assert.match(copy,/\n5\. When finished/);
+});
+test('zip: stored entries with UTF-8 names that standard tools read back exactly',async()=>{
+ const zip=require('../extension/zip.js');
+ assert.equal(zip.crc32(new TextEncoder().encode('123456789')),0xcbf43926);
+ const png=Uint8Array.from({length:3000},(_,i)=>(i*31)&255);
+ const bytes=zip.zip([{name:'Café review/review.md',data:'# Review\n'},{name:'Café review/screenshots/item-1.png',data:png}],new Date(2026,9,26,14,5,30));
+ const {mkdtempSync,writeFileSync}=await import('node:fs');const {tmpdir}=await import('node:os');const {join}=await import('node:path');const {execFileSync}=await import('node:child_process');
+ const file=join(mkdtempSync(join(tmpdir(),'pagecrit-zip-')),'r.zip');writeFileSync(file,bytes);
+ const out=execFileSync('python3',['-c','import sys,zipfile,hashlib\nz=zipfile.ZipFile(sys.argv[1])\nassert z.testzip() is None\nfor i in z.infolist(): print(i.filename, i.file_size, i.date_time[:5], hashlib.sha256(z.read(i)).hexdigest()[:12])',file],{encoding:'utf8'});
+ const {createHash}=await import('node:crypto');const hash=data=>createHash('sha256').update(data).digest('hex').slice(0,12);
+ assert.equal(out,`Café review/review.md 9 (2026, 10, 26, 14, 5) ${hash('# Review\n')}\nCafé review/screenshots/item-1.png 3000 (2026, 10, 26, 14, 5) ${hash(png)}\n`);
+});

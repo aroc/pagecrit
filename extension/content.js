@@ -26,6 +26,7 @@
     pending: null, notice: '', noticeType: '', busy: false, confirmingClose: false,
     collapsed: false, dock: 'tr', pos: null, closed: false, frame: 0,
     pages: [], pageId: null, restored: false,
+    settings: { screenshots: false }, canScreenshot: false,
     sent: '', deliveredSignature: null, recent: [], view: '', recentOpen: null, recentCopied: null, clearingRecent: false, confirmDelete: null, hoverPoint: null, selectedId: null, revealSelected: false,
   };
   // References never enter the exported review. Keeping them avoids matching a different
@@ -77,6 +78,8 @@
     .mdinline{font:11.5px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--wash);border-radius:5px;padding:1px 4px}.mdcode{margin:4px 0;padding:8px 10px;background:var(--wash);border-radius:8px;font:11.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap}
     .recentitem{display:flex;align-items:center;gap:10px;padding:10px 0}.recentinfo{flex:1;min-width:0}.recentinfo p{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.recentinfo .recentmeta{white-space:normal}
     .recenttitle{font-size:14px;font-weight:600}.recentmeta{font-size:12px;color:var(--faint)}
+    .setting{display:flex;gap:14px;align-items:flex-start;padding:12px 0 4px}.setting .settinginfo{flex:1}.setting p{margin:0}.setting .settingname{font-weight:600}.setting .muted{margin-top:3px}
+    .switch{flex:none;position:relative;width:38px;height:22px;margin-top:1px;border:0;border-radius:999px;background:#d5d8e1;padding:0}.switch::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:999px;background:white;box-shadow:0 1px 2px #1f243040;transition:transform .15s}.switch[aria-checked="true"]{background:var(--cobalt)}.switch[aria-checked="true"]::after{transform:translateX(16px)}
     .pagehead{margin:14px 0 2px;font-size:12px;font-weight:600;color:var(--pencil);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.item.archived .itemtext{color:var(--pencil)}
     .item.reveal{cursor:pointer;margin:0 -18px;padding:12px 18px}.item.reveal:hover{background:#fafbfc}.item.reveal:focus-visible{outline-offset:-2px}
     .item.selected{background:var(--marker-soft)}.item.selected:hover{background:var(--marker-soft)}.item.pulse{animation:pulse 1s ease-out}@keyframes pulse{from{background:var(--marker)}to{background:var(--marker-soft)}}
@@ -195,6 +198,16 @@
     }
     return svg;
   }
+  function settingsIcon() {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 16 16'); svg.setAttribute('width', '15'); svg.setAttribute('height', '15'); svg.setAttribute('aria-hidden', 'true');
+    for (const [tag, attrs] of [['path', { d: 'M2 4.5h12M2 11.5h12', stroke: 'currentColor', 'stroke-width': 1.4, 'stroke-linecap': 'round' }], ['circle', { cx: 10.5, cy: 4.5, r: 2.2, fill: 'white', stroke: 'currentColor', 'stroke-width': 1.4 }], ['circle', { cx: 5.5, cy: 11.5, r: 2.2, fill: 'white', stroke: 'currentColor', 'stroke-width': 1.4 }]]) {
+      const child = document.createElementNS('http://www.w3.org/2000/svg', tag);
+      for (const [key, value] of Object.entries(attrs)) child.setAttribute(key, String(value));
+      svg.append(child);
+    }
+    return svg;
+  }
   function snapIcon() {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('viewBox', '0 0 16 16'); svg.setAttribute('width', '15'); svg.setAttribute('height', '15'); svg.setAttribute('aria-hidden', 'true');
@@ -267,6 +280,10 @@
     panel.replaceChildren();
     const header = element('header', 'header');
     header.append(logoMark(), element('span', 'brand', 'PageCrit'));
+    if (state.canScreenshot) {
+      const settings = button('', () => { if (state.view === 'settings') closeRecent(); else openSettings(); }, 'smallbutton', 'Settings');
+      settings.append(settingsIcon()); header.append(settings);
+    }
     const snap = button('', snapToCorner, 'smallbutton snap', 'Snap to nearest corner');
     snap.append(snapIcon()); header.append(snap);
     header.append(button('−', () => { cancelPending(false); state.collapsed = true; state.mode = 'browse'; highlight.style.display = 'none'; render(); }, 'smallbutton', 'Minimize'));
@@ -280,7 +297,8 @@
       box.append(actions); body.append(box);
     }
     // Recent reviews replace the review body while open; Back or Esc returns to it.
-    if (state.view === 'recent') {
+    if (state.view === 'settings') body.append(renderSettings());
+    else if (state.view === 'recent') {
       if (state.notice) { const notice = element('div', `notice ${state.noticeType}`, state.notice); notice.setAttribute('role', 'status'); body.append(notice); }
       body.append(state.recentOpen ? renderRecentReview(state.recentOpen) : renderRecentList());
     }
@@ -335,7 +353,7 @@
     }
     // Nothing to send yet: no Copy/Download until there is feedback.
     const footer = element('footer', 'footer');
-    footer.hidden = !itemCount() || state.view === 'recent';
+    footer.hidden = !itemCount() || Boolean(state.view);
     // Copy is the quick path (paste into your agent, an issue or a PR); the file is the alternative.
     const finishing = delivered();
     const copy = button(state.sent === 'copied' ? '✓ Copied' : finishing ? 'Copy' : 'Copy Markdown', copyMarkdown, 'button primary done');
@@ -572,6 +590,55 @@
     return out;
   }
   function closeRecent() { state.view = ''; state.recentOpen = null; state.clearingRecent = false; render(); }
+  // ---- Settings: one switch so far. Saved in the extension's local storage, for every review.
+  function openSettings() { cancelPending(false); state.mode = 'browse'; highlight.style.display = 'none'; state.view = 'settings'; state.recentOpen = null; render(); }
+  function renderSettings() {
+    const box = element('section', 'recent');
+    box.setAttribute('aria-label', 'Settings');
+    box.append(recentHead('Back', closeRecent, 'Settings'));
+    const row = element('div', 'setting');
+    const info = element('div', 'settinginfo');
+    info.append(element('p', 'settingname', 'Screenshots'), element('p', 'muted', 'Take a screenshot of each new item. Download then saves a .zip with the review and its screenshots; Copy Markdown stays text only. Screenshots stay on this computer.'));
+    const toggle = button('', () => saveSettings({ screenshots: !state.settings.screenshots }), 'switch', 'Screenshots');
+    toggle.setAttribute('role', 'switch'); toggle.setAttribute('aria-checked', String(state.settings.screenshots));
+    row.append(info, toggle); box.append(row);
+    return box;
+  }
+  async function loadSettings() {
+    try {
+      const result = await runtime.sendMessage({ type: 'PAGECRIT_SETTINGS', action: 'get' });
+      if (result?.ok && !state.closed) { state.settings = result.settings; state.canScreenshot = true; render(); }
+    } catch (_) { /* No settings here (the pagecrit.dev demo): defaults. */ }
+  }
+  async function saveSettings(settings) {
+    state.settings = { ...state.settings, ...settings }; render();
+    try { await runtime.sendMessage({ type: 'PAGECRIT_SETTINGS', action: 'set', settings }); } catch (_) { /* Applies to this review only. */ }
+  }
+  // Opt-in screenshots. The overlay turns invisible for a moment so the worker's capture of the
+  // visible tab shows only the page; the worker crops around rect, marks it and keeps the image.
+  // Returns a promise of the clip ID, or null without a screenshot. Captures run one at a time.
+  let clipQueue = Promise.resolve();
+  function takeScreenshot(target, mark) {
+    if (!state.settings.screenshots || !state.canScreenshot) return null;
+    const box = target instanceof Element ? target.getBoundingClientRect() : { left: target.x, top: target.y, width: 0, height: 0 };
+    const rect = { x: box.left, y: box.top, width: box.width, height: box.height };
+    const clipId = id();
+    const shot = clipQueue.then(async () => {
+      host.style.setProperty('opacity', '0', 'important');
+      try {
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        const result = await runtime.sendMessage({ type: 'PAGECRIT_CLIP', clipId, rect, mark, viewport: { width: innerWidth, height: innerHeight } });
+        if (!result?.ok) { if (result?.error) tell(result.error, true); return null; }
+        return clipId;
+      } catch (_) { return null; } finally { host.style.removeProperty('opacity'); }
+    });
+    clipQueue = shot;
+    return shot;
+  }
+  // The item gets its clip ID once the screenshot is saved (or an item made meanwhile keeps none).
+  function attachScreenshot(item, shot) {
+    shot?.then(clipId => { if (clipId && !state.closed) { item.clipId = clipId; persistSoon(); } });
+  }
   // First click asks in place ("Delete?"); a second click within 3 seconds deletes.
   let deleteTimer = 0;
   async function deleteRecent(review) {
@@ -684,10 +751,17 @@
     if (state.removals.length >= MAX_ITEMS) { tell('This review has reached 500 removals. Download it and start a new review.', true); return; }
     // Rendered text (with line breaks between blocks) reads better than raw textContent.
     const removal = { id: id(), pageId: state.pageId, createdAt: now(), severity: 'suggested', label: tagLabel(el), text: String(el.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 500), element: core.describeElement(el), context: core.captureContext(el) };
-    const style = el.getAttribute('style');
-    el.style.setProperty('display', 'none', 'important');
-    removedElements.set(removal.id, { el, style, applied: el.getAttribute('style') });
+    const entry = { el, style: el.getAttribute('style'), applied: el.getAttribute('style') };
+    removedElements.set(removal.id, entry);
+    const hide = () => {
+      if (removedElements.get(removal.id) !== entry) return; // Restored meanwhile.
+      el.style.setProperty('display', 'none', 'important');
+      entry.applied = el.getAttribute('style');
+    };
+    // With screenshots on, the section stays visible until its screenshot is taken.
+    const shot = takeScreenshot(el, 'remove');
     state.removals.push(removal);
+    if (shot) { attachScreenshot(removal, shot); shot.then(hide); } else hide();
     state.notice = ''; render();
   }
   function unhide(removal) {
@@ -765,6 +839,7 @@
       } else {
         const comment = { id: id(), pageId: state.pageId, createdAt: now(), severity: 'suggested', text, anchor: p.anchor, context: p.context };
         state.comments.push(comment); pinElements.set(comment.id, p.element); pinContainers.set(comment.id, p.container);
+        attachScreenshot(comment, p.shot);
       }
     } else {
       if (p.conflict || !core.segmentCurrent(p.seg)) {
@@ -782,6 +857,7 @@
         edit = { id: p.newId, pageId: state.pageId, createdAt: now(), updatedAt: now(), severity: 'suggested', locator: p.locator, context: p.context, before: p.before, after: '' };
         setEditResult(edit, p.model, p.seg);
         state.edits.push(edit); editSegments.set(edit.id, p.seg);
+        attachScreenshot(edit, p.shot);
       }
     }
     state.pending = null; state.notice = ''; render();
@@ -811,6 +887,7 @@
     };
     // Edit in place. Every change is applied by beforeinput to this text's own segment, so
     // neighboring markup is never touched and an emptied node is never removed.
+    if (!existing) state.pending.shot = takeScreenshot(editHost, 'box');
     lockEditableLayout(state.pending);
     editHost.setAttribute('contenteditable', 'plaintext-only');
     holdEditableLayout(state.pending);
@@ -1101,7 +1178,8 @@
       const target = event.target instanceof Element ? event.target : event.target.parentElement;
       const anchor = core.createAnchor(target, event.clientX, event.clientY, state.anchorKind);
       const container = anchor.container ? core.scrollContainerFor(target) : null;
-      state.pending = { type: 'comment', anchor, element: target, container, context: core.captureContext(target), value: '' };
+      const shot = takeScreenshot(state.anchorKind === 'page' ? { x: event.clientX, y: event.clientY } : target, state.anchorKind === 'page' ? 'point' : 'box');
+      state.pending = { type: 'comment', anchor, element: target, container, context: core.captureContext(target), value: '', shot };
       state.notice = ''; render(); focusEditor();
     } else {
       const node = core.locateTextNodeAtPoint(event.clientX, event.clientY);
@@ -1378,6 +1456,7 @@
   enterPage(startUrl);
   restoreDraft();
   loadRecent();
+  loadSettings();
   globalThis.__pageCritSession = { show() {
     if (!host.isConnected) document.documentElement.appendChild(host);
     state.collapsed = false; render(); loadRecent();

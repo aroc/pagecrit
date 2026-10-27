@@ -1,24 +1,105 @@
 'use strict';
-importScripts('export.js');
+importScripts('export.js', 'zip.js');
 
 // Future destinations implement deliver(review) here, behind explicit user selection.
 // The content script neither knows API tokens nor sends network requests.
 const destinations = {
-  async file(review) {
-    const markdown = PageCritExport.renderDigest(review);
+  // A review with screenshots downloads as a folder in a .zip: review.md plus screenshots/item-N.png.
+  async file(review, tabId) {
+    const clips = await savedClips(tabId, review);
     const filename = PageCritExport.filename(review);
+    if (clips.size) {
+      const markdown = PageCritExport.renderDigest(review, {screenshots: new Set(clips.keys())});
+      const folder = filename.replace(/\.md$/, '');
+      const files = [{name: `${folder}/review.md`, data: markdown}, ...PageCritExport.screenshotFiles(review, clips).map(file => ({name: `${folder}/${file.path}`, data: fromBase64(clips.get(file.clipId))}))];
+      const id = await saveFile('data:application/zip;base64,' + toBase64(PageCritZip.zip(files)), `${folder}.zip`);
+      await remember(review, PageCritExport.renderDigest(review), filename);
+      return {ok: true, downloadId: id, screenshots: clips.size};
+    }
+    const markdown = PageCritExport.renderDigest(review);
     const id = await saveMarkdown(markdown, filename);
     await remember(review, markdown, filename);
     return {ok: true, downloadId: id};
   }
 };
 function saveMarkdown(markdown, filename) {
-  return chrome.downloads.download({
-    url: 'data:text/markdown;charset=utf-8,' + encodeURIComponent(markdown),
-    filename,
-    saveAs: true,
-    conflictAction: 'uniquify'
-  });
+  return saveFile('data:text/markdown;charset=utf-8,' + encodeURIComponent(markdown), filename);
+}
+function saveFile(url, filename) {
+  return chrome.downloads.download({url, filename, saveAs: true, conflictAction: 'uniquify'});
+}
+function toBase64(bytes) {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(binary);
+}
+function fromBase64(text) { return Uint8Array.from(atob(text), ch => ch.charCodeAt(0)); }
+
+// Settings: one switch so far, screenshots. Kept in this browser profile only.
+const SETTINGS_KEY = 'settings';
+const DEFAULT_SETTINGS = {screenshots: false};
+async function handleSettings(message) {
+  const settings = {...DEFAULT_SETTINGS, ...(await chrome.storage.local.get(SETTINGS_KEY))[SETTINGS_KEY]};
+  if (message.action === 'set' && typeof message.settings?.screenshots === 'boolean') {
+    settings.screenshots = message.settings.screenshots;
+    await chrome.storage.local.set({[SETTINGS_KEY]: settings});
+  }
+  return {ok: true, settings};
+}
+
+// Screenshots (opt-in). The content script hides its overlay, then asks for the visible tab,
+// cropped around the item and marked. The image stays here, in storage.session next to the
+// draft (in memory, gone when the tab or browser closes); the page never receives it.
+const clipKey = (tabId, clipId) => `clip:${tabId}:${clipId}`;
+const MAX_CLIPS = 60;
+const CLIP_PAD = 32, CLIP_MIN = {width: 480, height: 280}, CLIP_MAX_PIXELS = 1600;
+let lastCapture = 0;
+async function captureClip(message, tab) {
+  const {clipId, rect, viewport, mark} = message;
+  const finite = (...values) => values.every(Number.isFinite);
+  if (!/^[\w-]{1,64}$/.test(clipId || '') || !finite(rect?.x, rect?.y, rect?.width, rect?.height, viewport?.width, viewport?.height) || viewport.width < 1 || viewport.height < 1 || !['box', 'point', 'remove'].includes(mark)) return {ok: false};
+  const keys = (await chrome.storage.session.getKeys()).filter(key => key.startsWith(`clip:${tab.id}:`));
+  if (keys.length >= MAX_CLIPS) return {ok: false, error: `This review already has ${MAX_CLIPS} screenshots; new items won't get one.`};
+  // Chrome allows about two captures a second.
+  const wait = lastCapture + 550 - Date.now();
+  if (wait > 0) await new Promise(resolve => setTimeout(resolve, wait));
+  lastCapture = Date.now();
+  const shot = await chrome.tabs.captureVisibleTab(tab.windowId, {format: 'png'});
+  const bitmap = await createImageBitmap(await (await fetch(shot)).blob());
+  const scale = bitmap.width / viewport.width;
+  // The item plus some margin, at least a readable size, clipped to the viewport (CSS pixels).
+  let left = rect.x - CLIP_PAD, top = rect.y - CLIP_PAD, right = rect.x + rect.width + CLIP_PAD, bottom = rect.y + rect.height + CLIP_PAD;
+  const grow = (a, b, min) => { const extra = Math.max(0, min - (b - a)) / 2; return [a - extra, b + extra]; };
+  [left, right] = grow(left, right, CLIP_MIN.width); [top, bottom] = grow(top, bottom, CLIP_MIN.height);
+  left = Math.max(0, left); top = Math.max(0, top); right = Math.min(viewport.width, right); bottom = Math.min(viewport.height, bottom);
+  if (right - left < 8 || bottom - top < 8) return {ok: false, error: 'The item was off screen, so it has no screenshot.'};
+  const sw = (right - left) * scale, sh = (bottom - top) * scale;
+  const fit = Math.min(1, CLIP_MAX_PIXELS / Math.max(sw, sh)), k = scale * fit;
+  const canvas = new OffscreenCanvas(Math.round(sw * fit), Math.round(sh * fit));
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(bitmap, left * scale, top * scale, sw, sh, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  // Mark the item: an outline around the element (red for a removal), or a ring on a page pin.
+  ctx.strokeStyle = mark === 'remove' ? '#d9443a' : '#2f4be0'; ctx.lineWidth = 2.5 * k;
+  ctx.beginPath();
+  if (mark === 'point') ctx.arc((rect.x - left) * k, (rect.y - top) * k, 12 * k, 0, Math.PI * 2);
+  else ctx.roundRect((rect.x - left - 4) * k, (rect.y - top - 4) * k, (rect.width + 8) * k, (rect.height + 8) * k, 6 * k);
+  ctx.stroke();
+  const png = new Uint8Array(await (await canvas.convertToBlob({type: 'image/png'})).arrayBuffer());
+  try { await chrome.storage.session.set({[clipKey(tab.id, clipId)]: toBase64(png)}); }
+  catch (_) { return {ok: false, error: 'Screenshot storage is full, so new items won’t get one. Download this review to start fresh.'}; }
+  return {ok: true};
+}
+// The screenshots this review still uses, as clipId → base64 PNG.
+async function savedClips(tabId, review) {
+  const ids = [...review.comments, ...review.edits, ...review.removals].map(item => item.clipId).filter(clipId => typeof clipId === 'string' && /^[\w-]{1,64}$/.test(clipId));
+  if (!ids.length) return new Map();
+  const found = await chrome.storage.session.get(ids.map(clipId => clipKey(tabId, clipId)));
+  return new Map(ids.filter(clipId => found[clipKey(tabId, clipId)]).map(clipId => [clipId, found[clipKey(tabId, clipId)]]));
+}
+async function forgetClips(tabId) {
+  const keys = (await chrome.storage.session.getKeys()).filter(key => key.startsWith(`clip:${tabId}:`));
+  if (keys.length) await chrome.storage.session.remove(keys);
 }
 // The last reviews you copied or downloaded, so one closed with Done can still be fetched.
 // Kept as finished Markdown in chrome.storage.local (this browser profile only, never synced
@@ -71,7 +152,7 @@ const MAX_DRAFT_CHARS = 4 * 1024 * 1024;
 async function handleDraft(message, tabId) {
   const key = draftKey(tabId);
   if (message.action === 'load') return {ok: true, draft: (await chrome.storage.session.get(key))[key] || null};
-  if (message.action === 'clear') { await chrome.storage.session.remove(key); return {ok: true}; }
+  if (message.action === 'clear') { await chrome.storage.session.remove(key); await forgetClips(tabId); return {ok: true}; }
   if (message.action === 'save' && message.draft && JSON.stringify(message.draft).length <= MAX_DRAFT_CHARS) {
     await chrome.storage.session.set({[key]: message.draft});
     return {ok: true};
@@ -87,6 +168,16 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (message?.type === 'PAGECRIT_RECENT') {
     if (sender.id !== chrome.runtime.id || !sender.tab || sender.frameId !== 0 || !/^https?:\/\//i.test(sender.url || '')) { respond({ok: false}); return; }
     handleRecent(message).then(respond).catch(error => respond({ok: false, error: error.message}));
+    return true;
+  }
+  if (message?.type === 'PAGECRIT_SETTINGS') {
+    if (sender.id !== chrome.runtime.id || !sender.tab || sender.frameId !== 0) { respond({ok: false}); return; }
+    handleSettings(message).then(respond).catch(() => respond({ok: false}));
+    return true;
+  }
+  if (message?.type === 'PAGECRIT_CLIP') {
+    if (sender.id !== chrome.runtime.id || !sender.tab || sender.frameId !== 0 || !/^https?:\/\//i.test(sender.url || '')) { respond({ok: false}); return; }
+    captureClip(message, sender.tab).then(respond).catch(() => respond({ok: false, error: 'Chrome didn’t allow a screenshot of this page.'}));
     return true;
   }
   if (message?.type === 'PAGECRIT_FONT') {
@@ -106,7 +197,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     remember(message.review, markdown, PageCritExport.filename(message.review)).then(() => respond({ok: true, markdown}));
     return true;
   }
-  destinations.file(message.review).then(respond).catch(error => respond({ok: false, code: error.code, error: error.message || 'Download failed. Your draft is still open.'}));
+  destinations.file(message.review, sender.tab.id).then(respond).catch(error => respond({ok: false, code: error.code, error: error.message || 'Download failed. Your draft is still open.'}));
   return true;
 });
 
@@ -156,4 +247,4 @@ chrome.tabs?.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status !== 'complete') return;
   chrome.storage.session.get(draftKey(tabId)).then(found => { if (found[draftKey(tabId)]) return inject(tabId, {show: false}); }).catch(() => {});
 });
-chrome.tabs?.onRemoved.addListener(tabId => { chrome.storage?.session.remove(draftKey(tabId)).catch(() => {}); });
+chrome.tabs?.onRemoved.addListener(tabId => { chrome.storage?.session.remove(draftKey(tabId)).catch(() => {}); forgetClips(tabId).catch(() => {}); });
