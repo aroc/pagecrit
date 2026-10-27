@@ -899,6 +899,7 @@ const script = document.currentScript;
   'use strict';
   const DRAFT_KEY = 'pagecrit:draft';
   const RECENT_KEY = 'pagecrit:recent';
+  const LAYOUT_KEY = 'pagecrit:layout';
   const MAX_RECENT = 10;
   const MAX_DRAFT_CHARS = 4 * 1024 * 1024;
   const Export = root.PageCritExport;
@@ -951,6 +952,11 @@ const script = document.currentScript;
     if (message?.type === 'PAGECRIT_DRAFT') return handleDraft(message);
     if (message?.type === 'PAGECRIT_RECENT') return handleRecent(message);
     if (message?.type === 'PAGECRIT_FONT') return handFont();
+    if (message?.type === 'PAGECRIT_LAYOUT') {
+      if (message.action !== 'set') return {ok: true, layout: read(localStorage, LAYOUT_KEY)};
+      const {sidebar, width} = message.layout || {};
+      return {ok: typeof sidebar === 'boolean' && Number.isFinite(width) && write(localStorage, LAYOUT_KEY, {sidebar, width})};
+    }
     if (message?.type !== 'PAGECRIT_EXPORT' && message?.type !== 'PAGECRIT_RENDER') return {ok: false};
     const markdown = Export.renderDigest(message.review);
     const filename = Export.filename(message.review);
@@ -997,6 +1003,7 @@ function run() {
     mode: 'browse', anchorKind: 'element', comments: [], edits: [], removals: [],
     pending: null, notice: '', noticeType: '', busy: false, confirmingClose: false,
     collapsed: false, dock: 'tr', pos: null, closed: false, frame: 0,
+    sidebar: false, sideWidth: 360, layoutReady: false,
     pages: [], pageId: null, restored: false,
     sent: '', deliveredSignature: null, recent: [], view: '', recentOpen: null, recentCopied: null, clearingRecent: false, confirmDelete: null, hoverPoint: null, selectedId: null, revealSelected: false,
   };
@@ -1065,6 +1072,8 @@ function run() {
     .hover.danger{border-color:var(--red);background:#d9443a12}.hover.danger .hovertag{background:var(--red)}
     .panel.enter{animation:enter .34s cubic-bezier(.2,.9,.3,1.12);transform-origin:top right}@keyframes enter{from{opacity:0;transform:translateY(-12px) scale(.94)}}
     @media(prefers-reduced-motion:reduce){.item.pulse,.panel.enter{animation:none}.mode.active{transform:none}}
+    .panel.side{width:var(--side-width);max-width:none;max-height:none;border-radius:0;border-width:0 0 0 1px;box-shadow:-28px 0 50px -40px #1f243066}.panel.side .header{cursor:default}.panel.side.enter{animation-name:enter-side}@keyframes enter-side{from{opacity:0;transform:translateX(28px)}}
+    .resizer{display:none}.panel.side .resizer{display:block;position:absolute;left:0;top:0;bottom:0;width:8px;cursor:ew-resize;touch-action:none;z-index:1}.resizer::after{content:'';position:absolute;left:2px;top:50%;width:4px;height:44px;margin-top:-22px;border-radius:4px;background:#c9ccd6;opacity:0;transition:opacity .15s}.resizer:hover::after,.resizer:focus-visible::after,.resizing .resizer::after{opacity:1}.resizer:focus-visible{outline:none}
     @media(max-width:500px){.mode{white-space:normal;line-height:1.2}.panel{right:8px;top:8px;max-height:calc(100vh - 16px);width:310px}.pill{right:8px;top:8px}}
   `;
   const pinsLayer = document.createElement('div');
@@ -1101,7 +1110,7 @@ function run() {
     if (!event.isTrusted || event.button !== 0 || state.closed) return;
     const el = event.currentTarget;
     // The whole header is a handle (buttons too), so a mostly off-screen panel can still be grabbed.
-    if (el === panel && !event.target.closest('.header')) return;
+    if (el === panel && (!event.target.closest('.header') || sidebarShown())) return;
     const rect = el.getBoundingClientRect();
     drag = { el, id: event.pointerId, dx: event.clientX - rect.left, dy: event.clientY - rect.top, x0: event.clientX, y0: event.clientY, moved: false };
     // Capturing immediately would retarget a plain button click; buttons capture once a drag starts.
@@ -1133,6 +1142,13 @@ function run() {
   function placeFloating() {
     const el = state.collapsed ? pill : panel;
     for (const target of [panel, pill]) Object.assign(target.style, { left: 'auto', right: 'auto', top: 'auto', bottom: 'auto' });
+    pushPage();
+    if (sidebarShown()) {
+      // Docked: full height on the right, left of the page's own scrollbar.
+      panel.style.setProperty('--side-width', `${sideWidth()}px`);
+      Object.assign(panel.style, { right: `${innerWidth - document.documentElement.clientWidth}px`, top: '0px', bottom: '0px' });
+      return;
+    }
     if (state.dock || !state.pos) {
       const m = `${edgeMargin()}px`, dock = state.dock || 'tr';
       Object.assign(el.style, { [dock[0] === 't' ? 'top' : 'bottom']: m, [dock[1] === 'l' ? 'left' : 'right']: m });
@@ -1144,6 +1160,69 @@ function run() {
     const y = Math.min(Math.max(state.pos.y, 0), innerHeight - Math.min(height, 44));
     Object.assign(el.style, { left: `${x}px`, top: `${y}px` });
   }
+  // ---- Sidebar: the panel docked to the right edge, with the page moved over by a right margin on
+  // <html> so nothing sits underneath it. Media queries still see the full window width. The
+  // reviewer resizes it by dragging its left edge (or with arrow keys there), within a range.
+  const SIDE_MIN = 300, SIDE_MAX = 520, SIDE_MIN_WINDOW = 760;
+  function sideWidth() { return Math.round(Math.min(Math.max(state.sideWidth, SIDE_MIN), SIDE_MAX, innerWidth / 2)); }
+  function sidebarShown() { return state.sidebar && !state.collapsed && !state.closed && innerWidth >= SIDE_MIN_WINDOW; }
+  let pushed = null; // <html>'s own inline margin-right, restored when the sidebar goes.
+  function pushPage() {
+    const root = document.documentElement;
+    if (sidebarShown()) {
+      if (!pushed) pushed = { value: root.style.getPropertyValue('margin-right'), priority: root.style.getPropertyPriority('margin-right'), hadStyle: root.hasAttribute('style') };
+      if (root.style.getPropertyValue('margin-right') !== `${sideWidth()}px`) root.style.setProperty('margin-right', `${sideWidth()}px`, 'important');
+    } else if (pushed) {
+      if (pushed.value) root.style.setProperty('margin-right', pushed.value, pushed.priority);
+      else root.style.removeProperty('margin-right');
+      if (!pushed.hadStyle && !root.getAttribute('style')) root.removeAttribute('style');
+      pushed = null;
+    }
+  }
+  function toggleSidebar() {
+    state.sidebar = !state.sidebar;
+    if (!state.sidebar) { state.dock = 'tr'; state.pos = null; }
+    saveLayout(); render();
+  }
+  function saveLayout() { runtime.sendMessage({ type: 'PAGECRIT_LAYOUT', action: 'set', layout: { sidebar: state.sidebar, width: sideWidth() } }).catch(() => {}); }
+  // The first render waits briefly for the saved layout, so a docked review doesn't jump into place.
+  async function loadLayout() {
+    try {
+      const layout = (await runtime.sendMessage({ type: 'PAGECRIT_LAYOUT', action: 'get' }))?.layout;
+      if (layout) { state.sidebar = layout.sidebar === true; if (Number.isFinite(layout.width)) state.sideWidth = layout.width; }
+    } catch (_) { /* Floating by default. */ }
+    state.layoutReady = true; render();
+  }
+  const resizer = document.createElement('div');
+  resizer.className = 'resizer';
+  resizer.tabIndex = 0;
+  resizer.setAttribute('role', 'separator'); resizer.setAttribute('aria-orientation', 'vertical'); resizer.setAttribute('aria-label', 'Resize sidebar');
+  resizer.setAttribute('aria-valuemin', String(SIDE_MIN)); resizer.setAttribute('aria-valuemax', String(SIDE_MAX));
+  let resizing = null;
+  resizer.addEventListener('pointerdown', event => {
+    if (!event.isTrusted || event.button !== 0) return;
+    event.preventDefault();
+    resizing = event.pointerId; resizer.setPointerCapture(event.pointerId); panel.classList.add('resizing');
+  });
+  resizer.addEventListener('pointermove', event => {
+    if (event.pointerId !== resizing) return;
+    state.sideWidth = Math.min(Math.max(document.documentElement.clientWidth - event.clientX, SIDE_MIN), SIDE_MAX);
+    placeFloating(); resizer.setAttribute('aria-valuenow', String(sideWidth()));
+  });
+  const endResize = event => {
+    if (event.pointerId !== resizing) return;
+    resizing = null; panel.classList.remove('resizing');
+    if (resizer.hasPointerCapture(event.pointerId)) resizer.releasePointerCapture(event.pointerId);
+    state.sideWidth = sideWidth(); saveLayout();
+  };
+  resizer.addEventListener('pointerup', endResize);
+  resizer.addEventListener('pointercancel', endResize);
+  resizer.addEventListener('keydown', event => {
+    if (!event.isTrusted || !['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+    event.preventDefault(); event.stopPropagation();
+    state.sideWidth = Math.min(Math.max(sideWidth() + (event.key === 'ArrowLeft' ? 20 : -20), SIDE_MIN), SIDE_MAX);
+    placeFloating(); resizer.setAttribute('aria-valuenow', String(sideWidth())); saveLayout();
+  });
   function snapToCorner() {
     const rect = (state.collapsed ? pill : panel).getBoundingClientRect();
     state.dock = (rect.top + rect.height / 2 > innerHeight / 2 ? 'b' : 't') + (rect.left + rect.width / 2 > innerWidth / 2 ? 'r' : 'l');
@@ -1163,6 +1242,16 @@ function run() {
       const child = document.createElementNS(ns, tag);
       for (const [key, value] of Object.entries(attrs)) child.setAttribute(key, String(value));
       child.setAttribute('transform', 'rotate(-4 50 50)'); // The bubble leans slightly left.
+      svg.append(child);
+    }
+    return svg;
+  }
+  function sidebarIcon() {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 16 16'); svg.setAttribute('width', '15'); svg.setAttribute('height', '15'); svg.setAttribute('aria-hidden', 'true');
+    for (const [tag, attrs] of [['rect', { x: 1.5, y: 2.5, width: 13, height: 11, rx: 2.5, fill: 'none', stroke: 'currentColor', 'stroke-width': 1.4 }], ['rect', { x: 9.5, y: 4.5, width: 3, height: 7, rx: 1, fill: 'currentColor' }]]) {
+      const child = document.createElementNS('http://www.w3.org/2000/svg', tag);
+      for (const [key, value] of Object.entries(attrs)) child.setAttribute(key, String(value));
       svg.append(child);
     }
     return svg;
@@ -1228,7 +1317,7 @@ function run() {
     render();
   }
   function render() {
-    if (state.closed) return;
+    if (state.closed || !state.layoutReady) return;
     // Collapsing or expanding a free-floating panel keeps the edge nearest the screen edge in place.
     const from = state.collapsed !== shownCollapsed && !state.dock && state.pos ? (shownCollapsed ? pill : panel).getBoundingClientRect() : null;
     panel.hidden = state.collapsed;
@@ -1239,8 +1328,13 @@ function run() {
     panel.replaceChildren();
     const header = element('header', 'header');
     header.append(logoMark(), element('span', 'brand', 'PageCrit'));
-    const snap = button('', snapToCorner, 'smallbutton snap', 'Snap to nearest corner');
-    snap.append(snapIcon()); header.append(snap);
+    const docked = sidebarShown();
+    panel.classList.toggle('side', docked);
+    if (innerWidth >= SIDE_MIN_WINDOW) {
+      const side = button('', toggleSidebar, 'smallbutton', docked ? 'Float the panel' : 'Dock as a sidebar');
+      side.setAttribute('aria-pressed', String(docked)); side.append(sidebarIcon()); header.append(side);
+    }
+    if (!docked) { const snap = button('', snapToCorner, 'smallbutton snap', 'Snap to nearest corner'); snap.append(snapIcon()); header.append(snap); }
     header.append(button('−', () => { cancelPending(false); state.collapsed = true; state.mode = 'browse'; highlight.style.display = 'none'; render(); }, 'smallbutton', 'Minimize'));
     header.append(button('×', requestClose, 'smallbutton', 'Close review'));
     const body = element('div', 'body');
@@ -1328,7 +1422,8 @@ function run() {
       row.append(finish);
     }
     footer.append(row);
-    panel.append(header, body, footer);
+    panel.append(resizer, header, body, footer);
+    resizer.setAttribute('aria-valuenow', String(sideWidth()));
     persistSoon();
     if (from) {
       const to = (state.collapsed ? pill : panel).getBoundingClientRect();
@@ -2155,6 +2250,7 @@ function run() {
     window.removeEventListener('pointermove', onHover, true);
     window.removeEventListener('pointerout', onHover, true);
     runtime.onMessage.removeListener(runtimeMessage);
+    pushPage();
     host.remove(); delete globalThis.__pageCritSession;
   }
   let sentTimer = 0, announceTimer = 0;
@@ -2257,7 +2353,7 @@ function run() {
   window.addEventListener('beforeinput', onBeforeInput, true);
   for (const name of isolatedEvents) window.addEventListener(name, isolateEditing, true);
   window.addEventListener('scroll', queuePosition, true);
-  function onResize() { placeFloating(); queuePosition(); }
+  function onResize() { if (sidebarShown() !== panel.classList.contains('side')) render(); else placeFloating(); queuePosition(); }
   window.addEventListener('resize', onResize);
   window.addEventListener('pointermove', onHover, { capture: true, passive: true });
   window.addEventListener('pointerout', onHover, { capture: true, passive: true });
@@ -2348,6 +2444,7 @@ function run() {
   }
   let noticeTimer = 0;
   enterPage(startUrl);
+  loadLayout();
   restoreDraft();
   loadRecent();
   globalThis.__pageCritSession = { show() {

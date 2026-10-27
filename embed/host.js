@@ -6,6 +6,7 @@
   'use strict';
   const DRAFT_KEY = 'pagecrit:draft';
   const RECENT_KEY = 'pagecrit:recent';
+  const LAYOUT_KEY = 'pagecrit:layout';
   const MAX_RECENT = 10;
   const MAX_DRAFT_CHARS = 4 * 1024 * 1024;
   const Export = root.PageCritExport;
@@ -58,6 +59,11 @@
     if (message?.type === 'PAGECRIT_DRAFT') return handleDraft(message);
     if (message?.type === 'PAGECRIT_RECENT') return handleRecent(message);
     if (message?.type === 'PAGECRIT_FONT') return handFont();
+    if (message?.type === 'PAGECRIT_LAYOUT') {
+      if (message.action !== 'set') return {ok: true, layout: read(localStorage, LAYOUT_KEY)};
+      const {sidebar, width} = message.layout || {};
+      return {ok: typeof sidebar === 'boolean' && Number.isFinite(width) && write(localStorage, LAYOUT_KEY, {sidebar, width})};
+    }
     if (message?.type !== 'PAGECRIT_EXPORT' && message?.type !== 'PAGECRIT_RENDER') return {ok: false};
     const markdown = Export.renderDigest(message.review);
     const filename = Export.filename(message.review);

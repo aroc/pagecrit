@@ -159,3 +159,16 @@ test('toolbar click opens the panel directly; pages that cannot be reviewed expl
  inspection={modal:true,contentType:'text/html'};onClicked({id:3,url:'https://example.com/'});await settle();assert.deepEqual(seen(),['inspect']);assert.match(titles.at(-1),/Close the page’s dialog/);
  calls.length=0;inspection={modal:false,contentType:'application/pdf'};onClicked({id:3,url:'https://example.com/a.pdf'});await settle();assert.match(titles.at(-1),/isn’t an HTML page/);
 });
+test('panel layout is remembered locally, clamped, and only for our own scripts',async()=>{
+ let callback,store={};
+ const local={async get(key){return {[key]:store[key]}},async set(obj){Object.assign(store,JSON.parse(JSON.stringify(obj)))}};
+ vm.runInNewContext(readFileSync(new URL('../extension/background.js',import.meta.url),'utf8'),{importScripts(){},PageCritExport:api,encodeURIComponent,chrome:{runtime:{id:'ext',onMessage:{addListener(fn){callback=fn}}},storage:{local},downloads:{}}});
+ // Results come from the worker's own realm: compare them as plain data.
+ const send=(message,sender={id:'ext',tab:{id:1},frameId:0,url:'https://example.com'})=>new Promise(resolve=>callback(message,sender,result=>resolve(JSON.parse(JSON.stringify(result)))));
+ assert.deepEqual(await send({type:'PAGECRIT_LAYOUT',action:'get'}),{ok:true,layout:null});
+ assert.equal((await send({type:'PAGECRIT_LAYOUT',action:'set',layout:{sidebar:true,width:9000}})).ok,true);
+ assert.deepEqual((await send({type:'PAGECRIT_LAYOUT',action:'get'})).layout,{sidebar:true,width:520});
+ assert.equal((await send({type:'PAGECRIT_LAYOUT',action:'set',layout:{sidebar:'yes',width:400}})).ok,false);
+ assert.equal((await send({type:'PAGECRIT_LAYOUT',action:'set',layout:{sidebar:false,width:400}},{id:'someone-else',tab:{id:1}})).ok,false);
+ assert.deepEqual(store.layout,{sidebar:true,width:520});
+});

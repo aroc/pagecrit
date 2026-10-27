@@ -52,6 +52,17 @@ async function handleRecent(message) {
   if (message.action === 'download') return {ok: true, downloadId: await saveMarkdown(entry.markdown, entry.filename)};
   return {ok: false};
 }
+// Panel layout (floating or docked as a sidebar, and its width), kept for the next review.
+const LAYOUT_KEY = 'layout';
+async function handleLayout(message) {
+  if (message.action === 'set') {
+    const {sidebar, width} = message.layout || {};
+    if (typeof sidebar !== 'boolean' || !Number.isFinite(width)) return {ok: false};
+    await chrome.storage.local.set({[LAYOUT_KEY]: {sidebar, width: Math.round(Math.min(Math.max(width, 300), 520))}});
+    return {ok: true};
+  }
+  return {ok: true, layout: (await chrome.storage.local.get(LAYOUT_KEY))[LAYOUT_KEY] || null};
+}
 // The overlay's handwriting face ships inside the extension. Handing the bytes over here
 // avoids web_accessible_resources, so pages cannot probe for the extension.
 let fontData = null;
@@ -87,6 +98,11 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (message?.type === 'PAGECRIT_RECENT') {
     if (sender.id !== chrome.runtime.id || !sender.tab || sender.frameId !== 0 || !/^https?:\/\//i.test(sender.url || '')) { respond({ok: false}); return; }
     handleRecent(message).then(respond).catch(error => respond({ok: false, error: error.message}));
+    return true;
+  }
+  if (message?.type === 'PAGECRIT_LAYOUT') {
+    if (sender.id !== chrome.runtime.id || !sender.tab) { respond({ok: false}); return; }
+    handleLayout(message).then(respond).catch(() => respond({ok: false}));
     return true;
   }
   if (message?.type === 'PAGECRIT_FONT') {
