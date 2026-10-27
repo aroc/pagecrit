@@ -64,12 +64,13 @@ try {
  console.log('PASS demo build: draft survives reload, recent review kept, closing restores the page and clears the draft');
  // Docked as a sidebar: the page moves over by the sidebar's width and gets it back when minimized
  // or closed; the width (dragged or by keyboard) is kept for the next review.
+ // Docked by default: nothing covers the page unless the reviewer floats the panel.
  await page.evaluate(()=>{document.documentElement.style.setProperty('margin-right','3px');PageCrit.open();});
- await button('Dock as a sidebar').click();
  const margin=()=>page.evaluate(()=>document.documentElement.style.marginRight);
- assert.equal(await margin(),'360px');
+ await eventually(async()=>assert.equal(await margin(),'360px'));
+ assert.equal(await button('Dock as a sidebar').getAttribute('aria-pressed'),'true');
  const panelBox=async()=>ui.getByRole('region',{name:'PageCrit review'}).boundingBox();
- assert.deepEqual(await panelBox().then(b=>[b.x+b.width,b.y,b.height,b.width]),[1280,0,900,360]);
+ await eventually(async()=>assert.deepEqual(await panelBox().then(b=>[b.x+b.width,b.y,b.height,b.width]),[1280,0,900,360]),2000); // After its slide-in.
  const edge=ui.getByRole('separator',{name:'Resize sidebar'});const at=await edge.boundingBox();
  await page.mouse.move(at.x+3,400);await page.mouse.down();await page.mouse.move(at.x-60,400,{steps:4});await page.mouse.up();
  const dragged=parseInt(await margin());assert.ok(Math.abs(dragged-420)<=2,`dragged to ${dragged}px`);

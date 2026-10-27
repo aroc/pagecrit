@@ -75,9 +75,9 @@
   /* The demo needs a mouse, like the extension: touch screens get the sample review instead. */
   .try{display:none}
   @media (hover:hover) and (pointer:fine){.try{display:inline-flex}.sample-link{display:none}}
-  /* After Try it: a sticky note just left of the PageCrit panel (docked 18px from the top right,
-     364px wide) saying what to do first, with an arrow into the panel's left edge. */
-  .try-hint{position:fixed;top:170px;right:410px;z-index:20;width:236px;padding:16px 18px 14px;background:var(--marker);color:var(--on-marker);font:600 23px/1.15 var(--hand);border-radius:3px 3px 14px 3px;box-shadow:0 14px 30px -14px #1f243066;transform:rotate(1.5deg);pointer-events:none;animation:hint .4s .3s both cubic-bezier(.2,.9,.3,1.2)}
+  /* After Try it: a sticky note just left of the PageCrit panel (docked as a 360px sidebar by
+     default) saying what to do first, with an arrow into the panel's left edge. */
+  .try-hint{position:fixed;top:170px;right:388px;z-index:20;width:236px;padding:16px 18px 14px;background:var(--marker);color:var(--on-marker);font:600 23px/1.15 var(--hand);border-radius:3px 3px 14px 3px;box-shadow:0 14px 30px -14px #1f243066;transform:rotate(1.5deg);pointer-events:none;animation:hint .4s .3s both cubic-bezier(.2,.9,.3,1.2)}
   .try-hint svg{position:absolute;left:0;bottom:100%;width:280px;height:60px;overflow:visible}
   .try-hint path{fill:none;stroke:var(--cobalt-ink);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
   .try-hint b{display:block;color:var(--cobalt);font-size:27px}

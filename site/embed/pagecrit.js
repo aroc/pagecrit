@@ -1006,7 +1006,7 @@ function run() {
     mode: 'browse', anchorKind: 'element', comments: [], edits: [], removals: [],
     pending: null, notice: '', noticeType: '', busy: false, confirmingClose: false,
     collapsed: false, dock: 'tr', pos: null, closed: false, frame: 0,
-    sidebar: false, sideWidth: 360, layoutReady: false,
+    sidebar: true, sideWidth: 360, layoutReady: false,
     pages: [], pageId: null, restored: false,
     sent: '', deliveredSignature: null, recent: [], view: '', recentOpen: null, recentCopied: null, clearingRecent: false, confirmDelete: null, hoverPoint: null, selectedId: null, revealSelected: false,
   };
@@ -1207,12 +1207,13 @@ function run() {
   }
   // The width the reviewer chose; a narrow window only caps what's shown.
   function saveLayout() { runtime.sendMessage({ type: 'PAGECRIT_LAYOUT', action: 'set', layout: { sidebar: state.sidebar, width: Math.round(Math.min(Math.max(state.sideWidth, SIDE_MIN), SIDE_MAX)) } }).catch(() => {}); }
-  // The first render waits briefly for the saved layout, so a docked review doesn't jump into place.
+  // Docked is the default, so the panel never covers the page; floating is a click away and
+  // remembered. The first render waits for the saved layout, so nothing jumps into place.
   async function loadLayout() {
     try {
       const layout = (await runtime.sendMessage({ type: 'PAGECRIT_LAYOUT', action: 'get' }))?.layout;
-      if (layout) { state.sidebar = layout.sidebar === true; if (Number.isFinite(layout.width)) state.sideWidth = layout.width; }
-    } catch (_) { /* Floating by default. */ }
+      if (layout) { state.sidebar = layout.sidebar !== false; if (Number.isFinite(layout.width)) state.sideWidth = layout.width; }
+    } catch (_) { /* Docked by default. */ }
     state.layoutReady = true; render();
   }
   const resizer = document.createElement('div');

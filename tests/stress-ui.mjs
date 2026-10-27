@@ -312,6 +312,8 @@ try {
  });
 
  await test('moving panel and canceling close preserves unsaved draft text',async({page,ui,button,clickText,typeInline,editing,exportBundle})=>{
+  // Docked is the default; float the panel so its header can be dragged.
+  if(await button('Dock as a sidebar').getAttribute('aria-pressed')==='true')await button('Dock as a sidebar').click();
   await ensure(button('Edit text'));await clickText('#plain');await typeInline('Keep this pending text');const h=await ui.locator('.header').boundingBox();await page.mouse.move(h.x+40,h.y+15);await page.mouse.down();await page.mouse.move(h.x-300,h.y+200,{steps:5});await page.mouse.up();assert.equal(await page.locator('#plain').textContent(),'Keep this pending text');await button('Snap to nearest corner').click();assert.equal(await editing(),1);await button('Close review').click();await button('Keep reviewing').click();assert.equal(await editing(),1);assert.equal(await page.locator('#plain').textContent(),'Keep this pending text');await button('Save').click();assert.equal((await exportBundle()).edits[0].after,'Keep this pending text');
  });
 
