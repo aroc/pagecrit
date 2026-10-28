@@ -995,7 +995,7 @@ function run() {
   const MAX_TEXT = 20000;
   const MAX_COMMENT = 10000;
   const MAX_ITEMS = 500;
-  const VERSION = '0.3.0';
+  const VERSION = '0.3.1';
   const id = () => crypto.randomUUID();
   const now = () => new Date().toISOString();
   const startUrl = location.href;

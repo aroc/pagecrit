@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "PageCrit",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Pin feedback and edit text on a page, then download a Markdown review for your coding agent.",
   "icons": {
     "16": "icons/icon-16.png",
